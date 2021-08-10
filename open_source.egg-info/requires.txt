@@ -1,0 +1,10 @@
+falcon
+falcon-cors
+gunicorn
+sqlalchemy
+raven
+deepdiff
+mysqlclient
+
+[dev]
+flake8
