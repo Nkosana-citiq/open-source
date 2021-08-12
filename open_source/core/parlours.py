@@ -24,11 +24,6 @@ class Parlour(db.Base):
     def plans(cls):
         return relationship("Plan", back_populates="parlour")
 
-    @classmethod
-    def get_parlour(cls, session, parlour_id):
-        query = session.query(Parlour).filter(Parlour.parlour_id == parlour_id, Parlour.state != cls.STATE_DELETED)
-        return cls.with_relationships(query).one_or_none()
-
     def to_dict(self):
         return {
             'id': self.parlour_id,

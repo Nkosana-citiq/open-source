@@ -37,11 +37,6 @@ class Plan(db.Base):
     def parlour(cls):
         return relationship('Parlour')
 
-    @classmethod
-    def get_plan(cls, session, plan_id):
-        query = session.query(Plan).filter(Plan.plan_id == plan_id, Plan.state != cls.STATE_DELETED)
-        return cls.with_relationships(query).one_or_none()
-
     def to_dict(self):
         return {
             'id': self.plan_id,
@@ -59,6 +54,7 @@ class Plan(db.Base):
             'benefits': self.benefits,
             "modified": self.modified_at,
             'created': self.created_at,
+            'parlour': self.parlour.to_dict()
         }
 
     def save(self, session):
