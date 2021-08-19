@@ -33,9 +33,11 @@ class ParlourGetAllEndpoint:
         try:
             with db.transaction() as session:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ACTIVE).all()
-                if parlours is None:
-                    resp.body = json.dumps([])
-                resp.text = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
+                if parlours:
+                    resp.text = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
+                else:
+                    resp.text = json.dumps([])
+
         except:
             logger.exception("Error, Failed to get Card for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Card for user with ID {}.".format(id))

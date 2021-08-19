@@ -19,11 +19,11 @@ class PlanGetEndpoint:
                     Plan.state == Plan.STATE_ACTIVE
                 ).first()
                 if plan is None:
-                    raise falcon.HTTPNotFound(title="Parlour Not Found")
+                    raise falcon.HTTPNotFound(title="Plan Not Found")
 
                 resp.text = json.dumps(plan.to_dict(), default=str)
         except:
-            logger.exception("Error, Failed to get Parlour with ID {}.".format(id))
+            logger.exception("Error, Failed to get Plan with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Card with ID {}.".format(id))
 
 
@@ -35,8 +35,9 @@ class PlanGetAllEndpoint:
                 plans = session.query(Plan).filter(Plan.state == Plan.STATE_ACTIVE).all()
                 if plans:
                     resp.text = json.dumps([plan.to_dict() for plan in plans], default=str)
-                resp.body = json.dumps([])
-                
+                else:
+                    resp.text = json.dumps([])
+
         except:
             logger.exception("Error, Failed to get Card for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Card for user with ID {}.".format(id))
@@ -74,9 +75,9 @@ class PlanPostEndpoint:
                     resp.text = json.dumps(plan.to_dict(), default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Parlour.")
+                "Error, experienced error while creating Plan.")
             raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Parlour.")
+                "Processing Failed. experienced error while creating Plan.")
 
 
 class PlanPutEndpoint:
@@ -92,7 +93,7 @@ class PlanPutEndpoint:
                     Plan.plan_id == id).first()
 
                 if not plan:
-                    raise falcon.HTTPNotFound(title="Parlour not found", description="Could not find parlour with given ID.")
+                    raise falcon.HTTPNotFound(title="Plan not found", description="Could not find plan with given ID.")
             
                 plan.plan=req["plan"],
                 plan.cover = req["cover"],
@@ -110,9 +111,9 @@ class PlanPutEndpoint:
                 resp.text = json.dumps(plan.to_dict(), default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Parlour.")
+                "Error, experienced error while creating Plan.")
             raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Parlour.")
+                "Processing Failed. experienced error while creating Plan.")
 
 
 class PlanDeleteEndpoint:
@@ -123,12 +124,12 @@ class PlanDeleteEndpoint:
                 plan = session.query(Plan).filter(Plan.parlour_id == id).first()
 
                 if plan is None:
-                    raise falcon.HTTPNotFound(title="Parlour Not Found")
+                    raise falcon.HTTPNotFound(title="Plan Not Found")
                 if plan.is_deleted:
-                    falcon.HTTPNotFound("Parlour does not exist.")
+                    falcon.HTTPNotFound("Plan does not exist.")
 
                 plan.delete(session)
                 resp.text = json.dumps({})
         except:
-            logger.exception("Error, Failed to delete Parlour with ID {}.".format(id))
-            raise falcon.HTTP_BAD_REQUEST("Failed to delete Parlour with ID {}.".format(id))
+            logger.exception("Error, Failed to delete Plan with ID {}.".format(id))
+            raise falcon.HTTP_BAD_REQUEST("Failed to delete Plan with ID {}.".format(id))
