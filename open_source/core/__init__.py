@@ -1,9 +1,11 @@
 from datetime import datetime
 
 
-from sqlalchemy import event
-from open_source.core import parlours, plans
+from sqlalchemy import event, DDL
+from open_source.core import parlours, plans, applicants, main_members, extended_members, audit
 from open_source import db
+
+
 
 def before_update(mapper, connection, target):
     if hasattr(target, 'modified_at'):

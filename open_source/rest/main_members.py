@@ -33,6 +33,7 @@ class MainMemberGetAllEndpoint:
         try:
             with db.transaction() as session:
                 main_members = session.query(MainMember).filter(MainMember.state == MainMember.STATE_ACTIVE).all()
+                print(main_members)
                 if main_members:
                     resp.text = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
                 resp.body = json.dumps([])
@@ -56,7 +57,6 @@ class MainMemberPostEndpoint:
                     main_member = MainMember(
                         pid_number = req["id_number"],
                         date_of_birth =  req["date_of_birth"],
-                        state = req["state"],
                         first_name = req["first_name"],
                         last_name = req["last_name"],
                         contact = req["contact"],

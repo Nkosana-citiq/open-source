@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 
 
 class Plan(db.Base):
-    __tablename__ = 'tbl_plans'
+    __tablename__ = 'plans'
 
     STATE_ACTIVE = 1
     STATE_DELETED = 0
@@ -31,7 +31,7 @@ class Plan(db.Base):
 
     @declared_attr
     def parlour_id(cls):
-        return Column(Integer, ForeignKey('tbl_parlour.parlour_id'))
+        return Column(Integer, ForeignKey('parlours.parlour_id'))
 
     @declared_attr
     def parlour(cls):
@@ -54,9 +54,21 @@ class Plan(db.Base):
             'benefits': self.benefits,
             "modified": self.modified_at,
             'created': self.created_at,
+            'state': self.state,
             'parlour': self.parlour.to_dict()
         }
 
+    def to_short_dict(self):
+        return {
+            'id': self.plan_id,
+            'plan': self.plan,
+            'cover': self.cover,
+            'premium': self.premium,
+            'member_age_restriction': self.member_age_restriction,
+            'member_minimum_age': self.member_minimum_age,
+            'member_maximum_age': self.member_maximum_age,
+            'has_benefits': self.has_benefits,
+        }
     def save(self, session):
         session.add(self)
         session.commit()

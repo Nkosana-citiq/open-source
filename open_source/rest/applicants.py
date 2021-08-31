@@ -1,3 +1,9 @@
+from open_source.core import applicants
+from open_source.core import consultants
+from open_source.core.parlours import Parlour
+from open_source.core.consultants import Consultant
+from open_source.core.audit import AuditLogClient
+
 import falcon
 import json
 import logging
@@ -12,19 +18,15 @@ logger = logging.getLogger(__name__)
 class ApplicantGetEndpoint:
 
     def on_get(self, req, resp, id):
-        try:
-            with db.transaction() as session:
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == id,
-                    Applicant.state == Applicant.STATE_ACTIVE
-                ).first()
-                if applicant is None:
-                    raise falcon.HTTPNotFound(title="Applicant Not Found")
+        with db.transaction() as session:
+            applicant = session.query(Applicant).filter(
+                Applicant.id == id,
+                Applicant.state == Applicant.STATE_ACTIVE
+            ).first()
+            if applicant is None:
+                raise falcon.HTTPNotFound(title="Applicant Not Found")
 
-                resp.text = json.dumps(applicant.to_dict(), default=str)
-        except:
-            logger.exception("Error, Failed to get Applicant with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Applicant with ID {}.".format(id))
+            resp.text = json.dumps(applicant.to_dict(), default=str)
 
 
 class ApplicantGetAllEndpoint:
@@ -32,11 +34,16 @@ class ApplicantGetAllEndpoint:
     def on_get(self, req, resp):
         try:
             with db.transaction() as session:
-                applicants = session.query(Applicant).filter(Applicant.state == Applicant.STATE_ACTIVE).all()
+                applicants = session.query(Applicant).filter(
+                    Applicant.state == Applicant.STATE_ACTIVE,
+                    Applicant.consultant_id != 0
+                ).all()
+
                 if applicants:
                     resp.text = json.dumps([applicant.to_dict() for applicant in applicants], default=str)
-                resp.body = json.dumps([])
-                
+                else:
+                    resp.text = json.dumps([])
+
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Applicants for user with ID {}.".format(id))
@@ -46,20 +53,39 @@ class ApplicantPostEndpoint:
 
     def on_post(self, req, resp):
         req = json.loads(req.stream.read().decode('utf-8'))
+
         try:
             with db.transaction() as session:
+                parlour = session.query(Parlour).filter(
+                    Parlour.parlour_id == req["parlour_id"],
+                    Parlour.state == Parlour.STATE_ACTIVE).first()
+
+                consultant = session.query(Consultant).filter(
+                    Consultant.consultant_id == req["consultant_id"],
+                    Consultant.state == Consultant.STATE_ACTIVE).first()
+
+                if not parlour:
+                    raise falcon.HTTP_BAD_REQUEST("Parlour does not exist.")
+
                 applicant = Applicant(
                     policy_num = req["policy_num"],
                     document = req["document"],
                     date = req["date"],
-                    state = req["state"],
                     status = req["status"],
                     canceled = req["canceled"],
-                    modified = req["modified_at"],
-                    created = req["created_at"],
-                    parlour = req["parlour"],
-                    consultant = req["consultant"],
-                    state=Applicant.STATE_ACTIVE,
+                    parlour_id = parlour.parlour_id,
+                    consultant_id = req["consultant_id"],
+                    plan_id = req['plan_id'],
+                    state=Applicant.STATE_ACTIVE
+                )
+
+                AuditLogClient.save_log(
+                    session,
+                    consultant.consultant_id,
+                    consultant.email,
+                    data_new=applicant.to_dict(),
+                    notes='New applicant with ID [{}] added by consultant {} {}'.format(
+                        applicant.id, consultant.first_name, consultant.last_name)
                 )
                 applicant.save(session)
                 resp.text = json.dumps(applicant.to_dict(), default=str)
@@ -80,21 +106,31 @@ class ApplicantPutEndpoint:
                 applicant = session.query(Applicant).filter(
                     Applicant.id == id).first()
 
+                consultant = session.query(Consultant).filter(
+                    Consultant.consultant_id == req["consultant_id"],
+                    Consultant.state == Consultant.STATE_ACTIVE).first()
+
                 if not applicant:
                     raise falcon.HTTPNotFound(title="Applicant not found", description="Could not find Applicant with given ID.")
 
                 applicant.policy_num = req["policy_num"]
                 applicant.document = req["document"]
                 applicant.date = req["date"]
-                applicant.state = req["state"]
+                # applicant.state = req["state"]
                 applicant.status = req["status"]
                 applicant.canceled = req["canceled"]
-                applicant.modified = req["modified_at"]
-                applicant.created = req["created_at"]
-                applicant.parlour = req["parlour"]
-                applicant.consultant = req["consultant"]
+                applicant.parlour_id = req["parlour_id"]
+                applicant.consultant_id = req["consultant_id"]
                 applicant.state=Applicant.STATE_ACTIVE
-                
+
+                # AuditLogClient.save_log(
+                #     session,
+                #     consultant.consultant_id,
+                #     consultant.email,
+                #     data_new=applicant.to_dict(),
+                #     notes='New applicant with ID [{}] added by consultant {} {}'.format(
+                #         applicant.id, consultant.first_name, consultant.last_name)
+                # )
                 applicant.save(session)
                 resp.text = json.dumps(applicant.to_dict(), default=str)
         except:

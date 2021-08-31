@@ -10,10 +10,15 @@ Usage::
 import os
 
 
-__role__ = os.environ.get('ROLE', 'TEST')
+__role__ = os.environ.get('ROLE', 'LOCAL')
 
 
 class BaseConfig(object):
+
+    jwt_secret = 'db3b6cefdb2789e0'
+
+    basic_secret = 'uGmZQhbCbp76ceJGG3h'
+
     MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
 
     db = {
