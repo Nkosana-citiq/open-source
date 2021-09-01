@@ -15,6 +15,8 @@ __role__ = os.environ.get('ROLE', 'LOCAL')
 
 class BaseConfig(object):
 
+    password_salt = 'DYhG93b0qyddddJfIxfs2guVoUubWwvniR2G0FgaC9mi'
+
     jwt_secret = 'db3b6cefdb2789e0'
 
     basic_secret = 'uGmZQhbCbp76ceJGG3h'
@@ -31,12 +33,27 @@ class BaseConfig(object):
         return False
 
     @classmethod
+    def is_preprod(cls):
+        return False
+
+    @classmethod
     def is_prod(cls):
+        return False
+
+    @classmethod
+    def is_dev(cls):
+        return False
+
+    @classmethod
+    def is_local(cls):
         return False
 
 
 class DevConfig(BaseConfig):
-    ...
+
+    @classmethod
+    def is_dev(cls):
+        return True
 
 
 class TestConfig(BaseConfig):

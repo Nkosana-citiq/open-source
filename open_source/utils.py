@@ -2,7 +2,7 @@ import random
 import datetime
 import calendar
 import re
-
+import falcon
 
 from typing import Any, Iterable, Dict
 
@@ -150,7 +150,7 @@ def validate_date(string):
     try:
         date_from_string(string)
     except ValueError as e:
-        raise exceptions.BadQueryParamsError(str(e))
+        raise falcon.BadQueryParamsError(str(e))
 
 
 def format_token_code(txt):
@@ -177,7 +177,7 @@ def format_dictionary_key_for_filename(entity: dict, key: str) -> str:
     try:
         return entity[key].lower().strip().replace(' ', '_')
     except KeyError as e:
-        raise exceptions.ApplicationError(str(e))
+        raise falcon.ApplicationError(str(e))
 
 
 def random_text(sz):

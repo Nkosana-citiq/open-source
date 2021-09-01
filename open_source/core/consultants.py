@@ -1,6 +1,6 @@
 import hashlib
-import bcrypt
 import base64
+from open_source import config
 from random import choice, randint
 
 from sqlalchemy.sql.sqltypes import Boolean, DECIMAL
@@ -79,8 +79,8 @@ class Consultant(db.Base):
 
     @staticmethod
     def to_password_hash(plaintext):
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(plaintext, salt)
+        salt = config.get_config().password_salt
+        return hashlib.sha1((salt + plaintext).encode('utf-8')).hexdigest()
 
     def set_password(self, plaintext):
         self.password = self.to_password_hash(plaintext)

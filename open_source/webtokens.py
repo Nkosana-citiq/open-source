@@ -25,13 +25,13 @@ def create_token_from_consultant(user) -> str:
 def create_token_from_parlour(user) -> str:
     """Returns a token for the given user.
 
-    :param user: A User.
+    :param user: A Parlour.
     :return: A str that is the encoded token.
     """
+
     payload = {'user': user.to_webtoken_payload()}
+
     return encode_token(payload)
-
-
 
 def create_token_from_admin(user) -> str:
     """Returns a token for the given user.
@@ -42,14 +42,13 @@ def create_token_from_admin(user) -> str:
     payload = {'user': user.to_webtoken_payload()}
     return encode_token(payload)
 
-
 def encode_token(payload: dict) -> str:
     """Returns a token from the given payload.
 
     :param payload: A dict to be encoded.
     :return: A str that is the token.
     """
-    return jwt.encode(payload, config.jwt_secret, algorithm=__algorithm__)
+    return jwt.encode(payload=payload, key=config.jwt_secret, algorithm=__algorithm__)
 
 
 def decode_token(token: str) -> dict:

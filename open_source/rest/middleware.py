@@ -5,13 +5,20 @@ import base64
 
 import falcon
 
-from admin_service import db, webtokens, config
-from admin_service.rest import raise_failed_authorization, raise_forbidden
+from open_source import db, webtokens, config
 
 
 conf = config.get_config()
 
 logger = logging.getLogger(__name__)
+
+
+def raise_failed_authorization(msg='Auth failed: Invalid Token'):
+    raise falcon.HTTPUnauthorized('401 Failed Authorization', msg, {})
+
+
+def raise_forbidden():
+    raise falcon.HTTPForbidden('403 Forbidden', 'You do not have the required permissions.')
 
 
 class AuthMiddleware(object):
@@ -35,7 +42,7 @@ class AuthMiddleware(object):
         if not len(auth) == 2 or auth[0].lower() != 'bearer':
             raise_failed_authorization('Header should be[Authorization: Bearer <token> ]')
         try:
-            payload = webtokens.decode_token(str(auth[1]).encode('utf-8'))
+            payload = webtokens.decode_token(str(auth[1]))
             if 'user' not in payload:
                 raise_failed_authorization()
             env = payload['user'].get('env')
@@ -61,46 +68,46 @@ class AuthMiddleware(object):
             raise_failed_authorization()
 
 
-class PermissionMiddleware(object):
+# class PermissionMiddleware(object):
 
-    def process_resource(self, req, resp, resource, params):
-        if not resource.is_basic_secure() and not resource.is_not_secure() and req.method.lower() != 'options':
-            from open_source.core.consultants import Consultant
-            from open_source.core.parlours import Parlour
+#     def process_resource(self, req, resp, resource, params):
+#         if not resource.is_basic_secure() and not resource.is_not_secure() and req.method.lower() != 'options':
+#             from open_source.core.consultants import Consultant
+#             from open_source.core.parlours import Parlour
 
-            token_payload = req.context.get('token_payload')
-            if not token_payload:
-                raise falcon.HTTPInternalServerError('500 Internal Server Error',
-                                                     'Permission middleware require token_payload')
+#             token_payload = req.context.get('token_payload')
+#             if not token_payload:
+#                 raise falcon.HTTPInternalServerError('500 Internal Server Error',
+#                                                      'Permission middleware require token_payload')
 
-            with db.no_transaction() as session:
-                user = session.query(Consultant).get(token_payload['user']['id'])
-                if not user or not user.is_active():
-                    user = session.query(Parlour).get(token_payload['user']['id'])
-                    if not user or not user.is_active():
-                        raise_failed_authorization('Unknown user.')
-                if not user.can_login():
-                    raise_failed_authorization('User not active for vendsystem.')
-                req.context['user'] = user
-                required_permission = resource.get_required_permission(req)
-                if required_permission:
-                    permissions_names = [p.name for p in user.get_permissions()]
-                    if required_permission not in permissions_names:
-                        raise_forbidden()
-                # detach user from the session
-                session.expunge(user)
+#             with db.no_transaction() as session:
+#                 user = session.query(Consultant).get(token_payload['user']['id'])
+#                 if not user or not user.is_active():
+#                     user = session.query(Parlour).get(token_payload['user']['id'])
+#                     if not user or not user.is_active():
+#                         raise_failed_authorization('Unknown user.')
+#                 # if not user.can_login():
+#                 #     raise_failed_authorization('User not active for vendsystem.')
+#                 req.context['user'] = user
+#                 required_permission = resource.get_required_permission(req)
+#                 if required_permission:
+#                     permissions_names = [p.name for p in user.get_permissions()]
+#                     if required_permission not in permissions_names:
+#                         raise_forbidden()
+#                 # detach user from the session
+#                 session.expunge(user)
 
 
-class AsUserMiddleware(object):
+# class AsUserMiddleware(object):
 
-    def __init__(self, user_id):
-        self.user_id = user_id
+#     def __init__(self, user_id):
+#         self.user_id = user_id
 
-    def process_resource(self, req, resp, resource, params):
-        from admin_service.core.users import User
+#     def process_resource(self, req, resp, resource, params):
+#         from admin_service.core.users import User
 
-        if not resource.is_not_secure():
-            with db.no_transaction() as session:
-                user = session.query(User).get(self.user_id)
-                session.expunge(user)
-                req.context['user'] = user
+#         if not resource.is_not_secure():
+#             with db.no_transaction() as session:
+#                 user = session.query(User).get(self.user_id)
+#                 session.expunge(user)
+#                 req.context['user'] = user

@@ -1,6 +1,8 @@
 from random import choice, randint
-import bcrypt
 import base64
+import hashlib
+
+from open_source import config
 from open_source import db
 from sqlalchemy import Column, Integer, String, DateTime, func, Text
 from sqlalchemy.ext.declarative import declared_attr
@@ -21,6 +23,8 @@ class Parlour(db.Base):
     number = Column(String(length=200))
     state = Column(Integer, default=1)
     email = Column(String(length=255))
+    username = Column(String(length=255))
+    address = Column(String(length=255))
     password = Column(String(length=255))
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
@@ -33,9 +37,12 @@ class Parlour(db.Base):
         return {
             'id': self.parlour_id,
             'number': self.number,
+            'email': self.email,
             'parlour_name': self.parlourname,
             'person_name': self.personname,
             'state': self.state,
+            'username': self.username,
+            'address': self.address,
             "modified": self.modified_at,
             'created': self.created_at
         }
@@ -56,8 +63,8 @@ class Parlour(db.Base):
 
     @staticmethod
     def to_password_hash(plaintext):
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(plaintext, salt)
+        salt = config.get_config().password_salt
+        return hashlib.sha1((salt + plaintext).encode('utf-8')).hexdigest()
 
     def set_password(self, plaintext):
         self.password = self.to_password_hash(plaintext)

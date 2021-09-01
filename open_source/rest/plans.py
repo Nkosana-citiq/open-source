@@ -12,6 +12,16 @@ logger = logging.getLogger(__name__)
 
 class PlanGetEndpoint:
 
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
@@ -30,10 +40,28 @@ class PlanGetEndpoint:
 
 class PlanGetAllEndpoint:
 
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
     def on_get(self, req, resp):
         try:
             with db.transaction() as session:
-                plans = session.query(Plan).filter(Plan.state == Plan.STATE_ACTIVE).all()
+                parlour = session.query(Parlour).filter(
+                    Parlour.state == Parlour.STATE_ACTIVE,
+                    Parlour.parlour_id == id).one_or_none()
+                if not parlour:
+                    raise falcon.HTTP_BAD_REQUEST()
+
+                plans = session.query(Plan).filter(
+                    Plan.state == Plan.STATE_ACTIVE,
+                    Plan.parlour_id == id).all()
 
                 if plans:
                     resp.text = json.dumps([plan.to_dict() for plan in plans], default=str)
@@ -46,6 +74,16 @@ class PlanGetAllEndpoint:
 
 
 class PlanPostEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
 
     def on_post(self, req, resp):
         req = json.loads(req.stream.read().decode('utf-8'))
@@ -92,6 +130,16 @@ class PlanPostEndpoint:
 
 
 class PlanPutEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
 
     def on_put(self, req, resp, id):
         req = json.loads(req.stream.read().decode('utf-8'))

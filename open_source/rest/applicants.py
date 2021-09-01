@@ -17,6 +17,16 @@ logger = logging.getLogger(__name__)
 
 class ApplicantGetEndpoint:
 
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
     def on_get(self, req, resp, id):
         with db.transaction() as session:
             applicant = session.query(Applicant).filter(
@@ -30,6 +40,16 @@ class ApplicantGetEndpoint:
 
 
 class ApplicantGetAllEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
 
     def on_get(self, req, resp):
         try:
@@ -50,6 +70,16 @@ class ApplicantGetAllEndpoint:
 
 
 class ApplicantPostEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
 
     def on_post(self, req, resp):
         req = json.loads(req.stream.read().decode('utf-8'))
@@ -98,6 +128,16 @@ class ApplicantPostEndpoint:
 
 class ApplicantPutEndpoint:
 
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
     def on_put(self, req, resp, id):
         req = json.loads(req.stream.read().decode('utf-8'))
         try:
@@ -141,6 +181,16 @@ class ApplicantPutEndpoint:
 
 
 class ApplicantDeleteEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
 
     def on_delete(self, req, resp, id):
         try:
