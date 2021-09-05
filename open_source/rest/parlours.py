@@ -60,13 +60,13 @@ class ParlourGetEndpoint:
         try:
             with db.transaction() as session:
                 parlour = session.query(Parlour).filter(
-                    Parlour.parlour_id == id,
+                    Parlour.id == id,
                     Parlour.state == Parlour.STATE_ACTIVE
                 ).first()
                 if parlour is None:
                     raise falcon.HTTPNotFound(title="Parlour Not Found")
 
-                resp.text = json.dumps(parlour.to_dict(), default=str)
+                resp.body = json.dumps(parlour.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to get Parlour with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Parlour with ID {}.".format(id))
@@ -74,25 +74,26 @@ class ParlourGetEndpoint:
 
 class ParlourGetAllEndpoint:
 
-    def __init__(self, secure=False, basic_secure=False):
-        self.secure = secure
-        self.basic_secure = basic_secure
+    # def __init__(self, secure=False, basic_secure=False):
+    #     self.secure = secure
+    #     self.basic_secure = basic_secure
 
-    def is_basic_secure(self):
-        return self.basic_secure
+    # def is_basic_secure(self):
+    #     return self.basic_secure
 
-    def is_not_secure(self):
-        return not self.secure
+    # def is_not_secure(self):
+    #     return not self.secure
 
     def on_get(self, req, resp):
         try:
             with db.transaction() as session:
+                print("get parlours")
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ACTIVE).all()
-
+                print(len(parlours))
                 if parlours:
-                    resp.text = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
+                    resp.body = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
                 else:
-                    resp.text = json.dumps([])
+                    resp.body = json.dumps([])
 
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
@@ -132,7 +133,7 @@ class ParlourPostEndpoint:
                         state=Parlour.STATE_ACTIVE,
                     )
                     parlour.save(session)
-                    resp.text = json.dumps(parlour.to_dict(), default=str)
+                    resp.body = json.dumps(parlour.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Parlour.")
@@ -161,7 +162,7 @@ class ParlourPutEndpoint:
                     raise falcon.HTTP_BAD_REQUEST("Missing email field.")
 
                 parlour = session.query(Parlour).filter(
-                    Parlour.parlour_id == id).first()
+                    Parlour.id == id).first()
 
                 if not parlour:
                     raise falcon.HTTPNotFound(title="Parlour not found", description="Could not find parlour with given ID.")
@@ -172,7 +173,7 @@ class ParlourPutEndpoint:
                 parlour.email=req["email"],
                 parlour.state=Parlour.STATE_ACTIVE,
                 parlour.save(session)
-                resp.text = json.dumps(parlour.to_dict(), default=str)
+                resp.body = json.dumps(parlour.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Parlour.")
@@ -195,7 +196,7 @@ class ParlourDeleteEndpoint:
     def on_delete(self, req, resp, id):
         try:
             with db.transaction() as session:
-                parlour = session.query(Parlour).filter(Parlour.parlour_id == id).first()
+                parlour = session.query(Parlour).filter(Parlour.id == id).first()
 
                 if parlour is None:
                     raise falcon.HTTPNotFound(title="Parlour Not Found")
@@ -203,7 +204,7 @@ class ParlourDeleteEndpoint:
                     falcon.HTTPNotFound("Parlour does not exist.")
 
                 parlour.delete(session)
-                resp.text = json.dumps({})
+                resp.body = json.dumps({})
         except:
             logger.exception("Error, Failed to delete Parlour with ID {}.".format(id))
             raise falcon.HTTP_BAD_REQUEST("Failed to delete Parlour with ID {}.".format(id))
@@ -214,7 +215,7 @@ class ChangeParlourPasswordEndpoint:
     def on_post(self, req, resp, id):
         with db.transaction() as session:
             parlour = session.query(Parlour).filter(
-                Parlour.parlour_id == id,
+                Parlour.id == id,
                 Parlour.state == Parlour.STATE_ACTIVE
             ).first()
 
@@ -316,9 +317,9 @@ class ParlourGetAllPendingEndpoint:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_PENDING).all()
 
                 if parlours:
-                    resp.text = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
+                    resp.body = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
                 else:
-                    resp.text = json.dumps([])
+                    resp.body = json.dumps([])
 
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
@@ -333,9 +334,9 @@ class ParlourGetAllArchivedEndpoint:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ARCHIVED).all()
 
                 if parlours:
-                    resp.text = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
+                    resp.body = json.dumps([parlour.to_dict() for parlour in parlours], default=str)
                 else:
-                    resp.text = json.dumps([])
+                    resp.body = json.dumps([])
 
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
@@ -357,43 +358,34 @@ class ParlourAuthEndpoint:
     def on_post(self, req, resp):
         try:
             with db.transaction() as session:
-                rest_dict = req.media
+                rest_dict = get_json_body(req)
 
-                if 'email' in rest_dict:
-                    # CIC Wholesaler password reset
-                    email = rest_dict.get('email')
-
-                if 'username' in rest_dict:
+                if 'username' not in rest_dict:
                     # Citiq Prepaid password reset
-                    username = rest_dict.get('user_identifier')
-
-                email = rest_dict.get('email')
-                if not rest_dict.get("email") and not rest_dict.get("username"):
                     raise falcon.HTTPBadRequest(
                         title='400 Malformed Auth request',
-                        description='Missing credential[username]'
-                    )
+                        description='Missing credential[username]')
 
-                password = rest_dict.get('password')
-                if not password:
+                username = rest_dict.get('username')
+
+                if 'password' not in rest_dict:
                     raise falcon.HTTPBadRequest(
                         title='400 Malformed Auth request',
                         description='Missing credential[password]'
                     )
+                password = rest_dict.get('password')
+                user, success = authenticate_parlour_by_username(session, username, password)
+                if not user:
+                    user, success = authenticate_parlour_by_email(session, username, password)
 
-                if rest_dict.get('email'):
-                    user, success = authenticate_parlour_by_email(session, email, password)
-                else:
-                    user, success = authenticate_parlour_by_username(session, username, password)
-                
                 if success:
                     text = webtokens.create_token_from_parlour(user)
 
                     resp.body = json.dumps(
                         {
-                            'user': user.to_dict(),
+                            "user": user.to_dict(),
                             "token": text,
-                            "permission": "parlour"
+                            "permission": "Parlour"
                         }, default=str)
                 else:
                     raise falcon.HTTPUnauthorized(

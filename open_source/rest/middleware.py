@@ -24,7 +24,7 @@ def raise_forbidden():
 class AuthMiddleware(object):
 
     def process_resource(self, req, resp, resource, params):
-
+        # resp.set_header('access-control-allow-origin', 'http://localhost:8009')
         if resource.is_basic_secure():
             self.check_basic_auth(req)
 

@@ -26,7 +26,7 @@ class MainMember(db.Base):
 
     @declared_attr
     def parlour_id(cls):
-        return Column(Integer, ForeignKey('parlours.parlour_id'))
+        return Column(Integer, ForeignKey('parlours.id'))
 
     @declared_attr
     def parlour(cls):
@@ -53,7 +53,7 @@ class MainMember(db.Base):
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
             'parlour': self.parlour.to_dict(),
-            'applicant': self.applicant.to_short_dict()
+            'applicant': self.applicant.to_short_dict() if self.applicant else {} 
         }
 
     def to_short_dict(self):

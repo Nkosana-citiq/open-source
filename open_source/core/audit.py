@@ -2,8 +2,6 @@ from datetime import datetime
 import json
 
 from typing import Text
-from falcon import constants
-from sqlalchemy.sql.sqltypes import Boolean, DECIMAL
 from open_source import db
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text, func
 from sqlalchemy.ext.declarative import declared_attr

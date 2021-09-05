@@ -10,6 +10,10 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 
 class Consultant(db.Base):
     __tablename__ = 'consultants'
@@ -19,11 +23,19 @@ class Consultant(db.Base):
     STATE_ACTIVE = 1
     STATE_DELETED = 0
 
-    consultant_id = Column(Integer, primary_key=True)
+    state_to_text = {
+        STATE_ARCHIVED: 'Archived',
+        STATE_PENDING: 'Pending',
+        STATE_ACTIVE: 'Active',
+        STATE_DELETED: 'Deleted'
+    }
+
+    id = Column(Integer, primary_key=True)
     state = Column(Integer, default=1)
     first_name = Column(String(length=50))
     last_name = Column(String(length=50))
     email = Column(String(length=50))
+    username = Column(String(length=50))
     temp_password = Column(String(length=50))
     password = Column(String(length=50))
     branch = Column(String(length=50))
@@ -33,7 +45,7 @@ class Consultant(db.Base):
 
     @declared_attr
     def parlour_id(cls):
-        return Column(Integer, ForeignKey('parlours.parlour_id'))
+        return Column(Integer, ForeignKey('parlours.id'))
 
     @declared_attr
     def parlour(cls):
@@ -41,10 +53,11 @@ class Consultant(db.Base):
 
     def to_dict(self):
         return {
-            'id': self.consultant_id,
+            'id': self.id,
             'first_name': self.first_name,
             'last_name': self.last_name,
             'email': self.email,
+            'username': self.username,
             'state': self.state,
             'branch': self.branch,
             'number': self.number,
@@ -55,7 +68,7 @@ class Consultant(db.Base):
 
     def to_short_dict(self):
         return {
-            'id': self.consultant_id,
+            'id': self.id,
             'first_name': self.first_name,
             'last_name': self.last_name,
             'email': self.email,
@@ -114,16 +127,57 @@ class Consultant(db.Base):
         return False
 
     @classmethod
-    def is_email_unique(cls, session, username):
+    def is_email_unique(cls, session, email):
         try:
-            session.query(Consultant).filter(func.trim(Consultant.email) ==
-                                       username.strip(), Consultant.state == Consultant.STATE_ACTIVE).one()
+            session.query(Consultant).filter(
+                func.trim(Consultant.email) == email.strip(),
+                Consultant.state == Consultant.STATE_ACTIVE
+            ).one()
         except MultipleResultsFound:
             return False
         except NoResultFound:
             return True
         return False
     
+    def send_signup_email(self):
+        sender_email = "nkosanani21test@@gmail.com"
+        receiver_email = "nkosanan@citiqprepaid.co.za"
+        # password = input("Type your password and press enter:")
+
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "multipart test"
+        message["From"] = sender_email
+        message["To"] = receiver_email
+
+        html = """\
+        <html>
+        <body>
+            <p>Hi,<br>
+            You are receiving this email because you are a consultant for {parlour}.<br>
+            Your temporary password is: {temp_password}
+            Click on the link to go to the main website where you can login
+            <a href="http:/localhost:4200">{parlour}</a> 
+            has many great tutorials.
+            </p>
+        </body>
+        </html>
+        """.format(parlour=self.parlour.parlourname, temp_password=self.temp_password)
+
+        # Turn these into plain/html MIMEText objects
+        part = MIMEText(html, "html")
+
+        # Add HTML/plain-text parts to MIMEMultipart message
+        # The email client will try to render the last part first
+        message.attach(part)
+
+        # Create secure connection with server and send email
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            # server.login(sender_email, password)
+            server.sendmail(
+                sender_email, receiver_email, message.as_string()
+            )
+
     @classmethod
     def new_consultant(cls, request):
         return Consultant(

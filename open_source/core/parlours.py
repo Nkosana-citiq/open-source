@@ -17,7 +17,7 @@ class Parlour(db.Base):
     STATE_ACTIVE = 1
     STATE_DELETED = 0
 
-    parlour_id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True)
     parlourname = Column(String(length=200))
     personname = Column(String(length=200))
     number = Column(String(length=200))
@@ -35,7 +35,7 @@ class Parlour(db.Base):
 
     def to_dict(self):
         return {
-            'id': self.parlour_id,
+            'id': self.id,
             'number': self.number,
             'email': self.email,
             'parlour_name': self.parlourname,

@@ -14,7 +14,6 @@ class ExtendedMember(db.Base):
     STATE_DELETED = 0
 
     id = Column(Integer, primary_key=True)
-    id_number = Column(String(length=15))
     date_of_birth = Column(Date())
     state = Column(Integer, default=1)
     first_name = Column(String(length=50))
@@ -36,7 +35,6 @@ class ExtendedMember(db.Base):
     def to_dict(self):
         return {
             'id': self.id,
-            'id_number': self.id_number,
             'date_of_birth': self.date_of_birth,
             'state': self.state,
             'first_name': self.first_name,
@@ -51,7 +49,6 @@ class ExtendedMember(db.Base):
     def to_dict(self):
         return {
             'id': self.id,
-            'id_number': self.id_number,
             'date_of_birth': self.date_of_birth,
             'first_name': self.first_name,
             'last_name': self.last_name,

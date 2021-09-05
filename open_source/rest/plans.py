@@ -6,9 +6,11 @@ from open_source import db
 
 from open_source.core.parlours import Parlour
 from open_source.core.plans import Plan
+from falcon_cors import CORS
+
 
 logger = logging.getLogger(__name__)
-
+public_cors = CORS(allow_all_origins=True)
 
 class PlanGetEndpoint:
 
@@ -26,20 +28,20 @@ class PlanGetEndpoint:
         try:
             with db.transaction() as session:
                 plan = session.query(Plan).filter(
-                    Plan.plan_id == id,
+                    Plan.id == id,
                     Plan.state == Plan.STATE_ACTIVE
                 ).first()
                 if plan is None:
                     raise falcon.HTTPNotFound(title="Plan Not Found")
 
-                resp.text = json.dumps(plan.to_dict(), default=str)
+                resp.body = json.dumps(plan.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to get Plan with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Plan with ID {}.".format(id))
 
 
-class PlanGetAllEndpoint:
-
+class PlanGetParlourAllEndpoint:
+    cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -50,23 +52,23 @@ class PlanGetAllEndpoint:
     def is_not_secure(self):
         return not self.secure
 
-    def on_get(self, req, resp):
+    def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
-                    Parlour.parlour_id == id).one_or_none()
+                    Parlour.id == id).one_or_none()
                 if not parlour:
-                    raise falcon.HTTP_BAD_REQUEST()
+                    raise falcon.HTTPBadRequest()
 
                 plans = session.query(Plan).filter(
                     Plan.state == Plan.STATE_ACTIVE,
-                    Plan.parlour_id == id).all()
+                    # Plan.parlour_id == parlour.id
+                ).all()
 
-                if plans:
-                    resp.text = json.dumps([plan.to_dict() for plan in plans], default=str)
-                else:
-                    resp.text = json.dumps([])
+                if not plans:
+                    raise falcon.HTTPBadRequest()
+                resp.body = json.dumps([plan.to_dict() for plan in plans], default=str)
 
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
@@ -90,7 +92,7 @@ class PlanPostEndpoint:
         try:
             with db.transaction() as session:
                 parlour = session.query(Parlour).filter(
-                    Parlour.parlour_id == req["parlour_id"],
+                    Parlour.id == req["parlour_id"],
                     Parlour.state == Parlour.STATE_ACTIVE).first()
 
                 if not parlour:
@@ -121,7 +123,7 @@ class PlanPostEndpoint:
                         parlour = parlour
                     )
                     plan.save(session)
-                    resp.text = json.dumps(plan.to_dict(), default=str)
+                    resp.body = json.dumps(plan.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Plan.")
@@ -149,7 +151,7 @@ class PlanPutEndpoint:
                     raise falcon.HTTP_BAD_REQUEST("Missing email field.")
 
                 plan = session.query(Plan).filter(
-                    Plan.plan_id == id).first()
+                    Plan.id == id).first()
 
                 if not plan:
                     raise falcon.HTTPNotFound(title="Plan not found", description="Could not find plan with given ID.")
@@ -167,7 +169,7 @@ class PlanPutEndpoint:
                 plan.has_benefits = req["has_benefits"],
                 plan.benefits = req["benefits"],
                 plan.save(session)
-                resp.text = json.dumps(plan.to_dict(), default=str)
+                resp.body = json.dumps(plan.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Plan.")
@@ -181,7 +183,7 @@ class PlanDeleteEndpoint:
         try:
             with db.transaction() as session:
 
-                plan = session.query(Plan).filter(Plan.plan_id == id).first()
+                plan = session.query(Plan).filter(Plan.id == id).first()
 
                 if plan is None:
                     raise falcon.HTTPNotFound(title="Plan Not Found")
@@ -190,7 +192,7 @@ class PlanDeleteEndpoint:
                     falcon.HTTPNotFound("Plan does not exist.")
 
                 plan.delete(session)
-                resp.text = json.dumps(plan.to_dict(), default=str)
+                resp.body = json.dumps(plan.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to delete Plan with ID {}.".format(id))
             raise falcon.HTTP_BAD_REQUEST("Failed to delete Plan with ID {}.".format(id))
