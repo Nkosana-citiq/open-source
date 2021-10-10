@@ -21,6 +21,9 @@ class BaseConfig(object):
 
     basic_secret = 'uGmZQhbCbp76ceJGG3h'
 
+    SMS_AUTH_TOKEN = "Basic QzQzMzdGOERCODRDNEZGNEI5QzNCQzBGOThEM0I4M0UtMDEtOTpkS1l1cTdRb3VibllRTTlXVGtNRGNUTWlBWTJ2cQ=="
+    SMS_FROM_NUMBER = '+27796579128'
+
     MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
 
     db = {

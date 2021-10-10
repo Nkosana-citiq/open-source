@@ -13,13 +13,60 @@ class ExtendedMember(db.Base):
     STATE_ACTIVE = 1
     STATE_DELETED = 0
 
+    state_to_text = {
+        STATE_ARCHIVED: 'Archived',
+        STATE_ACTIVE: 'Active',
+        STATE_DELETED: 'Deleted'
+    }
+
+    TYPE_SPOUSE = 0
+    TYPE_DEPENDANT = 1
+    TYPE_EXTENDED_MEMBER = 2
+    TYPE_ADDITIONAL_EXTENDED_MEMBER = 3
+
+    type_to_text = {
+        TYPE_SPOUSE: 'Spouse',
+        TYPE_DEPENDANT: 'Dependant',
+        TYPE_EXTENDED_MEMBER: 'Extended Member',
+        TYPE_ADDITIONAL_EXTENDED_MEMBER: 'Additional Extended Member'
+    }
+
+    RELATION_CHILD = 0
+    RELATION_PARENT = 1
+    RELATION_BROTHER = 2
+    RELATION_SISTER = 3
+    RELATION_NEPHEW = 4
+    RELATION_NIECE = 5
+    RELATION_AUNT = 6
+    RELATION_UNCLE = 7
+    RELATION_GRAND_PARENT = 8
+    RELATION_WIFE = 9
+    RELATION_HUSBAND = 10
+
+    relation_to_text = {
+        RELATION_CHILD: 'Child',
+        RELATION_PARENT: 'Parent',
+        RELATION_BROTHER: 'Brother',
+        RELATION_SISTER: 'Sister',
+        RELATION_NEPHEW: 'Nephew',
+        RELATION_NIECE: 'Niece',
+        RELATION_AUNT: 'Aunt',
+        RELATION_UNCLE: 'Uncle',
+        RELATION_GRAND_PARENT: 'Grand Parent',
+        RELATION_WIFE: 'Wife',
+        RELATION_HUSBAND: 'Husband'
+    }
+
     id = Column(Integer, primary_key=True)
     date_of_birth = Column(Date())
     state = Column(Integer, default=1)
     first_name = Column(String(length=50))
     last_name = Column(String(length=50))
+    type = Column(Integer)
     number = Column(String(length=12))
-    date_joined = Column(Date())
+    relation_to_main_member = Column(Integer)
+    age_limit_exceeded = Column(Boolean(), default=False)
+    age_limit_exception = Column(Boolean(), default=False)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
     date_joined = Column(DateTime, server_default=func.now())
@@ -32,6 +79,18 @@ class ExtendedMember(db.Base):
     def applicant(cls):
         return relationship('Applicant')
 
+    @property
+    def state_text(self):
+        return self.state_to_text.get(self.state, 'Undefined')
+
+    @property
+    def type_text(self):
+        return self.type_to_text.get(self.type, 'Undefined')
+
+    @property
+    def relation_text(self):
+        return self.relation_to_text.get(self.relation_to_main_member, 'Undefined')
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -39,21 +98,30 @@ class ExtendedMember(db.Base):
             'state': self.state,
             'first_name': self.first_name,
             'last_name': self.last_name,
+            'type': self.type_text,
             'number': self.number,
             'created_at': self.created_at,
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
+            'age_limit_exceeded': self.age_limit_exceeded,
+            'age_limit_exception': self.age_limit_exception,
+            'relation_to_main_member': self.relation_text,
             'applicant': self.applicant.to_short_dict()
         }
 
-    def to_dict(self):
+    def to_short_dict(self):
         return {
             'id': self.id,
             'date_of_birth': self.date_of_birth,
             'first_name': self.first_name,
             'last_name': self.last_name,
+            'type': self.type_text,
             'number': self.number,
-            'date_joined': self.date_joined
+            'age_limit_exceeded': self.age_limit_exceeded,
+            'age_limit_exception': self.age_limit_exception,
+            'relation_to_main_member': self.relation_text,
+            'date_joined': self.date_joined,
+            'applicant': self.applicant.to_short_dict()
         }
 
     def save(self, session):

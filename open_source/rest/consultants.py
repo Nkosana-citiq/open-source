@@ -93,12 +93,13 @@ class ConsultantGetAllEndpoint:
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
                     Parlour.id == id).one_or_none()
+                
                 if not parlour:
-                    raise falcon.HTTP_BAD_REQUEST()
+                    raise falcon.HTTPBadRequest(title="Error", description="Failed to get parlour with give ID")
 
                 consultants = session.query(Consultant).filter(
-                    Consultant.state == Consultant.STATE_ACTIVE
-                    # Consultant.parlour_id == id
+                    Consultant.state == Consultant.STATE_ACTIVE,
+                    Consultant.parlour_id == parlour.id
                 ).all()
 
                 if consultants:
@@ -147,7 +148,7 @@ class ConsultantGetAllEndpoint:
 
 
 class ConsultantPostEndpoint:
-    cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -162,15 +163,30 @@ class ConsultantPostEndpoint:
         req = json.loads(req.stream.read().decode('utf-8'))
         try:
             with db.transaction() as session:
+
                 if 'email' not in req:
-                    raise falcon.HTTP_BAD_REQUEST("Missing email field.")
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
+                if 'first_name' not in req:
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing first_name field.")
+                if 'last_name' not in req:
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing last_name field.")
+                if 'username' not in req:
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
+                if 'email' not in req:
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing username field.")
+                if 'branch' not in req:
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing branch field.")
+
+                parlour = session.query(Parlour).get(req["parlour_id"])
+                if not parlour:
+                    raise falcon.HTTPNotFound(title="404 Error", description="Parlour not found.")
 
                 consultant_exists = session.query(Consultant).filter(
                     Consultant.email == req["email"],
                     Consultant.state == Consultant.STATE_ACTIVE).first()
 
                 if consultant_exists:
-                    raise falcon.HTTP_BAD_REQUEST("Email already exists. Email must be unique")
+                    raise falcon.HTTPBadRequest(title="Error", description="Email already exists. Email must be unique")
 
                 consultant_exists = session.query(Consultant).filter(
                     Consultant.first_name == req["first_name"],
@@ -178,7 +194,7 @@ class ConsultantPostEndpoint:
                     Consultant.state == Consultant.STATE_ACTIVE).first()
 
                 if consultant_exists:
-                    raise falcon.HTTP_BAD_REQUEST("First name and last name fields already exist")
+                    raise falcon.HTTPBadRequest(title="Error", description="First name and last name fields already exist")
 
                 consultant = Consultant(
                     first_name = req['first_name'],
@@ -186,20 +202,25 @@ class ConsultantPostEndpoint:
                     email = req['email'],
                     branch = req['branch'],
                     number = req['number'],
+                    username = req['username'],
                     parlour_id = req["parlour_id"],
                     state=Consultant.STATE_ACTIVE,
                 )
+
+                consultant.temp_password = consultant.generate_password()
+                consultant.set_password(consultant.temp_password)
+
                 consultant.save(session)
                 resp.body = json.dumps(consultant.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Consultant.")
-            raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Consultant.")
+            # raise falcon.HTTPNotFound(
+            #     "Processing Failed. experienced error while creating Consultant.")
 
 
 class ConsultantPutEndpoint:
-    cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -228,17 +249,18 @@ class ConsultantPutEndpoint:
                 consultant.email = req['email']
                 consultant.branch = req['branch']
                 consultant.number = req['number']
+                consultant.username = req['username']
                 consultant.save(session)
                 resp.body = json.dumps(consultant.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Consultant.")
-            raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Consultant.")
+            # raise falcon.HTTPBadRequest(
+            #     "Processing Failed. experienced error while creating Consultant.")
 
 
 class ConsultantDeleteEndpoint:
-    cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -285,13 +307,13 @@ class ChangeUserPasswordEndpoint:
                     {'user': 'You may not set another user\'s password'})
             
             if consultant.password != consultant.set_password(req["current_password"]):
-                raise falcon.HttpValidationError({"Error": "Password is incorrect"})
+                raise falcon.HTTPBadRequest(title="Error", description="Current Password is incorrect")
 
-            if not req["password"] or not req["confirm_password"]:
-                raise falcon.HttpValidationError({"Error": "Missing field(s)"})
+            if not req.get("password") or not req.get("confirm_password"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing field(s)")
 
             if req["password"] != req["confirm_password"]:
-                raise falcon.HttpValidationError({"Error": "Password and confirmpassword must match"})
+                raise falcon.HTTPBadRequest(title="Error", description="Password and confirmpassword must match")
 
             consultant.set_password(req['password'])
             session.commit()
@@ -299,7 +321,7 @@ class ChangeUserPasswordEndpoint:
 
 
 class ConsultantGetAllPendingEndpoint:
-
+    # cors = public_cors
     def on_get(self, req, resp):
         try:
             with db.transaction() as session:
@@ -317,7 +339,7 @@ class ConsultantGetAllPendingEndpoint:
 
 
 class ConsultantGetAllArchivedEndpoint:
-
+    # cors = public_cors
     def on_get(self, req, resp):
         try:
             with db.transaction() as session:
@@ -334,7 +356,7 @@ class ConsultantGetAllArchivedEndpoint:
 
 
 class ConsultantAuthEndpoint:
-    cors = public_cors
+    # cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -360,13 +382,12 @@ class ConsultantAuthEndpoint:
 
                 if 'password' not in rest_dict:
                     raise falcon.HTTPBadRequest(
-                        title='400 Malformed Auth request',
+                        title='Consultant400 Malformed Auth request',
                         description='Missing credential[password]'
                     )
+
                 password = rest_dict.get('password')
-                user, success = authenticate_consultant_by_username(session, username, password)
-                if not user:
-                    user, success = authenticate_consultant_by_email(session, username, password)
+                user, success = utils.authenticate(session, username, password)
 
                 if success:
                     # write_audit_log(user, session)
@@ -431,14 +452,14 @@ class ConsultantSignupEndpoint:
 
             user = Consultant()
 
-            if not Consultant.is_username_unique(session, rest_dict.get("username")):
+            if not utils.is_username_unique(session, rest_dict.get("username")):
                 errors['username'] = 'Username {} is already in use.'.format(
                     user.username)
 
             if not utils.is_valid_email_address(email):
                 errors['email'] = 'Email must be a valid email address'
 
-            if not Consultant.is_email_unique(session, email):
+            if not utils.is_email_unique(session, email):
                 errors['email'] = 'Email address {} is already in use.'.format(
                     email)
 
@@ -446,30 +467,28 @@ class ConsultantSignupEndpoint:
                 raise falcon.HTTPBadRequest(errors)
 
             user.email = email
-            user.first_name=rest_dict.get("first_name"),
-            user.last_name=rest_dict.get("last_name"),
-            user.state=Consultant.STATE_ACTIVE,
-            user.branch=rest_dict.get("branch"),
-            user.number=rest_dict.get("number"),
-            user.modified=datetime.now(),
-            user.created=datetime.now(),
+            user.username=rest_dict.get("username")
+            user.first_name=rest_dict.get("first_name")
+            user.last_name=rest_dict.get("last_name")
+            user.state=Consultant.STATE_ACTIVE
+            user.branch=rest_dict.get("branch")
+            user.number=rest_dict.get("number")
+            user.modified_at=datetime.now()
+            user.created_at=datetime.now()
             user.parlour_id=rest_dict.get("parlour_id")
 
             passowrd = user.generate_password()
             user.temp_password = passowrd
-            print("SET PASSWORD")
             user.set_password(passowrd)
-            print(user.password)
 
             user.save(session)
-            # user.send_signup_email()
+
             user_dict = user.to_dict()
 
             resp.body = json.dumps({
                 'id': user_dict['id'],
                 'email': user_dict.get('email'),
             })
-
 
 
 class ForgotPasswordEndpoint:
@@ -482,14 +501,12 @@ class ForgotPasswordEndpoint:
 
             email = None
 
-            user_identifier = None
-
             user = None
 
             if 'email' in rest_dict:
                 email = rest_dict.get('email')
 
-            if not email and not user_identifier:
+            if not email:
                 raise falcon.HttpValidationError({'email': 'An email address or username is required'})
 
             # if email and not user_identifier:
@@ -499,8 +516,8 @@ class ForgotPasswordEndpoint:
                     'email': 'Invalid email address or more than one account is linked to this email'
                 })
 
-            session.add(user)
-            session.commit()
+            # session.add(user)
+            # session.commit()
 
 
             resp.body = json.dumps({'status': 'success'})

@@ -20,12 +20,14 @@ class Applicant(db.Base):
     status_to_text = {
         STATUS_LAPSED: 'Lapsed',
         STATUS_SKIPPED: 'Skipped',
-        STATUS_UNPAID: 'unpaid',
+        STATUS_UNPAID: 'Unpaid',
         STATUS_PAID: 'Paid'
     }
 
     id = Column(Integer, primary_key=True)
     policy_num = Column(String(length=15))
+    address = Column(String(length=100))
+    certificate = Column(String(length=250))
     document = Column(Date())
     state = Column(Integer, default=1)
     status = Column(String(length=15), default="unpaid")
@@ -59,14 +61,15 @@ class Applicant(db.Base):
         return relationship('Consultant')
 
     def to_dict(self):
-        print("Consultant ID: ", self.consultant_id)
         return {
             'id': self.id,
             'policy_num': self.policy_num,
             'document': self.document,
+            'address': self.address,
+            'certificate': self.certificate,
             'date': self.date,
             'state': self.state,
-            'status': self.status,
+            'status': self.status.capitalize(),
             'canceled': self.canceled,
             "modified": self.modified_at,
             'created': self.created_at,
@@ -80,10 +83,13 @@ class Applicant(db.Base):
             'id': self.id,
             'plan_id': self.plan_id,
             'policy_num': self.policy_num,
+            'certificate': self.certificate,
+            'address': self.address,
             'document': self.document,
             'date': self.date,
-            'status': self.status,
-            'canceled': self.canceled
+            'status': self.status.capitalize(),
+            'canceled': self.canceled,
+            'plan': self.plan.to_short_dict(),
         }
 
     def save(self, session):

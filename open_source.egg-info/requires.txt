@@ -5,6 +5,7 @@ sqlalchemy
 raven
 deepdiff
 mysqlclient
+reportlab
 
 [dev]
 flake8

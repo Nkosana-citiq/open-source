@@ -8,17 +8,21 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
 
-
 class AuditLog(db.Base):
-    __tablename__ = 'auditlogs'
+    __tablename__ = 'audit_logs'
 
     id = Column(Integer, primary_key=True)
+    user_id=Column(Integer)
     data_name = Column(String(100))
     data_type = Column(String(100))
     data_old = Column(Text)
     data_new = Column(Text)
     notes = Column(Text)
     created = Column(DateTime, default=datetime.now())
+
+    def save(self, session):
+        session.add(self)
+        session.commit()
 
 
 class AuditLogClient(object):

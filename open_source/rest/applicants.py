@@ -95,7 +95,7 @@ class ApplicantPostEndpoint:
                     Consultant.state == Consultant.STATE_ACTIVE).first()
 
                 if not parlour:
-                    raise falcon.HTTP_BAD_REQUEST("Parlour does not exist.")
+                    raise falcon.HTTPBadRequest(title="Error", description="Parlour does not exist.")
 
                 applicant = Applicant(
                     policy_num = req["policy_num"],
@@ -168,8 +168,8 @@ class ApplicantPutEndpoint:
         except:
             logger.exception(
                 "Error, experienced error while creating Applicant.")
-            raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Applicant.")
+            raise falcon.HTTPBadRequest(title="Error",
+            description="Processing Failed. experienced error while creating Applicant.")
 
 
 class ApplicantDeleteEndpoint:
@@ -198,4 +198,4 @@ class ApplicantDeleteEndpoint:
                 resp.body = json.dumps({})
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
-            raise falcon.HTTP_BAD_REQUEST("Failed to delete Applicant with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))

@@ -2,14 +2,30 @@ from datetime import datetime
 import falcon
 import json
 import logging
+import random
+import os
 
 from open_source import db
 
 from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
+from open_source.core.invoices import Invoice
 from open_source.core.parlours import Parlour
 from open_source.core.plans import Plan
 from open_source.core.payments import Payment
 from falcon_cors import CORS
+
+from borb.pdf.canvas.layout.table.fixed_column_width_table import FixedColumnWidthTable as Table
+from borb.pdf.canvas.layout.text.paragraph import Paragraph
+
+from borb.pdf.document import Document
+from borb.pdf.page.page import Page
+from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
+from borb.pdf.canvas.layout.image.image import Image
+from borb.pdf.canvas.layout.text.paragraph import Paragraph
+from borb.pdf.canvas.layout.layout_element import Alignment
+from decimal import Decimal
+from borb.pdf.pdf import PDF
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +64,37 @@ class PaymentGetEndpoint:
                     raise falcon.HTTPNotFound(title="Payment Not Found")
 
                 resp.body = json.dumps(payment.to_dict(), default=str)
+        except:
+            logger.exception("Error, Failed to get Payment with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Payment with ID {}.".format(id))
+
+
+class PaymentGetLastEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                
+                applicant = session.query(Applicant).filter(Applicant.id == id).first()
+
+                payment = session.query(Payment).filter(
+                    Payment.applicant_id == applicant.id,
+                    Payment.state == Payment.STATE_ACTIVE
+                ).order_by(Payment.applicant_id.desc()).first()
+                if payment is None:
+                    resp.body = json.dumps([])
+                else:
+                    resp.body = json.dumps(payment.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to get Payment with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Payment with ID {}.".format(id))
@@ -92,7 +139,7 @@ class PaymentsGetAllEndpoint:
 
 
 class PaymentPostEndpoint:
-    cors = public_cors
+    # cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -103,50 +150,69 @@ class PaymentPostEndpoint:
     def is_not_secure(self):
         return not self.secure
 
-    def on_post(self, req, resp):
+    def on_post(self, req, resp, id):
         try:
             with db.transaction() as session:
                 rest_dict = get_json_body(req)
+
                 parlour = session.query(Parlour).filter(
-                    Parlour.id == rest_dict.get("parlour_id"),
+                    Parlour.id == id,
                     Parlour.state == Parlour.STATE_ACTIVE
                 ).one_or_none()
 
                 if not parlour:
                     raise falcon.HTTPNotFound(title="Not Found", description="Parlour does not exist.")
 
-                plan = session.query(Plan).filter(
-                    Plan.parlour_id == parlour.id,
-                    Plan.id == rest_dict.get("plan_id"),
-                    Plan.state == Plan.STATE_ACTIVE
-                ).one_or_none()
-
-                if not plan:
-                    raise falcon.HTTPNotFound(title="Not Found", description="Plan does not exist.")
+                # if rest_dict.get("parlour_id") != parlour.id:
+                #     raise falcon.HTTPUnauthorized(title="Incorrect Parlour", description="Not authorised.")
+                applicant_id = rest_dict.get("applicant_id")
 
                 applicant = session.query(Applicant).filter(
-                    Applicant.parlour_id == parlour.id,
-                    Applicant.id == rest_dict.get("applicant_id"),
+                    Applicant.id == applicant_id,
                     Applicant.state == Applicant.STATE_ACTIVE
                 ).one_or_none()
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="Not Found", description="Applicant does not exist.")
 
+                plan = session.query(Plan).filter(
+                    Plan.id == applicant.plan_id
+                    # Plan.state == Plan.STATE_ACTIVE
+                ).one_or_none()
+
+                if not plan:
+                    raise falcon.HTTPNotFound(title="Not Found", description="Plan does not exist.")
+
+                start_date = datetime.strptime(rest_dict.get("date"), "%d/%m/%Y")
+                end_date = datetime.strptime(rest_dict.get("end_date"), "%d/%m/%Y")
+
+                from dateutil.rrule import rrule, MONTHLY
+
+                dates = [dt for dt in rrule(MONTHLY, dtstart=start_date, until=end_date)]
+
+                is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
+                if len(is_up_to_date) >= 1:
+                    applicant.status = 1
+
+                amount = plan.premium * len(dates)
                 payment = Payment(
                     applicant=applicant,
                     parlour=parlour,
                     plan=plan,
-                    date=datetime.now()
+                    state=Payment.STATE_ACTIVE,
+                    date=end_date,
+                    payment_type=rest_dict.get("payment_type")
                 )
 
                 payment.save(session)
+                user = rest_dict.get("user")
+                print_invoice(session, payment, applicant, user, amount, dates)
                 resp.body = json.dumps(payment.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Payment.")
-            raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Payment.")
+            raise falcon.HTTPBadRequest(title="error",
+            description="Processing Failed. experienced error while creating Payment.")
 
 
 class PaymentPutEndpoint:
@@ -164,9 +230,10 @@ class PaymentPutEndpoint:
     def on_put(self, req, resp, id):
         req = json.loads(req.stream.read().decode('utf-8'))
         try:
+            print(req)
             with db.transaction() as session:
                 if 'email' not in req:
-                    raise falcon.HTTP_BAD_REQUEST("Missing email field.")
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
 
                 payment = session.query(Payment).filter(
                     Payment.payment_id == id).first()
@@ -187,12 +254,73 @@ class PaymentPutEndpoint:
                 payment.has_benefits = req["has_benefits"],
                 payment.benefits = req["benefits"],
                 payment.save(session)
+                user = req.get("user")
+                print_invoice(payment, user)
                 resp.body = json.dumps(payment.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Payment.")
-            raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Payment.")
+            raise falcon.HTTPBadRequest(title="Error",
+            description="Processing Failed. experienced error while creating Payment.")
+
+
+def print_invoice(session, payment, applicant, user, amount, dates):
+
+    main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).one_or_none()
+    last_invoice = session.query(Invoice).filter(Invoice.parlour_id == applicant.parlour.id).order_by(Invoice.id.desc()).first()
+    invoice_number = str(int(last_invoice.number) + 1) if last_invoice else "1" 
+
+    if main_member:
+        invoice = Invoice(
+            state = Invoice.STATE_ACTIVE,
+            created =  datetime.now(),
+            payment_date = dates[-1],
+            payment_id = payment.id,
+            number = invoice_number,
+            amount = amount,
+            email = applicant.parlour.email,
+            premium = applicant.plan.premium,
+            parlour = applicant.parlour,
+            address = applicant.parlour.address,
+            branch = user.get("branch", ''),
+            contact = applicant.parlour.number,
+            policy_number = applicant.policy_num,
+            id_number = main_member.id_number,
+            customer = '{} {}'.format(main_member.first_name, main_member.last_name),
+            assisted_by = '{} {}'.format(user.get("first_name"), user.get("last_name")),
+            number_of_months = str(len(dates)),
+            months_paid = ", ".join([d.strftime("%b") for d in dates])
+        )
+
+    # Create document
+    pdf = Document()
+
+    # Add page
+    page = Page()
+    pdf.append_page(page)
+    page_layout = SingleColumnLayout(page)
+    page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
+    # page_layout.add(
+    #     Image(
+    #     "https://s3.stackabuse.com/media/articles/creating-an-invoice-in-python-with-ptext-1.png",
+    #     width=Decimal(128),
+    #     height=Decimal(128),
+    #     ))
+
+    # Invoice information table
+    page_layout.add(_build_invoice_information(invoice))
+
+    # Empty paragraph for spacing
+    page_layout.add(Paragraph(" "))
+    directory = "/home/nkosana/Documents/Personal/open-source/assets/uploads"
+    path = '/'.join([directory, "{}_{}.pdf".format(invoice.customer.lower().replace(" ", "_"),invoice.created)])
+    if os.path.exists("{}".format(path)):
+        os.remove("{}".format(path))
+
+    with open(path, "wb") as pdf_file_handle:
+        PDF.dumps(pdf_file_handle, pdf)
+    invoice.document = path
+    invoice.save(session)
 
 
 class PaymentDeleteEndpoint:
@@ -213,4 +341,178 @@ class PaymentDeleteEndpoint:
                 resp.body = json.dumps(payment.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to delete Payment with ID {}.".format(id))
-            raise falcon.HTTP_BAD_REQUEST("Failed to delete Payment with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Payment with ID {}.".format(id))
+
+
+def _build_invoice_information(invoice):
+    # print(invoice.to_dict())
+    table_001 = Table(number_of_rows=32, number_of_columns=3)
+
+    table_001.add(Paragraph("       "))
+    table_001.add(Paragraph("{}".format(invoice.parlour.parlourname), font="Helvetica-Bold", horizontal_alignment=Alignment.LEFT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Date: "))
+    now = datetime.now()
+    table_001.add(Paragraph("%d/%d/%d" % (now.day, now.month, now.year), horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph("  "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    address = invoice.address if invoice.address else " "
+    table_001.add(Paragraph("Address: "))
+    table_001.add(Paragraph(address, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Contact: "))
+    table_001.add(Paragraph(invoice.contact, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Email: "))
+    email = invoice.email if invoice.email else " "
+    table_001.add(Paragraph(email, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("------------------------------------------------------------------------------"))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Customer Details ", font="Helvetica-Bold"))
+    # months = invoice.amount if invoice.amount else " "
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Invoice: "))
+    table_001.add(Paragraph("#{}".format(invoice.number), horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Policy Number: "))
+    table_001.add(Paragraph("{}".format(invoice.policy_number), horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Premium: "))
+    table_001.add(Paragraph("R {}".format(invoice.premium), horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Name and Surname: "))
+    table_001.add(Paragraph(invoice.customer, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("ID Number: "))
+    table_001.add(Paragraph(invoice.id_number, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Amount Paid: "))
+    amount = str(invoice.amount) if invoice.amount else " "
+    table_001.add(Paragraph("R {}".format(amount), horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Month Paid: "))
+    months = invoice.number_of_months if invoice.number_of_months else " "
+    table_001.add(Paragraph(months, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Months Paid For: "))
+    months_paid = invoice.months_paid if invoice.months_paid else " "
+    table_001.add(Paragraph(months_paid, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Captured by: "))
+    table_001.add(Paragraph(invoice.assisted_by, horizontal_alignment=Alignment.RIGHT))
+    table_001.add(Paragraph(" "))
+
+    # table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
+
+    table_001.set_padding_on_all_cells(Decimal(2), Decimal(2), Decimal(2), Decimal(2))
+    table_001.no_borders()
+    return table_001
+
+
+if __name__ == "__main__":
+    # Create document
+    pdf = Document()
+
+    # Add page
+    page = Page()
+    pdf.append_page(page)
+    page_layout = SingleColumnLayout(page)
+    page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
+    page_layout.add(    
+        Image(        
+            "https://s3.stackabuse.com/media/articles/creating-an-invoice-in-python-with-ptext-1.png",        
+            width=Decimal(128),        
+            height=Decimal(128),    
+            ))
+
+    # Invoice information table  
+    page_layout.add(_build_invoice_information())  
+    
+    # Empty paragraph for spacing  
+    page_layout.add(Paragraph(" "))
+
+    with open("output.pdf", "wb") as pdf_file_handle:
+        PDF.dumps(pdf_file_handle, pdf)

@@ -7,7 +7,11 @@ from open_source import config
 logging.basicConfig(level=logging.INFO)
 
 from open_source.rest import middleware
-from open_source.rest import applicants, consultants, parlours, plans, main_members, extended_members, payments
+from open_source.rest import (
+    applicants, consultants, parlours, plans,
+    main_members, extended_members, payments,
+    additional_extended_members, dependants
+)
 
 # allowed_origins = None
 
@@ -35,7 +39,7 @@ whitelisted_methods = [
     "OPTIONS" # this is required for preflight request
 ]
 cors = CORS(
-    allow_origins_list=['http://localhost:8009', 'http://127.0.0.1:8009', "localhost:8009", "127.0.0.1:8009"],
+    allow_all_origins=True,
     allow_all_methods=True,
     allow_all_headers=True)
 
@@ -50,16 +54,20 @@ api.add_route('/open-source/parlours/archived', parlours.ParlourGetAllArchivedEn
 api.add_route('/open-source/parlours', parlours.ParlourPostEndpoint())
 api.add_route('/open-source/parlours/{id}', parlours.ParlourGetEndpoint())
 api.add_route('/open-source/parlours/{id}/update', parlours.ParlourPutEndpoint())
+api.add_route('/open-source/parlours/{id}/suspend', parlours.ParlourSuspendEndpoint())
+api.add_route('/open-source/parlours/{id}/activate', parlours.ParlourActivateEndpoint())
+api.add_route('/open-source/parlours/{id}/action/sms', parlours.ParlourAddSMSEndpoint())
 api.add_route('/open-source/parlours/{id}/delete', parlours.ParlourDeleteEndpoint())
 api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
-# api.add_route('/open-source/plans', plans.PlanPostEndpoint())
-# api.add_route('/open-source/plans/{id}', plans.PlanGetEndpoint())
-# api.add_route('/open-source/plans/{id}/update', plans.PlanPutEndpoint())
-# api.add_route('/open-source/plans/{id}/delete', plans.PlanDeleteEndpoint())
+api.add_route('/open-source/plans', plans.PlanPostEndpoint())
+api.add_route('/open-source/plans/{id}/get', plans.PlanGetEndpoint())
+api.add_route('/open-source/plans/{id}/update', plans.PlanPutEndpoint())
+api.add_route('/open-source/plans/{id}/delete', plans.PlanDeleteEndpoint())
+
 
 api.add_route('/open-source/parlours/{id}/consultants/', consultants.ConsultantGetAllEndpoint())
 api.add_route('/open-source/parlours/{id}/consultants/pending', consultants.ConsultantGetAllPendingEndpoint())
@@ -72,27 +80,51 @@ api.add_route('/open-source/consultants/signin', consultants.ConsultantAuthEndpo
 api.add_route('/open-source/consultants/signup', consultants.ConsultantSignupEndpoint())
 api.add_route('/open-source/consultants/{id}/actions/change_password', consultants.ChangeUserPasswordEndpoint())
 
-api.add_route('/open-source/consultant/{id}/applicants/', applicants.ApplicantGetAllEndpoint())
+
+api.add_route('/open-source/consultants/{id}/export_to_csv/', main_members.ApplicantExportToExcelEndpoint())
+
+api.add_route('/open-source/consultants/{id}/applicants/', applicants.ApplicantGetAllEndpoint())
 api.add_route('/open-source/applicants', applicants.ApplicantPostEndpoint())
 api.add_route('/open-source/applicants/{id}', applicants.ApplicantGetEndpoint())
 api.add_route('/open-source/applicants/{id}/update', applicants.ApplicantPutEndpoint())
 api.add_route('/open-source/applicants/{id}/delete', applicants.ApplicantDeleteEndpoint())
 
-# api.add_route('/open-source/consultants/{id}/main-members/all', main_members.MainMemberGetAllEndpoint())
+
+api.add_route('/open-source/consultants/{id}/main-members/all', main_members.MainGetAllConsultantEndpoint())
+api.add_route('/open-source/consultants/{id}/main-members/archived', main_members.MainGetAllArchivedConsultantEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/all', main_members.MainGetAllParlourEndpoint())
-api.add_route('/open-source/main-members', main_members.MainMemberPostEndpoint())
+api.add_route('/open-source/parlours/{id}/main-members/archived', main_members.MainGetAllArchivedParlourEndpoint())
+api.add_route('/open-source/consultants/{id}/main-members', main_members.MainMemberPostEndpoint())
+api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())
 api.add_route('/open-source/main-members/{id}/update', main_members.MainMemberPutEndpoint())
+api.add_route('/open-source/main-members/{id}/exception', main_members.MainMemberPutAgeLimitExceptionEndpoint())
+api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
+api.add_route('/open-source/main-members/send-sms', main_members.SMSService())
+
+api.add_route('/open-source/applicants/{id}/dependants/all', dependants.DependantMembersGetAllEndpoint())
+api.add_route('/open-source/dependants', dependants.DependantPostEndpoint())
+# api.add_route('/open-source/dependants/{id}/get', dependants.MainMemberGetEndpoint())
+api.add_route('/open-source/dependants/{id}/update', dependants.DependantPutEndpoint())
+api.add_route('/open-source/dependants/{id}/delete', dependants.DependantDeleteEndpoint())
 
 api.add_route('/open-source/applicants/{id}/extended-members/all', extended_members.ExtendedMembersGetAllEndpoint())
-# api.add_route('/open-source/extended-members', extended_members.ExtendedMembersPostEndpoint())
-# api.add_route('/open-source/extended-members/{id}/get', extended_members.MainMemberGetEndpoint())
-# api.add_route('/open-source/extended-members/{id}/update', extended_members.MainMemberPutEndpoint())
-# api.add_route('/open-source/extended-members/{id}/delete', extended_members.MainMemberDeleteEndpoint())
+api.add_route('/open-source/extended-members', extended_members.ExtendedMembersPostEndpoint())
+api.add_route('/open-source/extended-members/{id}/get', extended_members.ExtendedMemberGetEndpoint())
+api.add_route('/open-source/extended-members/{id}/update', extended_members.ExtendedMemberPutEndpoint())
+api.add_route('/open-source/extended-members/{id}/exception', extended_members.ExtendedMemberPutAgeLimitExceptionEndpoint())
+api.add_route('/open-source/extended-members/{id}/delete', extended_members.ExtededMemberDeleteEndpoint())
+
+api.add_route('/open-source/applicants/{id}/additional_extended_members/all', additional_extended_members.AdditionalExtendedMembersGetAllEndpoint())
+api.add_route('/open-source/additional_extended_members', additional_extended_members.AdditionalExtendedMembersPostEndpoint())
+# api.add_route('/open-source/additional_extended_members/{id}/get', extended_members.MainMemberGetEndpoint())
+api.add_route('/open-source/additional_extended_members/{id}/update', additional_extended_members.AdditionalExtendedMemberPutEndpoint())
+api.add_route('/open-source/additional_extended_members/{id}/delete', additional_extended_members.AdditionalExtendedMemberDeleteEndpoint())
 
 api.add_route('/open-source/applicants/{id}/payments/all', payments.PaymentsGetAllEndpoint())
-api.add_route('/open-source/payments', payments.PaymentPostEndpoint())
+api.add_route('/open-source/applicants/{id}/payments/last', payments.PaymentGetLastEndpoint())
+api.add_route('/open-source/parlours/{id}/payments', payments.PaymentPostEndpoint())
 
 
 if __name__ == '__main__':

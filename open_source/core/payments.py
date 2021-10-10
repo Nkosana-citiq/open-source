@@ -1,7 +1,5 @@
-from typing import Text
-from sqlalchemy.sql.sqltypes import Boolean, DECIMAL
 from open_source import db
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, func
+from sqlalchemy import Column, Integer, DateTime, ForeignKey, func, String
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -14,6 +12,7 @@ class Payment(db.Base):
 
     id = Column(Integer, primary_key=True)
     state = Column(Integer, default=1)
+    payment_type = Column(String(),)
     date = Column(DateTime, server_default=func.now())
 
     @declared_attr
@@ -45,6 +44,7 @@ class Payment(db.Base):
             'id': self.plan_id,
             'created': self.date,
             'state': self.state,
+            'payment_type': self.payment_type,
             'applicant': self.applicant.to_short_dict(),
             'plan': self.plan.to_short_dict(),
             'parlour': self.parlour.to_dict()

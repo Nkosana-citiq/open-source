@@ -16,12 +16,20 @@ class Plan(db.Base):
     plan = Column(String(length=200))
     cover = Column(DECIMAL(2))
     premium = Column(DECIMAL(2))
+    underwriter_premium = Column(DECIMAL(2))
     state = Column(Integer, default=1)
     main_members = Column(String(length=2))
     member_age_restriction = Column(String(length=2))
     member_minimum_age = Column(String(length=2))
     member_maximum_age = Column(String(length=2))
+
+    spouse = Column(String(length=2))
+    spouse_age_restriction = Column(String(length=2))
+    spouse_minimum_age = Column(String(length=2))
+    spouse_maximum_age = Column(String(length=2))
+
     extended_members = Column(String(length=2))
+    extended_age_restriction = Column(Boolean)
     extended_minimum_age = Column(String(length=2))
     extended_maximum_age = Column(String(length=2))
     beneficiaries = Column(String(length=2))
@@ -51,11 +59,13 @@ class Plan(db.Base):
             'plan': self.plan,
             'cover': self.cover,
             'premium': self.premium,
+            'underwriter_premium': self.underwriter_premium,
             'main_members': self.main_members,
             'member_age_restriction': self.member_age_restriction,
             'member_minimum_age': self.member_minimum_age,
             'member_maximum_age': self.member_maximum_age,
             'extended_members': self.extended_members,
+            'extended_age_restriction': self.extended_age_restriction,
             'extended_minimum_age': self.extended_minimum_age,
             'extended_maximum_age': self.extended_maximum_age,
             'dependants': self.beneficiaries,
@@ -63,7 +73,7 @@ class Plan(db.Base):
             'dependant_minimum_age': self.dependant_minimum_age,
             'dependant_maximum_age': self.dependant_maximum_age,
             'additional_extended_members': self.additional_extended_members,
-            'additional_extended_consider_age': self.consider_age,
+            'additional_extended_consider_age': self.additional_extended_consider_age,
             'additional_extended_minimum_age': self.additional_extended_minimum_age,
             'additional_extended_maximum_age': self.additional_extended_maximum_age,
             'has_benefits': self.has_benefits,
@@ -80,17 +90,19 @@ class Plan(db.Base):
             'plan': self.plan,
             'cover': self.cover,
             'premium': self.premium,
+            'underwriter_premium': self.underwriter_premium,
             'main_members': self.main_members,
             'extended_members': self.extended_members,
             'member_age_restriction': self.member_age_restriction,
             'member_minimum_age': self.member_minimum_age,
             'member_maximum_age': self.member_maximum_age,
+            'extended_age_restriction': self.extended_age_restriction,
             'extended_minimum_age': self.extended_minimum_age,
             'extended_maximum_age': self.extended_maximum_age,
             'dependant_minimum_age': self.dependant_minimum_age,
             'dependant_maximum_age': self.dependant_maximum_age,
             'additional_extended_members': self.additional_extended_members,
-            'additional_extended_consider_age': self.consider_age,
+            'additional_extended_consider_age': self.additional_extended_consider_age,
             'additional_extended_minimum_age': self.additional_extended_minimum_age,
             'additional_extended_maximum_age': self.additional_extended_maximum_age,
             'has_benefits': self.has_benefits,

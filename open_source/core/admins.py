@@ -9,42 +9,32 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
-class Parlour(db.Base):
-    __tablename__ = 'parlours'
+class Admin(db.Base):
+    __tablename__ = 'admin'
 
-    STATE_ARCHIVED = 3
-    STATE_PENDING = 2
     STATE_ACTIVE = 1
     STATE_DELETED = 0
 
     id = Column(Integer, primary_key=True)
-    parlourname = Column(String(length=200))
-    personname = Column(String(length=200))
+    first_name = Column(String(length=30))
+    last_name = Column(String(length=30))
     number = Column(String(length=200))
     state = Column(Integer, default=1)
     email = Column(String(length=255))
     username = Column(String(length=255))
-    address = Column(String(length=255))
     password = Column(String(length=255))
-    number_of_sms = Column(Integer())
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
-
-    @declared_attr
-    def plans(cls):
-        return relationship("Plan", back_populates="parlour")
 
     def to_dict(self):
         return {
             'id': self.id,
             'number': self.number,
             'email': self.email,
-            'parlour_name': self.parlourname,
-            'person_name': self.personname,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
             'state': self.state,
             'username': self.username,
-            'address': self.address,
-            'number_of_sms': self.number_of_sms,
             "modified": self.modified_at,
             'created': self.created_at
         }
@@ -91,8 +81,8 @@ class Parlour(db.Base):
     @classmethod
     def is_username_unique(cls, session, username):
         try:
-            session.query(Parlour).filter(func.trim(Parlour.username) ==
-                                       username.strip(), Parlour.state == Parlour.STATE_ACTIVE).one()
+            session.query(Admin).filter(func.trim(Admin.username) ==
+                                       username.strip(), Admin.state == Admin.STATE_ACTIVE).one()
         except MultipleResultsFound:
             return False
         except NoResultFound:
@@ -102,9 +92,9 @@ class Parlour(db.Base):
     @classmethod
     def is_email_unique(cls, session, email):
         try:
-            session.query(Parlour).filter(
-                func.trim(Parlour.email) == email.strip(),
-                Parlour.state == Parlour.STATE_ACTIVE
+            session.query(Admin).filter(
+                func.trim(Admin.email) == email.strip(),
+                Admin.state == Admin.STATE_ACTIVE
             ).one()
         except MultipleResultsFound:
             return False

@@ -1,8 +1,11 @@
+from open_source.rest import parlours
 import random
 import datetime
 import calendar
 import re
 import falcon
+
+from open_source.core import parlours, consultants, admins
 
 from typing import Any, Iterable, Dict
 
@@ -227,3 +230,70 @@ def humanize_snake_case(s: str) -> str:
     if s is None:
         return None
     return ' '.join(x.title() for x in re.split(r'[,\._]', s.lower()))
+
+def is_email_unique(session, email):
+    result = parlours.Parlour.is_email_unique(session, email)
+    if result:
+        result = consultants.Consultant.is_email_unique(session, email)
+    return result
+
+def is_username_unique(session, email):
+    result = parlours.Parlour.is_username_unique(session, email)
+    if result:
+        result = consultants.Consultant.is_username_unique(session, email)
+    if result:
+        result = admins.Admin.is_username_unique(session, email)
+    return result
+
+
+def authenticate_user_by_email(cls, session, email, password):
+    entity = session.query(cls)\
+        .filter(
+            cls.email == email,
+            cls.state == cls.STATE_ACTIVE
+    ).one_or_none()
+
+    return entity, False if entity is None else (entity, entity.authenticate(password))
+
+
+def authenticate_user_by_username(cls, session, username, password):
+    entity = session.query(cls)\
+        .filter(
+            cls.username == username,
+            cls.state == cls.STATE_ACTIVE
+    ).one_or_none()
+
+    return entity, False if entity is None else entity.authenticate(password)
+
+
+def authenticate_parlour(session, username, password):
+    user, success = authenticate_user_by_username(parlours.Parlour, session, username, password)
+    if success:
+        return user, success
+    return authenticate_user_by_email(parlours.Parlour, session, username, password)
+
+
+def authenticate_admin(session, username, password):
+    user, success = authenticate_user_by_username(admins.Admin, session, username, password)
+    if success:
+        return user, success
+    return authenticate_user_by_email(admins.Admin, session, username, password)
+
+
+def authenticate_consultant(session, username, password):
+    user, success = authenticate_user_by_username(consultants.Consultant, session, username, password)
+    if success:
+        return user, success
+    return authenticate_user_by_email(consultants.Consultant, session, username, password)
+
+
+def authenticate(session, username, password):
+
+    user, success = authenticate_parlour(session, username, password)
+    if success:
+        return user, success
+    user, success = authenticate_consultant(session, username, password)
+
+    if success:
+        return user, success
+    return authenticate_admin(session, username, password)
