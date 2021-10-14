@@ -10,7 +10,6 @@ gunicorn==20.1.0
 idna==3.2
 importlib-metadata==4.8.1
 mysqlclient==2.0.3
--e git+https://github.com/Nkola21/open-source@a16c07c84493de2ca5ab344e045bcefa4551d0b2#egg=open_source
 ordered-set==4.0.2
 Pillow==8.3.2
 PyJWT==2.1.0
