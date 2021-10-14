@@ -1,13 +1,52 @@
 from random import choice, randint
-import base64
+
 import hashlib
+import datetime
 
 from open_source import config
 from open_source import db
-from sqlalchemy import Column, Integer, String, DateTime, func, Text
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
+
+
+
+class PasswordReset(db.Base):
+    STATE_DELETED = 0
+    STATE_ACTIVE = 1
+
+    __tablename__ = 'password_resets'
+
+    id = Column(Integer, primary_key=True)
+
+    code = Column(String(255))
+
+    user_id = Column(Integer, ForeignKey('parlours.id'))
+    user = relationship('Parlour')
+
+    email = Column(String(length=255), default='')
+
+    state = Column(Integer, default=1)
+
+    expired = Column(DateTime)
+    modified = Column(DateTime)
+    created = Column(DateTime)
+
+    def save(self, session):
+        session.add(self)
+        session.commit()
+
+    def is_deleted(self) -> bool:
+        return self.state == self.STATE_DELETED
+
+    def make_deleted(self):
+        self.state = self.STATE_DELETED
+
+    def delete(self, session):
+        self.make_deleted()
+        session.commit()
+
 
 class Parlour(db.Base):
     __tablename__ = 'parlours'
@@ -74,6 +113,21 @@ class Parlour(db.Base):
     def authenticate(self, password):
         return self.password == self.to_password_hash(password)
 
+    @classmethod
+    def get_password_reset(session, code):
+        try:
+            return session.query(PasswordReset)\
+                .filter(
+                    PasswordReset.code == code,
+                    PasswordReset.expired > datetime.datetime.now()
+                ).one()
+
+        except MultipleResultsFound:
+            return None
+        except NoResultFound:
+            return None
+        return None
+
     @staticmethod
     def generate_password():
 
@@ -111,3 +165,4 @@ class Parlour(db.Base):
         except NoResultFound:
             return True
         return False
+

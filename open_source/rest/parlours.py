@@ -2,6 +2,8 @@ from datetime import datetime
 import falcon
 import json
 import logging
+import smtplib
+
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
@@ -517,69 +519,44 @@ class ForgotPasswordEndpoint:
         return None
 
 
-# class ResetPasswordPostEndpoint:
+class ResetPasswordPostEndpoint:
 
-#     def on_post(self, req, resp):
-#         with db.transaction() as session:
+    def on_post(self, req, resp):
+        with db.transaction() as session:
 
-#             rest_dict = get_json_body(req)
-#             code = rest_dict.get('code')
-#             password = rest_dict.get('password')
+            rest_dict = get_json_body(req)
+            code = rest_dict.get('code')
+            password = rest_dict.get('password')
 
-#             if not password:
-#                 raise falcon.HttpValidationError({'password': 'Password is required'})
+            if not password:
+                raise falcon.HttpValidationError({'password': 'Password is required'})
 
-#             if not utils.is_valid_password(password):
-#                 raise falcon.HttpValidationError({'password': 'Password is invalid'})
+            if not utils.is_valid_password(password):
+                raise falcon.HttpValidationError({'password': 'Password is invalid'})
 
-#             # Non CIC users must confirm their new password -
-#             # CIC user password confirmation handled by CIC Web
-#             if 'confirm_password' in rest_dict:
+            # Non CIC users must confirm their new password -
+            # CIC user password confirmation handled by CIC Web
+            if 'confirm_password' in rest_dict:
 
-#                 confirm_password = rest_dict.get('confirm_password')
+                confirm_password = rest_dict.get('confirm_password')
 
-#                 if confirm_password != password:
-#                     raise falcon.HttpValidationError({'password': 'Password and confirm password do not match'})
+                if confirm_password != password:
+                    raise falcon.HttpValidationError({'password': 'Password and confirm password do not match'})
 
-#             reset = get_password_reset(session, code)
+            reset = Parlour.get_password_reset(session, code)
 
-#             if not reset:
-#                 raise exceptions.HttpValidationError({'code': 'Password reset is invalid or has expired'})
+            if not reset:
+                raise falcon.HttpValidationError({'code': 'Password reset is invalid or has expired'})
 
-#             if reset.is_deleted():
-#                 raise exceptions.HttpValidationError({'code': 'Password reset is already used'})
+            if reset.is_deleted():
+                raise falcon.HttpValidationError({'code': 'Password reset is already used'})
 
-#             # reset the users password
-#             reset.user.set_password(password)
-#             # make the reset deleted so that we cannot use it again
-#             reset.make_deleted()
+            # reset the users password
+            reset.user.set_password(password)
+            # make the reset deleted so that we cannot use it again
+            reset.make_deleted()
 
-#             resp.body = json.dumps({'status': 'success'})
-
-#     def swagger_path(self):
-#         return {
-#             "description": "Reset a users password",
-#             "operationId": "resetPassword",
-#             "parameters": [
-#                 SwaggerHelper.object_parameter(
-#                     'ResetPasswordRequest', _in='body')
-#             ],
-#             "responses": {
-#                 "200": SwaggerHelper.response_200('Status'),
-#                 "default": SwaggerHelper.response_default()
-#             }
-#         }
-
-#     def swagger_definition(self):
-#         doc = SwaggerHelper.object_with_properties('ResetPasswordRequest', {
-#             'code': {'type': 'string'},
-#             'password': {'type': 'string'}
-#         })
-
-#         doc.update(SwaggerHelper.object_with_properties('Status', {
-#             'status': {'type': 'string', 'description': 'The status in text'}
-#         }))
-#         return doc
+            resp.body = json.dumps({'status': 'success'})
 
 
 class ParlourSuspendEndpoint:

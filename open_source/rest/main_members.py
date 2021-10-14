@@ -974,6 +974,9 @@ class SMSService:
             else:
                 contacts = [''.join(['+27', contact[1:]]) if len(contact) == 10 else contact for contact in contacts]
 
+            if parlour.number_of_sms < len(contacts):
+                raise falcon.HTTPBadRequest(title="Error", description="You need more smses to use this service.")
+
             headers = {"Content-Type": "application/json; charset=utf-8", "Authorization": conf.SMS_AUTH_TOKEN}
             response = requests.post('https://api.bulksms.com/v1/messages', headers=headers, json={'from': conf.SMS_FROM_NUMBER, 'to': contacts,  'body': '{}: {}'.format(parlour.parlourname.title(), message)})
             parlour.number_of_sms = parlour.number_of_sms - len(contacts) if parlour.number_of_sms > len(contacts) else 0
