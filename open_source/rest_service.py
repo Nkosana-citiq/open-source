@@ -28,7 +28,7 @@ from open_source.rest import (
 
 # else:
 
-ALLOWED_ORIGINS = ['http://localhost:8009', 'http://127.0.0.1:8009', "localhost:8009", "127.0.0.1:8009", "https://532b-41-71-82-114.ngrok.io/"]
+ALLOWED_ORIGINS = ['http://localhost:8009', 'http://127.0.0.1:8009', "localhost:8009", "127.0.0.1:8009", "https://nocorpgroup.herokuapp.com/"]
 
 
 whitelisted_methods = [
