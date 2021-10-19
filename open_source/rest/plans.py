@@ -73,8 +73,9 @@ class PlanGetParlourAllEndpoint:
                 ).all()
 
                 if not plans:
-                    raise falcon.HTTPBadRequest()
-                resp.body = json.dumps([plan.to_dict() for plan in plans], default=str)
+                    resp.body = json.dumps([])
+                else:
+                    resp.body = json.dumps([plan.to_dict() for plan in plans], default=str)
 
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
