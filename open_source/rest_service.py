@@ -75,6 +75,7 @@ api.add_route('/open-source/parlours/{id}/consultants/archived', consultants.Con
 api.add_route('/open-source/consultants', consultants.ConsultantPostEndpoint())
 api.add_route('/open-source/consultants/{id}', consultants.ConsultantGetEndpoint())
 api.add_route('/open-source/consultants/{id}/update', consultants.ConsultantPutEndpoint())
+api.add_route('/open-source/consultants/{id}/change_password', consultants.ConsultantChangePasswordEndpoint())
 api.add_route('/open-source/consultants/{id}/delete', consultants.ConsultantDeleteEndpoint())
 api.add_route('/open-source/consultants/signin', consultants.ConsultantAuthEndpoint())
 api.add_route('/open-source/consultants/signup', consultants.ConsultantSignupEndpoint())

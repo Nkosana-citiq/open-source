@@ -211,7 +211,8 @@ class ConsultantPostEndpoint:
                 consultant.set_password(consultant.temp_password)
 
                 consultant.save(session)
-                resp.body = json.dumps(consultant.to_dict(), default=str)
+                consultant_dict = consultant.to_dict()
+                resp.body = json.dumps(consultant_dict, default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Consultant.")
@@ -250,6 +251,47 @@ class ConsultantPutEndpoint:
                 consultant.branch = req['branch']
                 consultant.number = req['number']
                 consultant.username = req['username']
+                consultant.save(session)
+                resp.body = json.dumps(consultant.to_dict(), default=str)
+        except:
+            logger.exception(
+                "Error, experienced error while creating Consultant.")
+            # raise falcon.HTTPBadRequest(
+            #     "Processing Failed. experienced error while creating Consultant.")
+
+
+class ConsultantChangePasswordEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_put(self, req, resp, id):
+        req = json.loads(req.stream.read().decode('utf-8'))
+        try:
+            with db.transaction() as session:
+                if 'password' not in req or req.get("password").strip() == '':
+                    raise falcon.HTTPBadRequest(title="Missing Field", description="Missing password field.")
+
+                if 'confirmPassword' not in req or req.get("confirmPassword").strip() == '':
+                    raise falcon.HTTPBadRequest(title="Missing Field", description="Missing confirm password field.")
+
+                if req.get("password") != req.get("confirmPassword"):
+                    raise falcon.HTTPBadRequest(title="Error", description="Password and confirm password must be the same.")
+
+                consultant = session.query(Consultant).filter(
+                    Consultant.id == id).first()
+
+                if not consultant:
+                    raise falcon.HTTPNotFound(title="Consultant not found", description="Could not find consultant with given ID.")
+
+                consultant.set_password(req.get("password"))
                 consultant.save(session)
                 resp.body = json.dumps(consultant.to_dict(), default=str)
         except:
