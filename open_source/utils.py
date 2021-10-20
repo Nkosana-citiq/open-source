@@ -253,7 +253,9 @@ def authenticate_user_by_email(cls, session, email, password):
             cls.state == cls.STATE_ACTIVE
     ).one_or_none()
 
-    return entity, False if entity is None else (entity, entity.authenticate(password))
+    if entity:
+        return entity, entity.authenticate(password)
+    return entity, False
 
 
 def authenticate_user_by_username(cls, session, username, password):
@@ -263,7 +265,9 @@ def authenticate_user_by_username(cls, session, username, password):
             cls.state == cls.STATE_ACTIVE
     ).one_or_none()
 
-    return entity, False if entity is None else entity.authenticate(password)
+    if entity:
+        return entity, entity.authenticate(password)
+    return entity, False
 
 
 def authenticate_parlour(session, username, password):

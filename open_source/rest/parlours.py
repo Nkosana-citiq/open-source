@@ -95,7 +95,7 @@ class ParlourGetAllEndpoint:
     def on_get(self, req, resp):
         try:
             with db.transaction() as session:
-                print("get parlours")
+
                 search_field = None
 
                 if "search_string" in req.params:
@@ -582,7 +582,7 @@ class ParlourSuspendEndpoint:
                     raise falcon.HTTPNotFound(title="Parlour not found", description="Could not find parlour with given ID.")
             
                 parlour.state=Parlour.STATE_ARCHIVED
-                print(parlour)
+
                 resp.body = json.dumps(parlour.to_dict(), default=str)
         except:
             logger.exception(
