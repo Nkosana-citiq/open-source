@@ -127,7 +127,7 @@ class PaymentsGetAllEndpoint:
                     Payment.state == Payment.STATE_ACTIVE,
                     Payment.applicant_id == applicant.id
                 ).all()
-                print(payments)
+
                 if not payments:
                     resp.body = json.dumps([])
                 else:
@@ -345,7 +345,7 @@ class PaymentDeleteEndpoint:
 
 
 def _build_invoice_information(invoice):
-    # print(invoice.to_dict())
+
     table_001 = Table(number_of_rows=32, number_of_columns=3)
 
     table_001.add(Paragraph("       "))

@@ -1,4 +1,3 @@
-from typing import Text
 from open_source import db
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text, func
 from sqlalchemy.ext.declarative import declared_attr
@@ -28,7 +27,7 @@ class Applicant(db.Base):
     policy_num = Column(String(length=15))
     address = Column(String(length=100))
     certificate = Column(String(length=250))
-    document = Column(Date())
+    document = Column(Text)
     state = Column(Integer, default=1)
     status = Column(String(length=15), default="unpaid")
     date = Column(DateTime)

@@ -85,8 +85,6 @@ class Certificate:
         self.can.drawString(30, 750, "Relationship: {}".format(relation.title()))
 
     def set_benefits(self, benefits):
-        print("============================ BENEFITS ==========================================================")
-        print(benefits)
         self.can.setFont('Helvetica-Bold', 10)
         self.y_position = sum([self.y_position, 50])
         self.can.drawString(30, self.y_position, "Benefits:")

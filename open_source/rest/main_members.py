@@ -100,8 +100,7 @@ class MainGetAllParlourEndpoint:
                     main_count = len(main_members)
                     main_members = [m for m in main_members if m.date_joined and m.date_joined.year == search.date().year and m.date_joined.month == search.date().month]
                     month_count = len(main_members)
-                    print(month_count)
-                    print(search)
+
                     resp.body = json.dumps({"original": main_count, "month": month_count, "period": '-'.join([str(search.date().year), str(search.date().month)])}, default=str)
                 elif search_field:
                     main_members = session.query(
@@ -299,7 +298,7 @@ class MainGetAllArchivedParlourEndpoint:
 
                     if "search_string" in req.params:
                         search_field = req.params.pop("search_string")
-                    print("PRINT PARLOUR: ", id)
+
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
                         Parlour.id == id
@@ -484,8 +483,6 @@ class MainMemberPostEndpoint:
 
                 if not applicant_req.get("policy_num"):
                     raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
-                if not applicant_req.get("document"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing policy document field.")
 
                 id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number")).first()
 

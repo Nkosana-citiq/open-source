@@ -103,11 +103,9 @@ class ParlourGetAllEndpoint:
                 if search_field:
                     search_date = datetime.strptime(search_field, "%d/%m/%Y")
 
-                    print("search field: ", search_date)
                     parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ACTIVE).all()
-                    # print([p.created_at.date() for p in parlours if p.created_at.date() != None])
+
                     parlours = [p for p in parlours if p.created_at.date() == search_date.date()]
-                    print(parlours)
                 else:
                     parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ACTIVE).all()
 

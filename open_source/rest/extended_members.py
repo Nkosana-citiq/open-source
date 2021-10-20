@@ -181,7 +181,7 @@ class ExtendedMembersPostEndpoint:
         try:
             with db.transaction() as session:
                 applicant_id = req.get("applicant_id")
-                print("APPLICANT ID: ", applicant_id)
+
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_id,
                     Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
@@ -230,7 +230,7 @@ class ExtendedMemberPutEndpoint:
         try:
             with db.transaction() as session:
                 applicant_id = req.get("applicant_id")
-                print("APPLICANT ID: ", applicant_id)
+
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_id,
                     Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
