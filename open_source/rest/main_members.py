@@ -792,7 +792,7 @@ class MainMemberDownloadCSVGetEndpoint:
         today = datetime.datetime.today()
 
         logger.info('Create CSV file...')
-        filename = os.path.join(folder, 'applicants_{}.csv'.format(today))
+        filename = os.path.join(folder, 'applicants_{}.xlsx'.format(today))
 
         with open(filename, 'w') as f:
             writer = csv.writer(f)
