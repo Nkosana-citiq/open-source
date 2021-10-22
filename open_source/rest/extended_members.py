@@ -188,7 +188,7 @@ class ExtendedMembersPostEndpoint:
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
-
+                print(req)
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
