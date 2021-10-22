@@ -119,8 +119,10 @@ class Consultant(db.Base):
     @classmethod
     def is_username_unique(cls, session, username):
         try:
-            session.query(Consultant).filter(func.trim(Consultant.username) ==
+            consultant = session.query(Consultant).filter(func.trim(Consultant.username) ==
                                        username.strip(), Consultant.state == Consultant.STATE_ACTIVE).one()
+            if consultant:
+                return False
         except MultipleResultsFound:
             return False
         except NoResultFound:
@@ -130,10 +132,12 @@ class Consultant(db.Base):
     @classmethod
     def is_email_unique(cls, session, email):
         try:
-            session.query(Consultant).filter(
+            consultant = session.query(Consultant).filter(
                 func.trim(Consultant.email) == email.strip(),
                 Consultant.state == Consultant.STATE_ACTIVE
             ).one()
+            if consultant:
+                return False
         except MultipleResultsFound:
             return False
         except NoResultFound:

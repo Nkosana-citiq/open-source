@@ -285,7 +285,6 @@ class ChangeParlourPasswordEndpoint:
 
 
 class ParlourSignupEndpoint:
-    # cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure

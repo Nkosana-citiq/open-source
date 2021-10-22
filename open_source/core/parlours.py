@@ -145,24 +145,25 @@ class Parlour(db.Base):
     @classmethod
     def is_username_unique(cls, session, username):
         try:
-            session.query(Parlour).filter(func.trim(Parlour.username) ==
+            parlour = session.query(Parlour).filter(func.trim(Parlour.username) ==
                                        username.strip(), Parlour.state == Parlour.STATE_ACTIVE).one()
+            if parlour:
+                return False
         except MultipleResultsFound:
             return False
         except NoResultFound:
             return True
-        return False
 
     @classmethod
     def is_email_unique(cls, session, email):
         try:
-            session.query(Parlour).filter(
+            parlour = session.query(Parlour).filter(
                 func.trim(Parlour.email) == email.strip(),
                 Parlour.state == Parlour.STATE_ACTIVE
             ).one()
+            if parlour:
+                return False
         except MultipleResultsFound:
             return False
         except NoResultFound:
             return True
-        return False
-

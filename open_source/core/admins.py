@@ -81,8 +81,10 @@ class Admin(db.Base):
     @classmethod
     def is_username_unique(cls, session, username):
         try:
-            session.query(Admin).filter(func.trim(Admin.username) ==
+            admin = session.query(Admin).filter(func.trim(Admin.username) ==
                                        username.strip(), Admin.state == Admin.STATE_ACTIVE).one()
+            if admin:
+                return False
         except MultipleResultsFound:
             return False
         except NoResultFound:
@@ -92,10 +94,12 @@ class Admin(db.Base):
     @classmethod
     def is_email_unique(cls, session, email):
         try:
-            session.query(Admin).filter(
+            admin = session.query(Admin).filter(
                 func.trim(Admin.email) == email.strip(),
                 Admin.state == Admin.STATE_ACTIVE
             ).one()
+            if admin:
+                return False
         except MultipleResultsFound:
             return False
         except NoResultFound:

@@ -232,19 +232,17 @@ def humanize_snake_case(s: str) -> str:
     return ' '.join(x.title() for x in re.split(r'[,\._]', s.lower()))
 
 def is_email_unique(session, email):
-    result = parlours.Parlour.is_email_unique(session, email)
-    if result:
-        result = consultants.Consultant.is_email_unique(session, email)
-    return result
+    parlour = parlours.Parlour.is_email_unique(session, email)
+    consultant = consultants.Consultant.is_email_unique(session, email)
+    admin = admins.Admin.is_email_unique(session, email)
+    return all([parlour, consultant, admin])
+
 
 def is_username_unique(session, email):
-    result = parlours.Parlour.is_username_unique(session, email)
-    if result:
-        result = consultants.Consultant.is_username_unique(session, email)
-    if result:
-        result = admins.Admin.is_username_unique(session, email)
-    return result
-
+    parlour = parlours.Parlour.is_username_unique(session, email)
+    consultant = consultants.Consultant.is_username_unique(session, email)
+    admin = admins.Admin.is_username_unique(session, email)
+    return all([parlour, consultant, admin])
 
 def authenticate_user_by_email(cls, session, email, password):
     entity = session.query(cls)\
