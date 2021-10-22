@@ -195,7 +195,7 @@ class ExtendedMembersPostEndpoint:
                     number = req.get("number"),
                     date_of_birth = '2021-09-19',
                     type = req.get("type"),
-                    relation_to_main_member = req.get("relation_to_main_member") if req.get("relation_to_main_member") else None,
+                    relation_to_main_member = req.get("relation_to_main_member"),
                     applicant_id = applicant.id,
                     date_joined = datetime.now(),
                     state=ExtendedMember.STATE_ACTIVE,
