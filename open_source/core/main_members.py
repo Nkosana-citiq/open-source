@@ -82,10 +82,10 @@ class MainMember(db.Base):
         session.commit()
 
     def is_deleted(self) -> bool:
-        return self.state == self.STATE_DELETED
+        return self.state == self.STATE_ARCHIVED
 
     def make_deleted(self):
-        self.state = self.STATE_DELETED
+        self.state = self.STATE_ARCHIVED
         self.on_delete_clean_up()
 
     def delete(self, session):
@@ -93,5 +93,5 @@ class MainMember(db.Base):
         session.commit()
     
     def on_delete_clean_up(self):
-        self.applicant.state = self.applicant.STATE_DELETED
+        self.applicant.state = self.applicant.STATE_ARCHIVED
 

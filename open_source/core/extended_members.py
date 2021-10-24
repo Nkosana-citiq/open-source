@@ -64,6 +64,7 @@ class ExtendedMember(db.Base):
     last_name = Column(String(length=50))
     type = Column(Integer)
     number = Column(String(length=12))
+    id_number = Column(String(length=15))
     relation_to_main_member = Column(Integer)
     age_limit_exceeded = Column(Boolean(), default=False)
     age_limit_exception = Column(Boolean(), default=False)
@@ -101,6 +102,7 @@ class ExtendedMember(db.Base):
             'type': self.type_text,
             'number': self.number,
             'created_at': self.created_at,
+            'id_number': self.id_number,
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
             'age_limit_exceeded': self.age_limit_exceeded,
@@ -117,6 +119,7 @@ class ExtendedMember(db.Base):
             'last_name': self.last_name,
             'type': self.type_text,
             'number': self.number,
+            'id_number': self.id_number,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'relation_to_main_member': self.relation_text,

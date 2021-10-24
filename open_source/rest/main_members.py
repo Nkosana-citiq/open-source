@@ -373,6 +373,7 @@ class MainGetAllArchivedConsultantEndpoint:
                 try:
                     status = None
                     search_field = None
+
                     if "status" in req.params:
                         status = req.params.pop("status")
 
@@ -391,7 +392,7 @@ class MainGetAllArchivedConsultantEndpoint:
                         MainMember,
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        or_(MainMember.state != MainMember.STATE_ACTIVE,
+                        or_(MainMember.state != MainMember.STATE_ARCHIVED,
                             Applicant.status == 'lapsed'),
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
@@ -408,7 +409,7 @@ class MainGetAllArchivedConsultantEndpoint:
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
-                        or_(Applicant.state != Applicant.STATE_ACTIVE,
+                        or_(Applicant.state != Applicant.STATE_ARCHIVED,
                             Applicant.status == 'lapsed'),
                             Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
@@ -418,8 +419,8 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
-                        or_(MainMember.state != MainMember.STATE_ACTIVE,
-                            MainMember.applicant_id.in_(applicant_ids))
+                        MainMember.state != MainMember.STATE_ARCHIVED,
+                        MainMember.applicant_id.in_(applicant_ids)
                     ).all()
 
                     if not main_members:

@@ -22,6 +22,35 @@ from open_source.core.applicants import Applicant
 logger = logging.getLogger(__name__)
 public_cors = CORS(allow_all_origins=True)
 
+
+def check_age_limit(extended_members, plan):
+    result = []
+    for extended_member in extended_members:
+        if extended_member.type == 0:
+            age_limit = 120
+        elif extended_member.type == 1:
+            age_limit = plan.dependant_maximum_age
+        elif extended_member.type == 2:
+            age_limit = plan.additional_extended_maximum_age
+        elif extended_member.type == 3:
+            age_limit = plan.additional_extended_maximum_age
+
+        dob = extended_member.date_of_birth
+        dob = datetime.strptime(dob, "%Y-%m-%d")
+        now = datetime.now()
+
+        age = relativedelta(now, dob)
+
+        years = "{}".format(age.years)
+
+        if len(years) > 2 and int(years[2:4]) > age_limit:
+            extended_member.age_limit_exceeded = True
+        elif int(years) > age_limit:
+            extended_member.age_limit_exceeded = True
+        result.append(extended_member)
+    return result
+
+
 class ExtendedMemberGetEndpoint:
     cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
@@ -80,31 +109,9 @@ class ExtendedMembersGetAllEndpoint:
                     ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
                     ExtendedMember.applicant_id == applicant.id
                 ).all()
-                if extended_members:
-                    for extended_member in extended_members:
-                        if extended_member.type == 0:
-                            age_limit = 120
-                        elif extended_member.type == 1:
-                            age_limit = plan.dependant_maximum_age
-                        elif extended_member.type == 2:
-                            age_limit = plan.additional_extended_maximum_age
-                        elif extended_member.type == 3:
-                            age_limit = plan.additional_extended_maximum_age
-                        
-                        dob = extended_member.date_of_birth
-                        dob = datetime.strptime(dob, "%Y-%m-%d")
-                        now = datetime.now()
 
-                        age = relativedelta(now, dob)
+                extended_members = check_age_limit(extended_members, plan)
 
-                        years = "{}".format(age.years)
-
-                        if len(years) > 2 and int(years[2:4]) > age_limit:
-                            extended_member.age_limit_exceeded = True
-                        elif int(years) > age_limit:
-                            extended_member.age_limit_exceeded = True
-                            session.commit()
-                extended_member = None
                 if notice:
                      extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
@@ -188,13 +195,14 @@ class ExtendedMembersPostEndpoint:
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
-                print(req)
+
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
                     number = req.get("number"),
                     date_of_birth = '2021-09-19',
                     type = req.get("type"),
+                    id_number = req.get("id_number"),
                     relation_to_main_member = req.get("relation_to_main_member"),
                     applicant_id = applicant.id,
                     date_joined = datetime.now(),
@@ -202,7 +210,9 @@ class ExtendedMembersPostEndpoint:
                     created_at = datetime.now(),
                     modified_at = datetime.now()
                 )
-
+                plan = applicant.plan
+                extended_members = check_age_limit([extended_member], plan)
+                extended_member = extended_members.pop()
                 extended_member.save(session)
                 update_certificate(applicant)
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
@@ -237,7 +247,7 @@ class ExtendedMemberPutEndpoint:
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
-
+                plan = applicant.plan
                 extended_member = session.query(ExtendedMember).filter(
                     ExtendedMember.id == id,
                     ExtendedMember.applicant_id == applicant.id,
@@ -251,10 +261,15 @@ class ExtendedMemberPutEndpoint:
                 extended_member.number = req.get("number")
                 extended_member.date_of_birth = '2021-09-18'
                 extended_member.type = req.get("type")
+                extended_member.id_number = req.get("id_number")
                 extended_member.relation_to_main_member = req.get("relation_to_main_member")
                 extended_member.applicant_id = applicant.id
                 extended_member.date_joined = datetime.now()
                 extended_member.modified_at = datetime.now()
+
+                plan = applicant.plan
+                extended_members = check_age_limit([extended_member], plan)
+                extended_member = extended_members.pop()
 
                 extended_member.save(session)
                 update_certificate(applicant)
