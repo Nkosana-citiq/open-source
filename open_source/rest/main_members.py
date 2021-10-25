@@ -409,7 +409,7 @@ class MainGetAllArchivedConsultantEndpoint:
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
-                        or_(Applicant.state != Applicant.STATE_ARCHIVED,
+                        or_(Applicant.state != Applicant.STATE_ACTIVE,
                             Applicant.status == 'lapsed'),
                             Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
@@ -419,7 +419,7 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
-                        MainMember.state != MainMember.STATE_ARCHIVED,
+                        MainMember.state != MainMember.STATE_ACTIVE,
                         MainMember.applicant_id.in_(applicant_ids)
                     ).all()
 
@@ -704,9 +704,10 @@ class MainMemberRestorePutEndpoint:
                 if not main_member:
                     raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-                main_member.state = req["state"],
+                main_member.state = MainMember.STATE_ACTIVE,
 
                 main_member.save(session)
+                print(main_member.to_dict())
                 resp.body = json.dumps(main_member.to_dict(), default=str)
         except:
             logger.exception(

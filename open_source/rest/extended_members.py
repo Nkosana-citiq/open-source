@@ -188,7 +188,7 @@ class ExtendedMembersPostEndpoint:
         try:
             with db.transaction() as session:
                 applicant_id = req.get("applicant_id")
-
+                print("Extended member")
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_id,
                     Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
@@ -211,8 +211,35 @@ class ExtendedMembersPostEndpoint:
                     modified_at = datetime.now()
                 )
                 plan = applicant.plan
-                extended_members = check_age_limit([extended_member], plan)
-                extended_member = extended_members.pop()
+                
+                plan = applicant.plan
+                if extended_member:
+                    if extended_member.type == 0:
+                        age_limit = plan.dependant_maximum_age
+                    elif extended_member.type == 1:
+                        age_limit = plan.dependant_maximum_age
+                    elif extended_member.type == 2:
+                        age_limit = plan.additional_extended_maximum_age
+                    elif extended_member.type == 3:
+                        age_limit = plan.additional_extended_maximum_age
+
+                    dob = extended_member.date_of_birth
+                    dob = datetime.strptime(dob, "%Y-%m-%d")
+                    now = datetime.now()
+
+                    age = relativedelta(now, dob)
+
+                    years = "{}".format(age.years)
+
+                    if len(years) > 2 and int(years[2:4]) > age_limit:
+                        raise falcon.HTTPBadRequest(
+                title="Error", 
+                description="Age Limit exceeded.")
+                    elif int(years) > age_limit:
+                        raise falcon.HTTPBadRequest(
+                title="Error", 
+                description="Age Limit exceeded.")
+
                 extended_member.save(session)
                 update_certificate(applicant)
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
@@ -268,8 +295,32 @@ class ExtendedMemberPutEndpoint:
                 extended_member.modified_at = datetime.now()
 
                 plan = applicant.plan
-                extended_members = check_age_limit([extended_member], plan)
-                extended_member = extended_members.pop()
+                if extended_member:
+                    if extended_member.type == 0:
+                        age_limit = plan.dependant_maximum_age
+                    elif extended_member.type == 1:
+                        age_limit = plan.dependant_maximum_age
+                    elif extended_member.type == 2:
+                        age_limit = plan.additional_extended_maximum_age
+                    elif extended_member.type == 3:
+                        age_limit = plan.additional_extended_maximum_age
+
+                    dob = extended_member.date_of_birth
+                    dob = datetime.strptime(dob, "%Y-%m-%d")
+                    now = datetime.now()
+
+                    age = relativedelta(now, dob)
+
+                    years = "{}".format(age.years)
+
+                    if len(years) > 2 and int(years[2:4]) > age_limit:
+                        raise falcon.HTTPBadRequest(
+                title="Error", 
+                description="Age Limit exceeded.")
+                    elif int(years) > age_limit:
+                        extended_member.age_limit_exceeded = True
+                
+                # extended_member = extended_members.pop()
 
                 extended_member.save(session)
                 update_certificate(applicant)
