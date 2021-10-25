@@ -470,9 +470,10 @@ class MainMemberPostEndpoint:
                 if not consultant:
                     raise falcon.HTTPBadRequest(title="Error", description="Consultant does not exist.")
 
-                plan_req = req.get("plan")
+                plan_id = req.get("plan_id")
+
                 plan = session.query(Plan).filter(
-                    Plan.id == plan_req.get("id"),
+                    Plan.id == plan_id,
                     Plan.state == Plan.STATE_ACTIVE).one_or_none()
 
                 if not plan:
