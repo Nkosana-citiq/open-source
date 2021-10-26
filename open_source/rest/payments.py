@@ -354,6 +354,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     page_layout.add(Paragraph(" "))
 
     os.chdir('./assets/uploads')
+    print('================================ PRINT DIRECTORY ============================')
+    print(os.getcwd())
 
     path = '/'.join([os.getcwd(), "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
     if os.path.exists("{}".format(path)):
