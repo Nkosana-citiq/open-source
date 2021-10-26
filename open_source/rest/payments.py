@@ -235,7 +235,6 @@ class RecieptGetEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
-                import msgpack
 
                 invoice = session.query(Invoice).filter(
                     Invoice.id == id,
@@ -243,7 +242,7 @@ class RecieptGetEndpoint:
                 ).first()
                 if Invoice is None:
                     raise falcon.HTTPNotFound(title="Error", description="Invoice not found")
-                
+
                 with open(invoice.document, 'rb') as f:
                     resp.downloadable_as = invoice.document
                     resp.content_type = 'application/pdf'
