@@ -211,8 +211,9 @@ class PaymentPostEndpoint:
 
                 payment.save(session)
                 user = rest_dict.get("user")
-                print_invoice(session, payment, applicant, user, amount, dates)
-                resp.body = json.dumps(payment.to_dict(), default=str)
+                invoice = print_invoice(session, payment, applicant, user, amount, dates)
+
+                resp.body = json.dumps(invoice.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Payment.")
@@ -340,12 +341,6 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     pdf.append_page(page)
     page_layout = SingleColumnLayout(page)
     page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
-    # page_layout.add(
-    #     Image(
-    #     "https://s3.stackabuse.com/media/articles/creating-an-invoice-in-python-with-ptext-1.png",
-    #     width=Decimal(128),
-    #     height=Decimal(128),
-    #     ))
 
     # Invoice information table
     page_layout.add(_build_invoice_information(invoice))
@@ -354,9 +349,6 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     page_layout.add(Paragraph(" "))
 
     os.chdir('./assets/uploads')
-    print('================================ PRINT DIRECTORY ============================')
-    print(os.getcwd())
-    print(os.listdir())
 
     path = '/'.join([os.getcwd(), "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
     if os.path.exists("{}".format(path)):
@@ -368,6 +360,7 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     invoice.save(session)
     invoice.path = "invoices/{}".format(invoice.id)
     session.commit()
+    return invoice
 
 
 class PaymentDeleteEndpoint:
