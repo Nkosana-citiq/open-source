@@ -486,7 +486,7 @@ class MainMemberPostEndpoint:
                 if not applicant_req.get("policy_num"):
                     raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
 
-                id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number")).first()
+                id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
 
                 if id_number:
                     raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
@@ -612,7 +612,7 @@ class MainMemberPutEndpoint:
                 if not main_member:
                     raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-                id_number_exists = session.query(MainMember).filter(MainMember.id_number == req.get("id_number")).first()
+                id_number_exists = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
 
                 if id_number_exists and main_member.id_number != id_number_exists.id_number:
                     raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")

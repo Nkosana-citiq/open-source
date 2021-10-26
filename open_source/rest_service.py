@@ -127,6 +127,9 @@ api.add_route('/open-source/applicants/{id}/payments/all', payments.PaymentsGetA
 api.add_route('/open-source/applicants/{id}/payments/last', payments.PaymentGetLastEndpoint())
 api.add_route('/open-source/parlours/{id}/payments', payments.PaymentPostEndpoint())
 
+api.add_route('/open-source/applicants/{id}/invoices/all', payments.InvoicesGetAllEndpoint())
+api.add_route('/open-source/invoices/{id}', payments.RecieptGetEndpoint())
+
 
 if __name__ == '__main__':
     from wsgiref.simple_server import make_server

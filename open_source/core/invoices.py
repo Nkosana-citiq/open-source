@@ -16,6 +16,7 @@ class Invoice(db.Base):
     payment_date = Column(DateTime)
     number = Column(String(length=255))
     document = Column(String(length=255))
+    path = Column(String(length=255))
     amount = Column(String(length=6))
     premium = Column(String(length=6))
     email = Column(String(length=50))
@@ -49,12 +50,13 @@ class Invoice(db.Base):
         return {
             'id': self.id,
             'state': self.state,
-            'date': self.date,
+            'date': self.created,
             'invoice_number': self.number,
             'amount': self.amount,
             'email': self.email,
             'address': self.address,
             'branch': self.branch,
+            'path': self.path,
             'premium': self.premium,
             'contact': self.contact,
             'policy_number': self.policy_number,

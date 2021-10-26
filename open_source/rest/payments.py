@@ -5,6 +5,8 @@ import logging
 import random
 import os
 
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+
 from open_source import db
 
 from open_source.core.applicants import Applicant
@@ -26,6 +28,11 @@ from borb.pdf.canvas.layout.text.paragraph import Paragraph
 from borb.pdf.canvas.layout.layout_element import Alignment
 from decimal import Decimal
 from borb.pdf.pdf import PDF
+
+from open_source.config import get_config
+
+
+conf = get_config()
 
 
 logger = logging.getLogger(__name__)
@@ -215,6 +222,42 @@ class PaymentPostEndpoint:
             description="Processing Failed. experienced error while creating Payment.")
 
 
+class RecieptGetEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                import msgpack
+
+                invoice = session.query(Invoice).filter(
+                    Invoice.id == id,
+                    Invoice.state == Invoice.STATE_ACTIVE
+                ).first()
+                if Invoice is None:
+                    raise falcon.HTTPNotFound(title="Error", description="Invoice not found")
+                
+                with open(invoice.document, 'rb') as f:
+                    resp.downloadable_as = invoice.document
+                    resp.content_type = 'application/pdf'
+                    resp.stream = [f.read()]
+                    resp.status = falcon.HTTP_200
+
+                # resp.body = json.dumps(invoice.document, default=str)
+        except:
+            logger.exception("Error, Failed to get Payment with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
+
+
 class PaymentPutEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -312,8 +355,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
 
     # Empty paragraph for spacing
     page_layout.add(Paragraph(" "))
-    directory = "/home/nkosana/Documents/Personal/open-source/assets/uploads"
-    path = '/'.join([directory, "{}_{}.pdf".format(invoice.customer.lower().replace(" ", "_"),invoice.created)])
+    directory = os.chdir('../../assets/uploads')
+    path = '/'.join([directory, "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
     if os.path.exists("{}".format(path)):
         os.remove("{}".format(path))
 
@@ -321,6 +364,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
         PDF.dumps(pdf_file_handle, pdf)
     invoice.document = path
     invoice.save(session)
+    invoice.path = "invoices/{}".format(invoice.id)
+    invoice.commit()
 
 
 class PaymentDeleteEndpoint:
@@ -483,13 +528,90 @@ def _build_invoice_information(invoice):
     table_001.add(Paragraph(invoice.assisted_by, horizontal_alignment=Alignment.RIGHT))
     table_001.add(Paragraph(" "))
 
-    # table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
-
     table_001.set_padding_on_all_cells(Decimal(2), Decimal(2), Decimal(2), Decimal(2))
     table_001.no_borders()
     return table_001
+
+
+class InvoicesGetAllEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                try:
+                    applicant = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.id == id
+                    ).one()
+                except MultipleResultsFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="More than one applicant with this ID.")
+                except NoResultFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="No applicant fount with this ID.")
+
+                payments = session.query(Payment).filter(
+                    Payment.state == Payment.STATE_ACTIVE,
+                    Payment.applicant_id == applicant.id
+                ).all()
+
+                invoices = None
+                if payments:
+                    invoices = session.query(Invoice).filter(
+                        Invoice.state == Invoice.STATE_ACTIVE,
+                        Invoice.payment_id.in_([p.id for p in payments])
+                    ).all()
+
+                if not invoices:
+                    resp.body = json.dumps([])
+                else:
+                    resp.body = json.dumps([invoice.to_dict() for invoice in invoices], default=str)
+
+        except:
+            logger.exception("Error, Failed to get Invoices for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed while getting invoices.")
+
+
+class InvoicesGetEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                try:
+                    invoices = session.query(Invoice).filter(
+                        Invoice.state == Invoice.STATE_ACTIVE,
+                        Invoice.id == id
+                    ).one()
+                except MultipleResultsFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="Found more than one invoice with this ID")
+                except NoResultFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="Found more than one invoice with this ID")
+                if not invoices:
+                    resp.body = json.dumps([])
+                else:
+                    resp.body = json.dumps([invoice.to_dict() for invoice in invoices], default=str)
+
+        except:
+            logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed while getting invoices.")
 
 
 if __name__ == "__main__":
