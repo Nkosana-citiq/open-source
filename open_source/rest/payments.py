@@ -353,6 +353,7 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     path = '/'.join([os.getcwd(), "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
     if os.path.exists("{}".format(path)):
         os.remove("{}".format(path))
+    os.chdir('../..')
 
     with open(path, "wb") as pdf_file_handle:
         PDF.dumps(pdf_file_handle, pdf)
