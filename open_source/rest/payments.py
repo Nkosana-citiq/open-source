@@ -170,8 +170,6 @@ class PaymentPostEndpoint:
                 if not parlour:
                     raise falcon.HTTPNotFound(title="Not Found", description="Parlour does not exist.")
 
-                # if rest_dict.get("parlour_id") != parlour.id:
-                #     raise falcon.HTTPUnauthorized(title="Incorrect Parlour", description="Not authorised.")
                 applicant_id = rest_dict.get("applicant_id")
 
                 applicant = session.query(Applicant).filter(
@@ -189,7 +187,7 @@ class PaymentPostEndpoint:
 
                 if not plan:
                     raise falcon.HTTPNotFound(title="Not Found", description="Plan does not exist.")
-
+                print(rest_dict.get("date"))
                 start_date = datetime.strptime(rest_dict.get("date"), "%d/%m/%Y")
                 end_date = datetime.strptime(rest_dict.get("end_date"), "%d/%m/%Y")
 
@@ -355,8 +353,10 @@ def print_invoice(session, payment, applicant, user, amount, dates):
 
     # Empty paragraph for spacing
     page_layout.add(Paragraph(" "))
-    directory = os.chdir('../../assets/uploads')
-    path = '/'.join([directory, "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
+
+    os.chdir('./assets/uploads')
+
+    path = '/'.join([os.getcwd(), "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
     if os.path.exists("{}".format(path)):
         os.remove("{}".format(path))
 
@@ -365,7 +365,7 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     invoice.document = path
     invoice.save(session)
     invoice.path = "invoices/{}".format(invoice.id)
-    invoice.commit()
+    session.commit()
 
 
 class PaymentDeleteEndpoint:
