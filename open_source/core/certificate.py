@@ -10,13 +10,18 @@ class Certificate:
     can = None
 
     def __init__(self, file_name: str):
-        directory = "/home/nkosana/Documents/Personal/open-source/assets/uploads"
+        os.chdir('./assets/uploads/certificates')
 
         self.y_position = 0
-        if os.path.exists("{}/{}.pdf".format(directory, file_name.lower().replace(" ", "-"))):
-            os.remove("{}/{}.pdf".format(directory, file_name.lower().replace(" ", "-")))
+        self.file_path = "{}/{}.pdf".format(os.getcwd(), file_name.lower().replace(" ", "-"))
+        if os.path.exists(self.file_path):
+            os.remove(self.file_path)
 
-        self.can = canvas.Canvas("{}/{}.pdf".format(directory, file_name.lower().replace(" ", "-")), pagesize=A4, bottomup=0)
+        self.can = canvas.Canvas(self.file_path, pagesize=A4, bottomup=0)
+        os.chdir('../../..')
+
+    def get_file_path(self):
+        return self.file_path
 
     def set_title(self, title: str):
         self.can.setFont('Helvetica-Bold', 16)

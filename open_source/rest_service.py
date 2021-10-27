@@ -103,6 +103,7 @@ api.add_route('/open-source/main-members/{id}/exception', main_members.MainMembe
 api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
 api.add_route('/open-source/main-members/send-sms', main_members.SMSService())
+api.add_route('/open-source/main-members/{id}/document', main_members.MemberCertificateGetEndpoint())
 
 api.add_route('/open-source/applicants/{id}/dependants/all', dependants.DependantMembersGetAllEndpoint())
 api.add_route('/open-source/dependants', dependants.DependantPostEndpoint())

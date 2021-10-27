@@ -28,6 +28,7 @@ class Applicant(db.Base):
     address = Column(String(length=100))
     certificate = Column(String(length=250))
     document = Column(Text)
+    personal_docs = Column(Text)
     state = Column(Integer, default=1)
     status = Column(String(length=15), default="unpaid")
     date = Column(DateTime)
@@ -64,6 +65,7 @@ class Applicant(db.Base):
             'id': self.id,
             'policy_num': self.policy_num,
             'document': self.document,
+            'personal_docs':self.personal_docs,
             'address': self.address,
             'certificate': self.certificate,
             'date': self.date,
@@ -85,6 +87,7 @@ class Applicant(db.Base):
             'certificate': self.certificate,
             'address': self.address,
             'document': self.document,
+            'personal_docs':self.personal_docs,
             'date': self.date,
             'status': self.status.capitalize(),
             'canceled': self.canceled,

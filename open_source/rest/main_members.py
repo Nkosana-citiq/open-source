@@ -433,6 +433,48 @@ class MainGetAllArchivedConsultantEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Applicants for user with ID {}.".format(id))
 
 
+class MemberCertificateGetEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                
+                main_meber = session.query(MainMember).filter(
+                    MainMember.id == id,
+                    MainMember.state == MainMember.STATE_ACTIVE
+                ).first()
+                if main_meber is None:
+                    raise falcon.HTTPNotFound(title="Error", description="Document not found")
+
+                applicant = session.query(Applicant).filter(
+                    Applicant.id == main_meber.applicant_id,
+                    Applicant.state == Applicant.STATE_ACTIVE
+                ).first()
+
+                if applicant is None:
+                    raise falcon.HTTPNotFound(title="Error", description="Document not found")
+
+                with open(applicant.document, 'rb') as f:
+                    resp.downloadable_as = applicant.document
+                    resp.content_type = 'application/pdf'
+                    resp.stream = [f.read()]
+                    resp.status = falcon.HTTP_200
+
+        except:
+            logger.exception("Error, Failed to get Payment with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
+
+
 class MainMemberPostEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -462,8 +504,6 @@ class MainMemberPostEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
                 if not req.get("last_name"):
                     raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
-                # if not req.get("date_of_birth"):
-                #     raise falcon.HTTPBadRequest(title="Error", description="Missing date of birth field.")
 
                 consultant = session.query(Consultant).get(id)
 
@@ -493,7 +533,7 @@ class MainMemberPostEndpoint:
 
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
-                    document = applicant_req.get("document"),
+                    personal_docs = applicant_req.get("document"),
                     status = 'paid',
                     plan_id = plan.id,
                     consultant_id = consultant.id,
@@ -522,7 +562,7 @@ class MainMemberPostEndpoint:
                 main_member.save(session)
 
                 try:
-                    canvas = Certificate(parlour.parlourname.strip())
+                    canvas = Certificate("{}_{}".format(main_member.first_name.strip(), main_member.last_name.strip()))
                     canvas.set_title(parlour.parlourname)
                     canvas.set_address(parlour.address if parlour.address else '')
                     canvas.set_contact(parlour.number)
@@ -538,6 +578,9 @@ class MainMemberPostEndpoint:
                     canvas.set_physical_address(main_member.applicant.address if main_member.applicant.address else '')
                     canvas.set_benefits(plan.benefits)
                     canvas.save()
+                    print(canvas.get_file_path())
+                    applicant.document = canvas.get_file_path()
+                    session.commit()
                 except Exception as e:
                     logger.exception("Error, experienced an error while creating certificate.")
                     print(e)
@@ -545,8 +588,7 @@ class MainMemberPostEndpoint:
         except:
             logger.exception(
                 "Error, experienced error while creating Applicant.")
-            raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Applicant.")
+            raise falcon.HTTPBadRequest(title="Error", description="Processing Failed. experienced error while creating Applicant.")
 
 
 class MainMemberPutEndpoint:

@@ -241,7 +241,7 @@ class RecieptGetEndpoint:
                     Invoice.id == id,
                     Invoice.state == Invoice.STATE_ACTIVE
                 ).first()
-                if Invoice is None:
+                if not invoice:
                     raise falcon.HTTPNotFound(title="Error", description="Invoice not found")
 
                 with open(invoice.document, 'rb') as f:
@@ -348,12 +348,12 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     # Empty paragraph for spacing
     page_layout.add(Paragraph(" "))
 
-    os.chdir('./assets/uploads')
+    os.chdir('./assets/uploads/receipts')
 
     path = '/'.join([os.getcwd(), "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
     if os.path.exists("{}".format(path)):
         os.remove("{}".format(path))
-    os.chdir('../..')
+    os.chdir('../../..')
 
     with open(path, "wb") as pdf_file_handle:
         PDF.dumps(pdf_file_handle, pdf)
