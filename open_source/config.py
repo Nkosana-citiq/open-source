@@ -29,8 +29,8 @@ class BaseConfig(object):
 
     MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
     db = {
-        'url': "mysql://osourcec:opensource@{}/osourcec_opensource".format(MYSQL_HOST),
-        # 'url': "mysql://eqa4wgn58w5q1nf4:r6rymog3csc13962@ulsq0qqx999wqz84.chr7pe7iynqr.eu-west-1.rds.amazonaws.com:3306/isupkx8fnsnozbtg",
+        # 'url': "mysql://osourcec:opensource@{}/osourcec_opensource".format(MYSQL_HOST),
+        'url': "mysql://eqa4wgn58w5q1nf4:r6rymog3csc13962@ulsq0qqx999wqz84.chr7pe7iynqr.eu-west-1.rds.amazonaws.com:3306/isupkx8fnsnozbtg",
         'params': {'echo': False, 'pool_recycle': 3600, 'pool_size': 2}
     }
 
