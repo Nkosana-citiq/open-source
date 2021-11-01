@@ -616,7 +616,7 @@ if __name__ == "__main__":
     pdf = Document()
 
     # Add page
-    page = Page(PageSize.A7_PORTRAIT)
+    page = Page(PageSize.B10_PORTRAIT)
     pdf.append_page(page)
     page_layout = SingleColumnLayout(page)
     page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
