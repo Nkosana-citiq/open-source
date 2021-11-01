@@ -190,7 +190,11 @@ class MainGetAllParlourEndpoint:
                                 ).first()
                                 if main_member:
                                     id_number = main_member.id_number
-                                    dob = datetime.datetime(int(id_number[0:2]), int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
+                                    number = int(id_number[0:2])
+                                    if number == 0:
+                                        number = 2000
+
+                                    dob = datetime.datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
                                     now = datetime.datetime.now()
                                     age = relativedelta(now, dob)
 
@@ -297,20 +301,31 @@ class MainGetAllConsultantEndpoint:
                     if applicant_res:
                         for applicant in applicant_res:
                             if applicant[0].plan.id == applicant[1].id:
-                                age_limit = applicant[1].member_maximum_age
+                                max_age_limit = applicant[1].member_maximum_age
+                                min_age_limit = applicant[1].member_minimum_age
                                 main_member = session.query(MainMember).filter(
                                     MainMember.state == MainMember.STATE_ACTIVE,
                                     MainMember.applicant_id == applicant[0].id
                                 ).first()
                                 if main_member:
                                     id_number = main_member.id_number
-                                    dob = datetime.datetime(int(id_number[0:2]), int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
+
+                                    number = int(id_number[0:2])
+                                    if number == 0:
+                                        number = 2000
+
+                                    dob = datetime.datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
                                     now = datetime.datetime.now()
                                     age = relativedelta(now, dob)
 
                                     years = "{}".format(age.years)
-                                 
-                                    if int(years[2:4]) > age_limit:
+
+                                    if len(years) > 2:
+                                        years = years[2:]
+
+                                    if int(years) > max_age_limit:
+                                        main_member.age_limit_exceeded = True
+                                    elif int(years) < min_age_limit:
                                         main_member.age_limit_exceeded = True
                                         session.commit()
                     applicant_ids = [applicant.id for applicant in applicants]
@@ -578,7 +593,6 @@ class MainMemberPostEndpoint:
             if not plan:
                 raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
 
-            # date_joined = datetime.datetime()
 
             applicant_req = req.get("applicant")
 
@@ -619,6 +633,43 @@ class MainMemberPostEndpoint:
                     modified_at = datetime.datetime.now(),
                     created_at = datetime.datetime.now()
                 )
+
+
+                min_age_limit = plan.member_minimum_age
+                max_age_limit = plan.member_maximum_age
+
+                id_number = main_member.id_number
+                if int(id_number[0:2]) > 21:
+                    number = '19{}'.format(id_number[0:2])
+                else:
+                    number = '20{}'.format(id_number[0:2])
+                dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+                # dob = main_member.date_of_birth
+                dob = datetime.datetime.strptime(dob, "%Y-%m-%d")
+                now = datetime.datetime.now()
+
+                age = relativedelta(now, dob)
+
+                years = "{}".format(age.years)
+                print("TEST: ", years)
+                if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                    raise falcon.HTTPBadRequest(
+                        title="Error",
+                        description="Age Limit exceeded.")
+                elif int(years) > max_age_limit:
+                    raise falcon.HTTPBadRequest(
+                        title="Error",
+                        description="Age Limit exceeded.")
+
+                if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                    raise falcon.HTTPBadRequest(
+                        title="Error",
+                        description="Age not within required age limit.")
+                elif int(years) < min_age_limit:
+                    raise falcon.HTTPBadRequest(
+                        title="Error",
+                        description="Age not within required age limit.")
+
                 main_member.save(session)
 
                 try:
@@ -645,10 +696,10 @@ class MainMemberPostEndpoint:
                     logger.exception("Error, experienced an error while creating certificate.")
                     print(e)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
-            except:
+            except Exception as e:
                 logger.exception(
                     "Error, experienced error while creating Applicant.")
-                raise falcon.HTTPBadRequest(title="Error", description="Processing Failed. experienced error while creating Applicant.")
+                raise e
 
 
 class MainMemberPutEndpoint:
@@ -1030,10 +1081,10 @@ class SMSService:
                 contacts = [''.join(['+27', contact[1:].strip()]) if len(contact) == 10 else contact.strip() for contact in cons]
 
             if rest_dict['state']:
-                status = rest_dict.params.pop("state")
+                status = rest_dict.get("state")
 
             if rest_dict["search_string"]:
-                search_field = rest_dict.params.pop("search_string")
+                search_field = rest_dict.get("search_string")
 
             parlour = session.query(Parlour).filter(
                 Parlour.id == rest_dict["parlour_id"],
