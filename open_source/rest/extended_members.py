@@ -110,7 +110,7 @@ class ExtendedMembersGetAllEndpoint:
                     ExtendedMember.applicant_id == applicant.id
                 ).all()
 
-                extended_members = check_age_limit(extended_members, plan)
+                # extended_members = check_age_limit(extended_members, plan)
 
                 if notice:
                      extended_members = session.query(ExtendedMember).filter(
@@ -182,30 +182,57 @@ class ExtendedMembersPostEndpoint:
     def is_not_secure(self):
         return not self.secure
 
+    def get_date_of_birth(self, date_of_birth=None, id_number=None):
+        current_year = datetime.now().year
+        year_string = str(current_year)[2:]
+        century = 19
+        if date_of_birth:
+            return date_of_birth.replace('T', " ")[:10]
+        if id_number:
+            if 0 <= int(id_number[:2]) <= int(year_string):
+                century = 20
+            return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+
+    def get_date_joined(self, date_joined):
+        return date_joined.replace('T', " ")[:10]
+
     def on_post(self, req, resp):
         req = json.loads(req.stream.read().decode('utf-8'))
 
         try:
             with db.transaction() as session:
                 applicant_id = req.get("applicant_id")
-                print("Extended member")
+
+                print(req)
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_id,
                     Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
+                
+                if not req.get("id_number"):
+                    raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
+
+                # id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.parlour_id == applicant.parlour.id).first()
+
+                # if id_number:
+                #     raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
+
+
+                date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
+                date_joined = self.get_date_joined(req.get("date_joined"))
 
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
                     number = req.get("number"),
-                    date_of_birth = '2021-09-19',
+                    date_of_birth = date_of_birth,
                     type = req.get("type"),
                     id_number = req.get("id_number"),
                     relation_to_main_member = req.get("relation_to_main_member"),
                     applicant_id = applicant.id,
-                    date_joined = datetime.now(),
+                    date_joined = date_joined,
                     state=ExtendedMember.STATE_ACTIVE,
                     created_at = datetime.now(),
                     modified_at = datetime.now()
@@ -215,13 +242,17 @@ class ExtendedMembersPostEndpoint:
                 plan = applicant.plan
                 if extended_member:
                     if extended_member.type == 0:
-                        age_limit = plan.dependant_maximum_age
+                        min_age_limit = plan.spouse_minimum_age
+                        max_age_limit = plan.spouse_maximum_age
                     elif extended_member.type == 1:
-                        age_limit = plan.dependant_maximum_age
+                        min_age_limit = plan.dependant_minimum_age
+                        max_age_limit = plan.dependant_maximum_age
                     elif extended_member.type == 2:
-                        age_limit = plan.additional_extended_maximum_age
+                        min_age_limit = plan.extended_minimum_age
+                        max_age_limit = plan.extended_maximum_age
                     elif extended_member.type == 3:
-                        age_limit = plan.additional_extended_maximum_age
+                        min_age_limit = plan.additional_extended_minimum_age
+                        max_age_limit = plan.additional_extended_maximum_age
 
                     dob = extended_member.date_of_birth
                     dob = datetime.strptime(dob, "%Y-%m-%d")
@@ -231,23 +262,32 @@ class ExtendedMembersPostEndpoint:
 
                     years = "{}".format(age.years)
 
-                    if len(years) > 2 and int(years[2:4]) > age_limit:
+                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
                         raise falcon.HTTPBadRequest(
-                title="Error", 
-                description="Age Limit exceeded.")
-                    elif int(years) > age_limit:
+                            title="Error", 
+                            description="Age Limit exceeded.")
+                    elif int(years) > max_age_limit:
                         raise falcon.HTTPBadRequest(
-                title="Error", 
-                description="Age Limit exceeded.")
+                            title="Error", 
+                            description="Age Limit exceeded.")
+
+                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error", 
+                            description="Age not within required age limit.")
+                    elif int(years) < min_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error", 
+                            description="Age not within required age limit.")
 
                 extended_member.save(session)
                 update_certificate(applicant)
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
-        except:
+
+        except Exception as e:
             logger.exception(
                 "Error, experienced error while creating Applicant.")
-            raise falcon.HTTPBadRequest(title="Bad Request",
-                description="Processing Failed. experienced error while creating Applicant.")
+            raise e
 
 
 class ExtendedMemberPutEndpoint:
@@ -261,6 +301,20 @@ class ExtendedMemberPutEndpoint:
 
     def is_not_secure(self):
         return not self.secure
+
+    def get_date_of_birth(self, date_of_birth=None, id_number=None):
+        current_year = datetime.now().year
+        year_string = str(current_year)[2:]
+        century = 19
+        if date_of_birth:
+            return date_of_birth.replace('T', " ")[:10]
+        if id_number:
+            if 0 <= int(id_number[:2]) <= int(year_string):
+                century = 20
+            return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+
+    def get_date_joined(self, date_joined):
+        return date_joined.replace('T', " ")[:10]
 
     def on_put(self, req, resp, id):
         req = json.loads(req.stream.read().decode('utf-8'))
@@ -283,27 +337,34 @@ class ExtendedMemberPutEndpoint:
                 if not extended_member:
                     raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
 
+                date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
+                date_joined = self.get_date_joined(req.get("date_joined"))
+
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
                 extended_member.number = req.get("number")
-                extended_member.date_of_birth = '2021-09-18'
+                extended_member.date_of_birth = date_of_birth
                 extended_member.type = req.get("type")
                 extended_member.id_number = req.get("id_number")
                 extended_member.relation_to_main_member = req.get("relation_to_main_member")
                 extended_member.applicant_id = applicant.id
-                extended_member.date_joined = datetime.now()
+                extended_member.date_joined = date_joined
                 extended_member.modified_at = datetime.now()
 
                 plan = applicant.plan
                 if extended_member:
                     if extended_member.type == 0:
-                        age_limit = plan.dependant_maximum_age
+                        min_age_limit = plan.spouse_minimum_age
+                        max_age_limit = plan.spouse_maximum_age
                     elif extended_member.type == 1:
-                        age_limit = plan.dependant_maximum_age
+                        min_age_limit = plan.dependant_minimum_age
+                        max_age_limit = plan.dependant_maximum_age
                     elif extended_member.type == 2:
-                        age_limit = plan.additional_extended_maximum_age
+                        min_age_limit = plan.extended_minimum_age
+                        max_age_limit = plan.extended_maximum_age
                     elif extended_member.type == 3:
-                        age_limit = plan.additional_extended_maximum_age
+                        min_age_limit = plan.additional_extended_minimum_age
+                        max_age_limit = plan.additional_extended_maximum_age
 
                     dob = extended_member.date_of_birth
                     dob = datetime.strptime(dob, "%Y-%m-%d")
@@ -313,14 +374,23 @@ class ExtendedMemberPutEndpoint:
 
                     years = "{}".format(age.years)
 
-                    if len(years) > 2 and int(years[2:4]) > age_limit:
+                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
                         raise falcon.HTTPBadRequest(
-                title="Error", 
-                description="Age Limit exceeded.")
-                    elif int(years) > age_limit:
-                        extended_member.age_limit_exceeded = True
-                
-                # extended_member = extended_members.pop()
+                            title="Error", 
+                            description="Age Limit exceeded.")
+                    elif int(years) > max_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error", 
+                            description="Age Limit exceeded.")
+
+                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error", 
+                            description="Age not within required age limit.")
+                    elif int(years) < min_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error", 
+                            description="Age not within required age limit.")
 
                 extended_member.save(session)
                 update_certificate(applicant)

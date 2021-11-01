@@ -1,19 +1,27 @@
 from datetime import datetime
+import dateutil.relativedelta
 
 import falcon
 from falcon_cors import CORS
 import json
 import logging
+import smtpd
 
 from open_source import db, utils
 
 from open_source.core.consultants import Consultant
 from open_source.core.parlours import Parlour
 from open_source import webtokens
+from open_source import config
+from open_source.core.resources import USER_RESET_PASSWORD_EMAIL_TEMPLATE
+
 
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
+
 logger = logging.getLogger(__name__)
+
+conf = config.get_config()
 
 public_cors = CORS(allow_all_origins=True)
 
@@ -110,6 +118,37 @@ class ConsultantGetAllEndpoint:
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Consultant for user with ID {}.".format(id))
+
+
+class ConsultantGetEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                consultant = session.query(Consultant).filter(
+                    Consultant.id == id,
+                    Consultant.state == Consultant.STATE_ACTIVE
+                ).first()
+
+
+                if consultant is None:
+                    raise falcon.HTTPNotFound(title="Consultant Not Found")
+
+                resp.body = json.dumps(consultant.to_dict(), default=str)
+        except:
+            logger.exception("Error, Failed to get Consultant with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Consultant with ID {}.".format(id))
+
 
 
 # class ConsultantGetAllPendingEndpoint:
@@ -415,7 +454,6 @@ class ConsultantAuthEndpoint:
                 rest_dict = get_json_body(req)
 
                 if 'username' not in rest_dict:
-                    # Citiq Prepaid password reset
                     raise falcon.HTTPBadRequest(
                         title='400 Malformed Auth request',
                         description='Missing credential[username]')
@@ -535,11 +573,21 @@ class ConsultantSignupEndpoint:
 
 class ForgotPasswordEndpoint:
 
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
     def on_post(self, req, resp):
 
         with db.transaction() as session:
-
-            rest_dict = req
+            
+            rest_dict = get_json_body(req)
 
             email = None
 
@@ -549,28 +597,91 @@ class ForgotPasswordEndpoint:
                 email = rest_dict.get('email')
 
             if not email:
-                raise falcon.HttpValidationError({'email': 'An email address or username is required'})
+                raise falcon.HTTPBadRequest(title='Error', description='An email address or username is required')
 
             # if email and not user_identifier:
             user = self.get_user_by_email(session, email)
             if not user:
-                raise falcon.HttpValidationError({
-                    'email': 'Invalid email address or more than one account is linked to this email'
-                })
+                raise falcon.HTTPBadRequest(title='Error', description='Email address does not exist')
+            #  DoNotReply@osource.co.za 
+            # 7BHC9ko7T
 
             # session.add(user)
             # session.commit()
 
+            import smtplib, ssl
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            port = 465  # For SSL
+            smtp_server = "smtp.gmail.com"
+            sender_email = "nkosananikani@gmail.com"  # Enter your address
+            receiver_email = email  # Enter receiver address
+            password = 'Nkola0221@gmail'
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "multipart test"
+            message["From"] = sender_email
+            message["To"] = receiver_email
+
+            # Create the plain-text and HTML version of your message
+            # text = """\
+            # Hi,
+            # How are you?
+            # Real Python has many great tutorials:
+            # www.realpython.com"""
+            # html = """\
+            # <html>
+            # <body>
+            #     <p>Hi,<br>
+            #     <a href="http://localhost:4200/reset-password?email={email}">Reset password</a> 
+                
+            #     </p>
+            # </body>
+            # </html>
+            # """.format(email=email)
+
+            args = {
+                "user": user.pretty_name,
+                "domain": conf.url,
+                "email": email,
+                "year": datetime.now().year
+            }
+
+            email_body = utils.render_template(
+                USER_RESET_PASSWORD_EMAIL_TEMPLATE,
+                args
+            )
+
+            subject = "Change of banking details"
+
+
+            # Turn these into plain/html MIMEText objects
+            # part1 = MIMEText(text, "plain")
+            part2 = MIMEText(email_body, "html")
+
+            # Add HTML/plain-text parts to MIMEMultipart message
+            # The email client will try to render the last part first
+            # message.attach(part1)
+            message.attach(part2)
+            context = ssl.create_default_context()
+
+            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, receiver_email, message.as_string())
 
             resp.body = json.dumps({'status': 'success'})
 
 
     def get_user_by_email(self, session, email):
         try:
-            return session.query(Consultant)\
-                .filter(Consultant.email == email, Consultant.state == Consultant.STATE_ACTIVE).one()
+            user =  session.query(Consultant)\
+                .filter(Consultant.email == email, Consultant.state == Consultant.STATE_ACTIVE).one_or_none()
+            if not user:
+                user =  session.query(Parlour)\
+                .filter(Parlour.email == email, Parlour.state == Parlour.STATE_ACTIVE).one_or_none()
+
         except MultipleResultsFound:
             return None
-        except NoResultFound:
-            return None
-        return None
+
+        return user

@@ -133,57 +133,59 @@ class ParlourPostEndpoint:
 
     def on_post(self, req, resp):
 
-        req = json.loads(req.stream.read().decode('utf-8'))
-        try:
-            with db.transaction() as session:
-                if not req.get("email"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
+        with db.transaction() as session:
+            errors = {}
+            rest_dict = get_json_body(req)
 
-                if not req.get("username"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing username field.")
+            if not rest_dict.get('email'):
+                raise falcon.HTTPBadRequest(title="Email", description="Email is a required field.")
 
-                if not req.get("parlour_name"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing parlour name field.")
+            if not rest_dict.get('username'):
+                raise falcon.HTTPBadRequest(title="Username", description="Username is a required field.")
 
-                if not req.get("person_name"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing person name field.")
+            rest_dict['email'] = rest_dict['email'].lower().strip()
 
-                parlour_exists = session.query(Parlour).filter(
-                    Parlour.email == req["email"],
-                    Parlour.state == Parlour.STATE_ACTIVE).first()
-                
-                if parlour_exists:
-                    raise falcon.HTTPBadRequest(title="Error", description="Email already exists")
+            email = rest_dict.get('email')
 
-                parlour_exists = session.query(Parlour).filter(
-                    Parlour.email == req["parlour_name"],
-                    Parlour.state == Parlour.STATE_ACTIVE).first()
-                
-                if parlour_exists:
-                    raise falcon.HTTPBadRequest(title="Error", description="Parlour name already exists") 
+            user = Parlour()
 
-                parlour_exists = session.query(Parlour).filter(
-                    Parlour.email == req["username"],
-                    Parlour.state == Parlour.STATE_ACTIVE).first()
+            if not utils.is_username_unique(session, rest_dict.get("username")):
+                errors['username'] = 'Username {} is already in use.'.format(
+                    rest_dict.get("username"))
+                raise falcon.HTTPBadRequest(title="Username", description=errors["username"])
+            if not utils.is_valid_email_address(email):
+                errors['email'] = 'Email must be a valid email address'
+                raise falcon.HTTPBadRequest(title="Email", description=errors["email"])
 
-                if parlour_exists:
-                    raise falcon.HTTPBadRequest(title="Error", description="Username already exists") 
+            if not utils.is_email_unique(session, email):
+                errors['email'] = 'Email address {} is already in use.'.format(
+                    email)
+                raise falcon.HTTPBadRequest(title="Email", description=errors["email"])
 
-                parlour = Parlour(
-                    parlourname=req["parlour_name"],
-                    personname=req["person_name"],
-                    number=req["number"],
-                    email=req["email"],
-                    username=req["username"],
-                    state=Parlour.STATE_ACTIVE,
-                )
-                parlour.save(session)
-                resp.body = json.dumps(parlour.to_dict(), default=str)
-        except:
-            logger.exception(
-                "Error, experienced error while creating Parlour.")
-            raise falcon.HTTPBadRequest(title="Error",
-            description="Processing Failed. experienced error while creating Parlour.")
+            if rest_dict["password"] != rest_dict["confirm_password"]:
+                errors['password'] = 'Password and confirm Password do not match.'
+                raise falcon.HTTPBadRequest(title="password", description=errors["password"])
+
+            user.email = email
+            user.username = rest_dict.get("username")
+            user.parlourname = rest_dict.get("parlour_name")
+            user.address = rest_dict.get("address")
+            user.personname = rest_dict.get("person_name")
+            user.number = rest_dict.get("number")
+            user.agreed_to_terms = rest_dict.get("agreed_to_terms")
+            user.state = Parlour.STATE_ACTIVE
+            user.created_at = datetime.now()
+            user.modified_at = datetime.now()
+
+            user.set_password(rest_dict.get("password"))
+
+            session.add(user)
+
+            session.commit()
+
+            user_dict = user.to_dict()
+
+            resp.body = json.dumps(user_dict, default=str)
 
 
 class ParlourPutEndpoint:
@@ -336,6 +338,7 @@ class ParlourSignupEndpoint:
             user.address = rest_dict.get("address")
             user.personname = rest_dict.get("person_name")
             user.number = rest_dict.get("number")
+            user.agreed_to_terms = rest_dict.get("agreed_to_terms")
             user.state = Parlour.STATE_ACTIVE
             user.created_at = datetime.now()
             user.modified_at = datetime.now()
@@ -348,10 +351,7 @@ class ParlourSignupEndpoint:
 
             user_dict = user.to_dict()
 
-            resp.body = json.dumps({
-                'id': user_dict['id'],
-                'email': user_dict.get('email'),
-            })
+            resp.body = json.dumps(user_dict, default=str)
 
 
 class ParlourGetAllPendingEndpoint:
@@ -409,7 +409,7 @@ class ParlourGetAllArchivedEndpoint:
 
 
 class ParlourAuthEndpoint:
-    # cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -426,7 +426,6 @@ class ParlourAuthEndpoint:
                 rest_dict = get_json_body(req)
 
                 if 'username' not in rest_dict:
-                    # Citiq Prepaid password reset
                     raise falcon.HTTPBadRequest(
                         title='400 Malformed Auth request',
                         description='Missing credential[username]')
@@ -473,7 +472,16 @@ class ParlourAuthEndpoint:
 
 
 class ForgotPasswordEndpoint:
-    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
     def on_post(self, req, resp):
 
         with db.transaction() as session:
@@ -517,19 +525,31 @@ class ForgotPasswordEndpoint:
 
 
 class ResetPasswordPostEndpoint:
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
 
     def on_post(self, req, resp):
         with db.transaction() as session:
 
             rest_dict = get_json_body(req)
-            code = rest_dict.get('code')
             password = rest_dict.get('password')
+            email =  rest_dict.get('email')
+
+            if not email:
+                raise falcon.HTTPBadRequest(title='Error', description='Failed to identify user.')
 
             if not password:
-                raise falcon.HttpValidationError({'password': 'Password is required'})
+                raise falcon.HTTPBadRequest(title='Error', description='Password is required')
 
-            if not utils.is_valid_password(password):
-                raise falcon.HttpValidationError({'password': 'Password is invalid'})
+            # if not utils.is_valid_password(password):
+            #     raise falcon.HTTPBadRequest(title='Error', description='Password is invalid')
 
             # Non CIC users must confirm their new password -
             # CIC user password confirmation handled by CIC Web
@@ -538,20 +558,24 @@ class ResetPasswordPostEndpoint:
                 confirm_password = rest_dict.get('confirm_password')
 
                 if confirm_password != password:
-                    raise falcon.HttpValidationError({'password': 'Password and confirm password do not match'})
+                    raise falcon.HTTPBadRequest(title='Error', description='Password and confirm password do not match')
 
-            reset = Parlour.get_password_reset(session, code)
+            try:
+                reset = session.query(Parlour).filter(Parlour.email == email).one_or_none()
+            except MultipleResultsFound:
+                raise falcon.HTTPBadRequest(title='Error', description='The email for this account is not unique')
 
             if not reset:
-                raise falcon.HttpValidationError({'code': 'Password reset is invalid or has expired'})
-
-            if reset.is_deleted():
-                raise falcon.HttpValidationError({'code': 'Password reset is already used'})
+                try:
+                    reset = session.query(Consultant).filter(Consultant.email == email).one_or_none()
+                except MultipleResultsFound:
+                    raise falcon.HTTPBadRequest(title='Error', description='The email for this account is not unique')
+                if not reset:
+                    raise falcon.HTTPBadRequest(title='Error', description='Password reset is invalid.')
 
             # reset the users password
-            reset.user.set_password(password)
+            reset.set_password(password)
             # make the reset deleted so that we cannot use it again
-            reset.make_deleted()
 
             resp.body = json.dumps({'status': 'success'})
 

@@ -4,7 +4,7 @@ import datetime
 import calendar
 import re
 import falcon
-
+from jinja2 import Template
 from open_source.core import parlours, consultants, admins
 
 from typing import Any, Iterable, Dict
@@ -299,3 +299,7 @@ def authenticate(session, username, password):
     if success:
         return user, success
     return authenticate_admin(session, username, password)
+
+
+def render_template(template: str, args: dict):
+    return Template(template).render(args)

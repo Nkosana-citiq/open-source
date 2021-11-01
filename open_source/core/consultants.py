@@ -91,6 +91,10 @@ class Consultant(db.Base):
         self.make_deleted()
         session.commit()
 
+    @property
+    def pretty_name(self) -> str:
+        return '{} {}'.format(self.first_name, self.last_name)
+
     @staticmethod
     def to_password_hash(plaintext):
         salt = config.get_config().password_salt

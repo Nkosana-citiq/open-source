@@ -76,8 +76,8 @@ class AdminSignupEndpoint:
                     email)
                 raise falcon.HTTPBadRequest(title="Email", description=errors["email"])
 
-            if rest_dict["password"] != rest_dict["confirm_password"]:
-                errors['password'] = 'Password and confirm Password do not match.'
+            if not rest_dict["password"]:
+                errors['password'] = 'Password is a required field.'
                 raise falcon.HTTPBadRequest(title="password", description=errors["password"])
 
             user.email = email
@@ -104,7 +104,7 @@ class AdminSignupEndpoint:
 
 
 class ParlourDeleteEndpoint:
-    cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure

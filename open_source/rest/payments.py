@@ -22,6 +22,7 @@ from borb.pdf.canvas.layout.text.paragraph import Paragraph
 
 from borb.pdf.document import Document
 from borb.pdf.page.page import Page
+from borb.pdf.page.page_size import PageSize
 from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
 from borb.pdf.canvas.layout.image.image import Image
 from borb.pdf.canvas.layout.text.paragraph import Paragraph
@@ -187,7 +188,7 @@ class PaymentPostEndpoint:
 
                 if not plan:
                     raise falcon.HTTPNotFound(title="Not Found", description="Plan does not exist.")
-                print(rest_dict.get("date"))
+
                 start_date = datetime.strptime(rest_dict.get("date"), "%d/%m/%Y")
                 end_date = datetime.strptime(rest_dict.get("end_date"), "%d/%m/%Y")
 
@@ -615,7 +616,7 @@ if __name__ == "__main__":
     pdf = Document()
 
     # Add page
-    page = Page()
+    page = Page(PageSize.A7_PORTRAIT)
     pdf.append_page(page)
     page_layout = SingleColumnLayout(page)
     page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)

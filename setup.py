@@ -13,7 +13,9 @@ setup(name='open-source',
           'raven',
           'deepdiff',
           'mysqlclient',
-          'reportlab'
+          'reportlab',
+          'borb',
+          'Jinja2'
       ],
       extras_require={
           'dev': ['flake8'],

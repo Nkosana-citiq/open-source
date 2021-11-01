@@ -1,6 +1,7 @@
 import datetime
 from dateutil.relativedelta import relativedelta
 from open_source import config
+from open_source.core import consultants
 
 from open_source.core.consultants import Consultant
 from open_source.core.plans import Plan
@@ -67,12 +68,19 @@ class MainGetAllParlourEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
+                print("EXECUTE")
                 try:
                     status = None
                     search_field = None
                     search_date = None
                     notice = None
+                    consultant = None
+                    consultants = None
+                    parlour_branch = None
+                    start_date = None
+                    end_date = None
 
+                    print(req.params)
                     if "status" in req.params:
                         status = req.params.pop("status")
 
@@ -84,6 +92,22 @@ class MainGetAllParlourEndpoint:
 
                     if "notice" in req.params:
                         notice = req.params.pop("notice")
+
+                    if "start_date" in req.params:
+                        start_date = req.params.pop("start_date")
+
+                    if "end_date" in req.params:
+                        end_date = req.params.pop("end_date")
+
+                    if "consultant" in req.params:
+                        consultant_id = req.params.pop("consultant")
+                        consultant = session.query(Consultant).get(consultant_id)
+                        print("Consultant ID: ", consultant.id)
+
+                    if "branch" in req.params:
+                        parlour_branch = req.params.pop("branch")
+                        consultants = session.query(Consultant).filter(Consultant.branch == parlour_branch.strip()).all()
+                        print([consultant.id for consultant in consultants])
 
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
@@ -116,12 +140,27 @@ class MainGetAllParlourEndpoint:
                             Applicant.policy_num.ilike('{}%'.format(search_field)),
                             Applicant.parlour_id == parlour.id
                         )
-                    ).all()
+                    )
 
-                    if not main_members:
+                    if start_date:
+                        main_members = main_members.filter(
+                            MainMember.created_at >= start_date
+                        )
+
+                    if end_date:
+                        main_members = session.query(MainMember).filter(
+                            MainMember.created_at <= end_date
+                        )
+
+                    if not main_members.all():
                         resp.body = json.dumps([])
-
-                    resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
+                    else:
+                        if consultant:
+                            main_members = [main_member for main_member in main_members.all() if main_member.applicant.consultant.id == consultant.id]
+                        if consultants:
+                            consultant_ids = [consultant.id for consultant in consultants]
+                            main_members = [main_member for main_member in main_members.all() if main_member.applicant.consultant.id in consultant_ids]
+                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -129,14 +168,22 @@ class MainGetAllParlourEndpoint:
                         Applicant.parlour_id == parlour.id
                     ).order_by(Applicant.id.desc())
 
-                    if status:
-                        applicants = applicants.filter(Applicant.status == status.lower()).all()
+                    if consultant:
+                        applicants = applicants.filter(Applicant.consultant_id == consultant.id)
+                    
+                    if consultants:
+                        consultant_ids = [consultant.id for consultant in consultants]
+                        applicants = applicants.filter(Applicant.consultant_id.in_(consultant_ids))
 
-                    applicant_res = [(applicant, applicant.plan) for applicant in applicants]
+                    if status:
+                        applicants = applicants.filter(Applicant.status == status.lower())
+
+                    applicant_res = [(applicant, applicant.plan) for applicant in applicants.all()]
                     if applicant_res:
                         for applicant in applicant_res:
                             if applicant[0].plan.id == applicant[1].id:
-                                age_limit = applicant[1].member_maximum_age
+                                max_age_limit = applicant[1].member_maximum_age
+                                min_age_limit = applicant[1].member_minimum_age
                                 main_member = session.query(MainMember).filter(
                                     MainMember.state == MainMember.STATE_ACTIVE,
                                     MainMember.applicant_id == applicant[0].id
@@ -147,18 +194,30 @@ class MainGetAllParlourEndpoint:
                                     now = datetime.datetime.now()
                                     age = relativedelta(now, dob)
 
-                                    if age.years > age_limit:
+                                    if age.years > max_age_limit:
+                                        main_member.age_limit_exceeded = True
+                                    if age.years < min_age_limit:
                                         main_member.age_limit_exceeded = True
                                         session.commit()
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    applicant_ids = [applicant.id for applicant in applicants.all()]
                     main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.applicant_id.in_(applicant_ids)
-                    ).all()
-                    if not main_members:
+                    )
+
+                    if start_date:
+                        main_members = main_members.filter(
+                            MainMember.created_at >= start_date
+                        )
+
+                    if end_date:
+                        main_members = main_members.filter(
+                            MainMember.created_at <= end_date
+                        )
+                    if not main_members.all():
                         resp.body = json.dumps([])
                     else:
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
+                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all()], default=str)
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
@@ -184,6 +243,8 @@ class MainGetAllConsultantEndpoint:
                     status = None
                     search_field = None
                     notice = None
+
+                    print(req.params)
                     if "status" in req.params:
                         status = req.params.pop("status")
 
@@ -489,52 +550,51 @@ class MainMemberPostEndpoint:
 
     def on_post(self, req, resp, id):
         req = json.loads(req.stream.read().decode('utf-8'))
+        with db.transaction() as session:
+            parlour = session.query(Parlour).filter(
+                Parlour.id == req["parlour_id"],
+                Parlour.state == Parlour.STATE_ACTIVE).first()
 
-        try:
-            with db.transaction() as session:
-                parlour = session.query(Parlour).filter(
-                    Parlour.id == req["parlour_id"],
-                    Parlour.state == Parlour.STATE_ACTIVE).first()
+            if not parlour:
+                raise falcon.HTTPBadRequest("Parlour does not exist.")
+            if not req.get("id_number"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
+            if not req.get("first_name"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
+            if not req.get("last_name"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
 
-                if not parlour:
-                    raise falcon.HTTPBadRequest("Parlour does not exist.")
-                if not req.get("id_number"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
-                if not req.get("first_name"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
-                if not req.get("last_name"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
+            consultant = session.query(Consultant).get(id)
 
-                consultant = session.query(Consultant).get(id)
+            if not consultant:
+                raise falcon.HTTPBadRequest(title="Error", description="Consultant does not exist.")
 
-                if not consultant:
-                    raise falcon.HTTPBadRequest(title="Error", description="Consultant does not exist.")
+            plan_id = req.get("plan_id")
 
-                plan_id = req.get("plan_id")
+            plan = session.query(Plan).filter(
+                Plan.id == plan_id,
+                Plan.state == Plan.STATE_ACTIVE).one_or_none()
 
-                plan = session.query(Plan).filter(
-                    Plan.id == plan_id,
-                    Plan.state == Plan.STATE_ACTIVE).one_or_none()
+            if not plan:
+                raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
 
-                if not plan:
-                    raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
+            # date_joined = datetime.datetime()
 
-                # date_joined = datetime.datetime()
+            applicant_req = req.get("applicant")
 
-                applicant_req = req.get("applicant")
+            if not applicant_req.get("policy_num"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
 
-                if not applicant_req.get("policy_num"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
+            id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
 
-                id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
+            if id_number:
+                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
 
-                if id_number:
-                    raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
-
+            try:
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
                     personal_docs = applicant_req.get("document"),
-                    status = 'paid',
+                    status = 'unpaid',
                     plan_id = plan.id,
                     consultant_id = consultant.id,
                     parlour_id = parlour.id,
@@ -585,10 +645,10 @@ class MainMemberPostEndpoint:
                     logger.exception("Error, experienced an error while creating certificate.")
                     print(e)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
-        except:
-            logger.exception(
-                "Error, experienced error while creating Applicant.")
-            raise falcon.HTTPBadRequest(title="Error", description="Processing Failed. experienced error while creating Applicant.")
+            except:
+                logger.exception(
+                    "Error, experienced error while creating Applicant.")
+                raise falcon.HTTPBadRequest(title="Error", description="Processing Failed. experienced error while creating Applicant.")
 
 
 class MainMemberPutEndpoint:
@@ -626,13 +686,12 @@ class MainMemberPutEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
 
                 applicant_req = req.get("applicant")
-                plan_req = req.get("plan")
-                plan = session.query(Plan).filter(
-                    Plan.id == plan_req.get("id"),
-                    Plan.state == Plan.STATE_ACTIVE).one_or_none()
 
-                if not plan:
-                    raise falcon.HTTPNotFound(title="Plan not found", description="Request missing Plan.")
+                plan_id = req.get("plan_id")
+
+                plan = session.query(Plan).filter(
+                    Plan.id == plan_id,
+                    Plan.state == Plan.STATE_ACTIVE).one_or_none()
 
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_req.get("id"),
@@ -642,9 +701,12 @@ class MainMemberPutEndpoint:
                 if not applicant:
                     raise falcon.HTTPNotFound(title="Applicant not found", description="Could not find Applicant with given ID.")
 
-                applicant.plan_id = plan.id
+                if plan:
+                    applicant.plan_id = plan.id
                 applicant.policy_num = applicant_req.get("policy_num")
-                applicant.document = applicant_req.get("document")
+                applicant.address = applicant_req.get("address")
+                if applicant_req.get("document"):
+                    applicant.document = applicant_req.get("document")
 
                 main_member = session.query(MainMember).filter(
                     MainMember.id == id,

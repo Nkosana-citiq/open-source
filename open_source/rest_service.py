@@ -10,7 +10,7 @@ from open_source.rest import middleware
 from open_source.rest import (
     applicants, consultants, parlours, plans,
     main_members, extended_members, payments,
-    additional_extended_members, dependants
+    additional_extended_members, dependants, admins
 )
 
 # allowed_origins = None
@@ -60,6 +60,7 @@ api.add_route('/open-source/parlours/{id}/action/sms', parlours.ParlourAddSMSEnd
 api.add_route('/open-source/parlours/{id}/delete', parlours.ParlourDeleteEndpoint())
 api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
+api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
 
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
@@ -80,6 +81,7 @@ api.add_route('/open-source/consultants/{id}/delete', consultants.ConsultantDele
 api.add_route('/open-source/consultants/signin', consultants.ConsultantAuthEndpoint())
 api.add_route('/open-source/consultants/signup', consultants.ConsultantSignupEndpoint())
 api.add_route('/open-source/consultants/{id}/actions/change_password', consultants.ChangeUserPasswordEndpoint())
+api.add_route('/open-source/actions/forgot_password', consultants.ForgotPasswordEndpoint())
 
 
 api.add_route('/open-source/consultants/{id}/export_to_csv/', main_members.ApplicantExportToExcelEndpoint())
@@ -131,6 +133,8 @@ api.add_route('/open-source/parlours/{id}/payments', payments.PaymentPostEndpoin
 api.add_route('/open-source/applicants/{id}/invoices/all', payments.InvoicesGetAllEndpoint())
 api.add_route('/open-source/invoices/{id}', payments.RecieptGetEndpoint())
 
+
+api.add_route('/open-source/admins/signup', admins.AdminSignupEndpoint())
 
 if __name__ == '__main__':
     from wsgiref.simple_server import make_server

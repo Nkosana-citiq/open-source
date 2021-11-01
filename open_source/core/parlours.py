@@ -3,6 +3,8 @@ from random import choice, randint
 import hashlib
 import datetime
 
+from sqlalchemy.sql.sqltypes import Boolean
+
 from open_source import config
 from open_source import db
 from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
@@ -66,6 +68,7 @@ class Parlour(db.Base):
     address = Column(String(length=255))
     password = Column(String(length=255))
     number_of_sms = Column(Integer())
+    agreed_to_terms = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
 
@@ -102,6 +105,10 @@ class Parlour(db.Base):
         self.make_deleted()
         session.commit()
 
+    @property
+    def pretty_name(self) -> str:
+        return self.personname.title()
+
     @staticmethod
     def to_password_hash(plaintext):
         salt = config.get_config().password_salt
@@ -114,12 +121,11 @@ class Parlour(db.Base):
         return self.password == self.to_password_hash(password)
 
     @classmethod
-    def get_password_reset(session, code):
+    def get_password_reset(session, email):
         try:
-            return session.query(PasswordReset)\
+            return session.query(Parlour)\
                 .filter(
-                    PasswordReset.code == code,
-                    PasswordReset.expired > datetime.datetime.now()
+                    Parlour.email == email
                 ).one()
 
         except MultipleResultsFound:
