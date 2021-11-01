@@ -338,7 +338,7 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     pdf = Document()
 
     # Add page
-    page = Page()
+    page = Page(Decimal(595), Decimal(842))
     pdf.append_page(page)
     page_layout = SingleColumnLayout(page)
     page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
@@ -388,142 +388,142 @@ class PaymentDeleteEndpoint:
 
 def _build_invoice_information(invoice):
 
-    table_001 = Table(number_of_rows=32, number_of_columns=3)
+    table_001 = Table(number_of_rows=32, number_of_columns=2)
 
     table_001.add(Paragraph("       "))
     table_001.add(Paragraph("{}".format(invoice.parlour.parlourname), font="Helvetica-Bold", horizontal_alignment=Alignment.LEFT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Date: "))
     now = datetime.now()
     table_001.add(Paragraph("%d/%d/%d" % (now.day, now.month, now.year), horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph("  "))
+    # table_001.add(Paragraph("  "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     address = invoice.address if invoice.address else " "
     table_001.add(Paragraph("Address: "))
     table_001.add(Paragraph(address, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Contact: "))
     table_001.add(Paragraph(invoice.contact, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Email: "))
     email = invoice.email if invoice.email else " "
     table_001.add(Paragraph(email, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
-    table_001.add(Paragraph("------------------------------------------------------------------------------"))
+    table_001.add(Paragraph("--------------------------------------------------------------------------------------------------------------------"))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Customer Details ", font="Helvetica-Bold"))
     # months = invoice.amount if invoice.amount else " "
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Invoice: "))
     table_001.add(Paragraph("#{}".format(invoice.number), horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Policy Number: "))
     table_001.add(Paragraph("{}".format(invoice.policy_number), horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Premium: "))
     table_001.add(Paragraph("R {}".format(invoice.premium), horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Name and Surname: "))
     table_001.add(Paragraph(invoice.customer, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("ID Number: "))
     table_001.add(Paragraph(invoice.id_number, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Amount Paid: "))
     amount = str(invoice.amount) if invoice.amount else " "
     table_001.add(Paragraph("R {}".format(amount), horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Month Paid: "))
     months = invoice.number_of_months if invoice.number_of_months else " "
     table_001.add(Paragraph(months, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Months Paid For: "))
     months_paid = invoice.months_paid if invoice.months_paid else " "
     table_001.add(Paragraph(months_paid, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Captured by: "))
     table_001.add(Paragraph(invoice.assisted_by, horizontal_alignment=Alignment.RIGHT))
-    table_001.add(Paragraph(" "))
+    # table_001.add(Paragraph(" "))
 
     table_001.set_padding_on_all_cells(Decimal(2), Decimal(2), Decimal(2), Decimal(2))
     table_001.no_borders()
@@ -609,29 +609,3 @@ class InvoicesGetEndpoint:
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed while getting invoices.")
-
-
-if __name__ == "__main__":
-    # Create document
-    pdf = Document()
-
-    # Add page
-    page = Page(PageSize.B10_PORTRAIT)
-    pdf.append_page(page)
-    page_layout = SingleColumnLayout(page)
-    page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
-    page_layout.add(    
-        Image(        
-            "https://s3.stackabuse.com/media/articles/creating-an-invoice-in-python-with-ptext-1.png",        
-            width=Decimal(128),        
-            height=Decimal(128),    
-            ))
-
-    # Invoice information table  
-    page_layout.add(_build_invoice_information())  
-    
-    # Empty paragraph for spacing  
-    page_layout.add(Paragraph(" "))
-
-    with open("output.pdf", "wb") as pdf_file_handle:
-        PDF.dumps(pdf_file_handle, pdf)
