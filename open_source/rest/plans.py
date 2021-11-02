@@ -102,7 +102,7 @@ class PlanPostEndpoint:
                     Parlour.state == Parlour.STATE_ACTIVE).first()
 
                 if not parlour:
-                    raise falcon.HTTPBadRequest(titile="Parlour not found", description="Parlour does not exist.")
+                    raise falcon.HTTPBadRequest(title="Parlour not found", description="Parlour does not exist.")
 
                 plan_exists = session.query(Plan).filter(
                     Plan.plan == req["plan"],
@@ -111,7 +111,7 @@ class PlanPostEndpoint:
                 ).first()
 
                 if plan_exists:
-                    raise falcon.HTTPBadRequest(titile="Name exists", description="You already have a plan with this name.")
+                    raise falcon.HTTPBadRequest(title="Name exists", description="You already have a plan with this name.")
 
                 plan = Plan(
                     plan=req.get("plan"),
