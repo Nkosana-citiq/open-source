@@ -141,12 +141,10 @@ class PlanPostEndpoint:
                 )
                 plan.save(session)
                 resp.body = json.dumps(plan.to_dict(), default=str)
-        except:
+        except Exception as e:
             logger.exception(
                 "Error, experienced error while creating Plan.")
-            raise falcon.HTTPBadRequest(
-                title="Error",
-                description="Processing Failed. experienced error while creating Plan.")
+            raise e
 
 
 class PlanPutEndpoint:
