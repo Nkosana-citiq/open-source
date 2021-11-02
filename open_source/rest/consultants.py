@@ -617,7 +617,7 @@ class ForgotPasswordEndpoint:
             smtp_server = "smtp.gmail.com"
             sender_email = "nkosananikani@gmail.com"  # Enter your address
             receiver_email = email  # Enter receiver address
-            password = 'Nkola0221@gmail'
+            password = '3McsgoId1grf'
 
             message = MIMEMultipart("alternative")
             message["Subject"] = "multipart test"
