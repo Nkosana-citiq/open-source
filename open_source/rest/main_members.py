@@ -18,6 +18,7 @@ import csv
 import falcon
 import json
 import logging
+import pandas as pd
 
 from open_source import db
 
@@ -1043,6 +1044,41 @@ class ApplicantExportToExcelEndpoint:
                     for ex in extended_members:
                        e = ex.to_short_dict()
                        results.append(e)
+                # if results:
+                    # data = []
+                    # for res in results:
+                    #     applicant = res.get('applicant')
+                    #     plan = applicant.get('plan')
+
+
+                    #     data.append({
+                    #         'First Name': res.get('first_name'),
+                    #         'Last Name': res.get('last_name'),
+                    #         'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
+                    #         'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
+                    #         'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
+                    #         'Status': applicant.get('status') if res.get else None,
+                    #         'Premium': None if res.get('relation_to_main_member') else plan.get('premium'),
+                    #         'Underwriter': None if res.get('relation_to_main_member') else plan.get('underwriter_premium'),
+                    #         'Relation to Main Member': res.get('relation_to_main_member') if res.get('relation_to_main_member') else None,
+                    #         })
+
+
+                    # df = pd.DataFrame(data)
+                    # writer = pd.ExcelWriter('{}_{}.xlsx'.format(consultant.first_name, consultant.last_name), engine='xlsxwriter')
+                    # df.to_excel(writer, sheet_name='Sheet1', index=False)
+                    # os.chdir('./assets/uploads/spreadsheets')
+                    # path = os.getcwd()
+                    # writer.save()
+                    # os.chdir('../../..')
+
+                    # with open('{}/{}_{}.xlsx'.format(path, consultant.first_name, consultant.last_name), 'rb') as f:
+                    #     resp.downloadable_as = '{}/{}_{}.xls'.format(path, consultant.first_name, consultant.last_name)
+                    #     resp.content_disposition = 'attachment; filename="{}.xls"'.format(path, consultant.first_name, consultant.last_name)
+                    #     resp.content_type = 'application/octet-stream'
+                    #     resp.stream = [f.read()]
+                    #     resp.status = falcon.HTTP_200
+
                 if not main_members:
                     resp.body = json.dumps([])
                 else:

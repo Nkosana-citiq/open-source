@@ -12,6 +12,8 @@ importlib-metadata==4.8.1
 Jinja2==2.7.3
 mysqlclient==2.0.3
 ordered-set==4.0.2
+openpyxl==3.0.9
+pandas==1.1.5
 Pillow==8.3.2
 PyJWT==2.1.0
 python-barcode==0.13.1
@@ -25,4 +27,6 @@ six==1.16.0
 SQLAlchemy==1.4.23
 typing-extensions==3.10.0.2
 urllib3==1.26.7
+xlrd==2.0.1
+XlsxWriter==3.0.2
 zipp==3.5.0

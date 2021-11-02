@@ -13,6 +13,9 @@ from open_source.rest import (
     additional_extended_members, dependants, admins
 )
 
+from falcon_multipart.middleware import MultipartMiddleware
+
+
 # allowed_origins = None
 
 # if config.get_config().is_prod():
@@ -45,6 +48,7 @@ cors = CORS(
 
 api = falcon.API(
     middleware=[cors.middleware,
+    MultipartMiddleware(),
     middleware.AuthMiddleware()]
 )
 
