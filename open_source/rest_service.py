@@ -88,7 +88,7 @@ api.add_route('/open-source/consultants/{id}/actions/change_password', consultan
 api.add_route('/open-source/actions/forgot_password', consultants.ForgotPasswordEndpoint())
 
 
-api.add_route('/open-source/consultants/{id}/export_to_csv/', main_members.ApplicantExportToExcelEndpoint())
+api.add_route('/open-source/actions/{id}/export_to_excel/', main_members.ApplicantExportToExcelEndpoint())
 
 api.add_route('/open-source/consultants/{id}/applicants/', applicants.ApplicantGetAllEndpoint())
 api.add_route('/open-source/applicants', applicants.ApplicantPostEndpoint())

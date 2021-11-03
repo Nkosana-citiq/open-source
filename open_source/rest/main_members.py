@@ -1003,26 +1003,38 @@ class ApplicantExportToExcelEndpoint:
             with db.transaction() as session:
                 try:
                     status = None
+                    permission = None
+                    parlour = None
+                    consultant = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
 
-                    consultant = session.query(Consultant).filter(
-                        Consultant.state == Consultant.STATE_ACTIVE,
-                        Consultant.id == id
-                    ).one_or_none()
+                    if "permission" in req.params:
+                        permission = req.params.pop("permission")
+
+                    if permission.lower() == 'consultant':
+                        consultant = session.query(Consultant).filter(
+                            Consultant.state == Consultant.STATE_ACTIVE,
+                            Consultant.id == id
+                        ).one_or_none()
 
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
-                if not consultant:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                if consultant:
+                    applicants = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.status != 'lapsed',
+                        Applicant.consultant_id == consultant.id
+                    ).order_by(Applicant.id.desc())
 
-                applicants = session.query(Applicant).filter(
-                    Applicant.state == Applicant.STATE_ACTIVE,
-                    Applicant.status != 'lapsed',
-                    Applicant.consultant_id == consultant.id
-                ).order_by(Applicant.id.desc())
+                if parlour:
+                    applicants = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.status != 'lapsed',
+                        Applicant.parlour_id == parlour.id
+                    ).order_by(Applicant.id.desc())
 
                 if status:
                     applicants = applicants.filter(Applicant.status == status.lower()).all()
@@ -1044,49 +1056,42 @@ class ApplicantExportToExcelEndpoint:
                     for ex in extended_members:
                        e = ex.to_short_dict()
                        results.append(e)
-                # if results:
-                    # data = []
-                    # for res in results:
-                    #     applicant = res.get('applicant')
-                    #     plan = applicant.get('plan')
+                if results:
+                    data = []
+                    for res in results:
+                        applicant = res.get('applicant')
+                        plan = applicant.get('plan')
 
+                        data.append({
+                            'First Name': res.get('first_name'),
+                            'Last Name': res.get('last_name'),
+                            'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
+                            'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
+                            'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
+                            'Status': applicant.get('status') if res.get else None,
+                            'Premium': None if res.get('relation_to_main_member') else plan.get('premium'),
+                            'Underwriter': None if res.get('relation_to_main_member') else plan.get('underwriter_premium'),
+                            'Relation to Main Member': res.get('relation_to_main_member') if res.get('relation_to_main_member') else None,
+                            })
 
-                    #     data.append({
-                    #         'First Name': res.get('first_name'),
-                    #         'Last Name': res.get('last_name'),
-                    #         'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
-                    #         'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
-                    #         'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
-                    #         'Status': applicant.get('status') if res.get else None,
-                    #         'Premium': None if res.get('relation_to_main_member') else plan.get('premium'),
-                    #         'Underwriter': None if res.get('relation_to_main_member') else plan.get('underwriter_premium'),
-                    #         'Relation to Main Member': res.get('relation_to_main_member') if res.get('relation_to_main_member') else None,
-                    #         })
+                    df = pd.DataFrame(data)
+                    filename = '{}_{}'.format(consultant.first_name, consultant.last_name) if consultant else parlour.parlourname
+                    writer = pd.ExcelWriter('{}.xlsx'.format(filename), engine='xlsxwriter')
+                    df.to_excel(writer, sheet_name='Sheet1', index=False)
+                    os.chdir('./assets/uploads/spreadsheets')
+                    path = os.getcwd()
+                    writer.save()
+                    os.chdir('../../..')
 
+                    with open('{}/{}.xlsx'.format(path, filename), 'rb') as f:
+                        resp.downloadable_as = '{}.xls'.format(filename)
+                        resp.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        resp.stream = [f.read()]
+                        resp.status = falcon.HTTP_200
 
-                    # df = pd.DataFrame(data)
-                    # writer = pd.ExcelWriter('{}_{}.xlsx'.format(consultant.first_name, consultant.last_name), engine='xlsxwriter')
-                    # df.to_excel(writer, sheet_name='Sheet1', index=False)
-                    # os.chdir('./assets/uploads/spreadsheets')
-                    # path = os.getcwd()
-                    # writer.save()
-                    # os.chdir('../../..')
-
-                    # with open('{}/{}_{}.xlsx'.format(path, consultant.first_name, consultant.last_name), 'rb') as f:
-                    #     resp.downloadable_as = '{}/{}_{}.xls'.format(path, consultant.first_name, consultant.last_name)
-                    #     resp.content_disposition = 'attachment; filename="{}.xls"'.format(path, consultant.first_name, consultant.last_name)
-                    #     resp.content_type = 'application/octet-stream'
-                    #     resp.stream = [f.read()]
-                    #     resp.status = falcon.HTTP_200
-
-                if not main_members:
-                    resp.body = json.dumps([])
-                else:
-                    resp.body = json.dumps(results, default=str)
-
-        except:
+        except Exception as e:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Applicants for user with ID {}.".format(id))
+            raise e
 
 
 class SMSService:
