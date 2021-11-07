@@ -252,23 +252,25 @@ class ExtendedMembersPostEndpoint:
 
                     years = "{}".format(age.years)
 
-                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error", 
-                            description="Age Limit exceeded.")
-                    elif int(years) > max_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error", 
-                            description="Age Limit exceeded.")
+                    if max_age_limit:
+                        if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                            raise falcon.HTTPBadRequest(
+                                title="Error",
+                                description="Age Limit exceeded.")
+                        elif int(years) > max_age_limit:
+                            raise falcon.HTTPBadRequest(
+                                title="Error",
+                                description="Age Limit exceeded.")
 
-                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error", 
-                            description="Age not within required age limit.")
-                    elif int(years) < min_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error", 
-                            description="Age not within required age limit.")
+                    if min_age_limit:
+                        if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                            raise falcon.HTTPBadRequest(
+                                title="Error",
+                                description="Age not within required age limit.")
+                        elif int(years) < min_age_limit:
+                            raise falcon.HTTPBadRequest(
+                                title="Error",
+                                description="Age not within required age limit.")
 
                 extended_member.save(session)
                 update_certificate(applicant)
