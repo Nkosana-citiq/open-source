@@ -203,22 +203,12 @@ class ExtendedMembersPostEndpoint:
             with db.transaction() as session:
                 applicant_id = req.get("applicant_id")
 
-                print(req)
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_id,
                     Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
-                
-                if not req.get("id_number"):
-                    raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
-
-                # id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.parlour_id == applicant.parlour.id).first()
-
-                # if id_number:
-                #     raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
-
 
                 date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
                 date_joined = self.get_date_joined(req.get("date_joined"))

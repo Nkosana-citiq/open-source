@@ -139,6 +139,7 @@ class PlanPostEndpoint:
                     state = Plan.STATE_ACTIVE,
                     parlour = parlour
                 )
+
                 plan.save(session)
                 resp.body = json.dumps(plan.to_dict(), default=str)
         except Exception as e:
