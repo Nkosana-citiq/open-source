@@ -83,7 +83,6 @@ class MainGetAllParlourEndpoint:
                     start_date = None
                     end_date = None
 
-                    print(req.params)
                     if "status" in req.params:
                         status = req.params.pop("status")
 
@@ -105,7 +104,6 @@ class MainGetAllParlourEndpoint:
                     if "consultant" in req.params:
                         consultant_id = req.params.pop("consultant")
                         consultant = session.query(Consultant).get(consultant_id)
-                        print("Consultant ID: ", consultant.id)
 
                     if "branch" in req.params:
                         parlour_branch = req.params.pop("branch")
@@ -163,7 +161,7 @@ class MainGetAllParlourEndpoint:
                         if consultants:
                             consultant_ids = [consultant.id for consultant in consultants]
                             main_members = [main_member for main_member in main_members.all() if main_member.applicant.consultant.id in consultant_ids]
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
+                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all()], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -553,6 +551,71 @@ class MemberCertificateGetEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
 
 
+# class MainMemberPostFileEndpoint:
+
+#     def __init__(self, secure=False, basic_secure=False):
+#         self.secure = secure
+#         self.basic_secure = basic_secure
+
+#     def is_basic_secure(self):
+#         return self.basic_secure
+
+#     def is_not_secure(self):
+#         return not self.secure
+
+#     def merge_pdfs(paths, output):
+#         pdf_writer = PdfFileWriter()
+
+#         for path in paths:
+#             pdf_reader = PdfFileReader(path)
+#             for page in range(pdf_reader.getNumPages()):
+#                 # Add each page to the writer object
+#                 pdf_writer.addPage(pdf_reader.getPage(page))
+
+#         # Write out the merged PDF
+#         with open(output, 'wb') as out:
+#             pdf_writer.write(out)
+
+#     def on_post(self, req, resp, id):
+
+#         req = json.loads(req.stream.read().decode('utf-8'))
+#         with db.transaction() as session:
+#             try:
+#                 pdf_writer = PdfFileWriter()
+
+#                 applicant = session.query(Applicant).get(id)
+#                 applicant.document = ""
+
+#                 applicant.save(session)
+#                 main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).first()
+
+#                 env = req.env
+#                 form = cgi.FieldStorage(fp=req.stream,environ=env)
+#                 raw_data = form['fileinputname'].file.read()
+#                 pdf_reader = PdfFileReader(raw_data)
+
+#                 os.chdir('./assets/uploads/certificates')
+#                 path = os.getcwd()
+#                 for page in range(pdf_reader.getNumPages()):
+#                     # Add each page to the writer object
+#                     pdf_writer.addPage(pdf_reader.getPage(page))
+
+#                 save_file = '{}_{}.pdf'.format(main_member.first_name, main_member.last_name)
+#                 with open(save_file, 'wb') as out:
+#                     pdf_writer.write(out)
+#                 document = '/'.join([path, save_file])
+#                 applicant.personal_docs = document
+#                 self.merge_pdfs([applicant.certificate, applicant.personal_docs], '_'.join([save_file, 'docs.pdf']))
+#                 applicant.document = '_'.join([save_file, 'docs.pdf'])
+#                 os.chdir('../../..')
+#                 session.commit()
+
+#             except Exception as e:
+#                 logger.exception(
+#                     "Error, experienced error while creating Applicant.")
+#                 raise e
+
+
 class MainMemberPostEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -566,7 +629,9 @@ class MainMemberPostEndpoint:
         return not self.secure
 
     def on_post(self, req, resp, id):
+        
         req = json.loads(req.stream.read().decode('utf-8'))
+
         with db.transaction() as session:
             parlour = session.query(Parlour).filter(
                 Parlour.id == req["parlour_id"],
@@ -609,7 +674,7 @@ class MainMemberPostEndpoint:
             try:
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
-                    personal_docs = applicant_req.get("document"),
+                    personal_docs = applicant_req.get("file_path"),
                     status = 'unpaid',
                     plan_id = plan.id,
                     consultant_id = consultant.id,
@@ -691,7 +756,7 @@ class MainMemberPostEndpoint:
                     canvas.set_physical_address(main_member.applicant.address if main_member.applicant.address else '')
                     canvas.set_benefits(plan.benefits)
                     canvas.save()
-                    print(canvas.get_file_path())
+
                     applicant.document = canvas.get_file_path()
                     session.commit()
                 except Exception as e:
@@ -1020,6 +1085,11 @@ class ApplicantExportToExcelEndpoint:
                             Consultant.id == id
                         ).one_or_none()
 
+                    if permission.lower() == 'parlour':
+                        parlour = session.query(Parlour).filter(
+                            Parlour.state == Parlour.STATE_ACTIVE,
+                            Parlour.id == id
+                        ).one_or_none()
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
