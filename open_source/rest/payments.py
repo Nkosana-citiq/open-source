@@ -29,6 +29,7 @@ from borb.pdf.canvas.layout.text.paragraph import Paragraph
 from borb.pdf.canvas.layout.layout_element import Alignment
 from decimal import Decimal
 from borb.pdf.pdf import PDF
+import PyPDF2
 
 from open_source.config import get_config
 
@@ -197,8 +198,10 @@ class PaymentPostEndpoint:
                 dates = [dt for dt in rrule(MONTHLY, dtstart=start_date, until=end_date)]
 
                 is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
-                if len(is_up_to_date) >= 1:
-                    applicant.status = 1
+                if len(is_up_to_date) > 1:
+                    applicant.status = "Skipped"
+                elif start_date <= datetime.now() <= end_date:
+                    applicant.status = "Paid"
 
                 amount = plan.premium * len(dates)
                 payment = Payment(
@@ -338,9 +341,10 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     pdf = Document()
 
     # Add page
-    page = Page(Decimal(595), Decimal(842))
+    page = Page()
     pdf.append_page(page)
     page_layout = SingleColumnLayout(page)
+
     page_layout.vertical_margin = page.get_page_info().get_height() * Decimal(0.02)
 
     # Invoice information table
@@ -358,6 +362,16 @@ def print_invoice(session, payment, applicant, user, amount, dates):
 
     with open(path, "wb") as pdf_file_handle:
         PDF.dumps(pdf_file_handle, pdf)
+
+    pdf = PyPDF2.PdfFileReader(path)
+    page0 = pdf.getPage(0)
+    page0.scaleTo(20, 40)  # float representing scale factor - this happens in-place
+    writer = PyPDF2.PdfFileWriter()  # create a writer to save the updated results
+    writer.addPage(page0)
+
+    with open(path, "wb+") as file:
+        writer.write(file)
+
     invoice.document = path
     invoice.save(session)
     invoice.path = "invoices/{}".format(invoice.id)

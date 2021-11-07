@@ -2,6 +2,7 @@ import datetime
 from dateutil.relativedelta import relativedelta
 from open_source import config
 from open_source.core import consultants
+from open_source.core import main_members
 
 from open_source.core.consultants import Consultant
 from open_source.core.plans import Plan
@@ -19,7 +20,8 @@ import falcon
 import json
 import logging
 import pandas as pd
-
+from PyPDF2 import PdfFileReader, PdfFileWriter
+import cgi
 from open_source import db
 
 from open_source.core.applicants import Applicant
@@ -249,7 +251,6 @@ class MainGetAllConsultantEndpoint:
                     search_field = None
                     notice = None
 
-                    print(req.params)
                     if "status" in req.params:
                         status = req.params.pop("status")
 
@@ -1148,7 +1149,7 @@ class SMSService:
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field))
                         )
-                    ).all()
+                    )
 
             if status:
                 applicants = session.query(Applicant).filter(
@@ -1159,14 +1160,21 @@ class SMSService:
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
                     MainMember.applicant_id.in_(applicant_ids)
-                ).all()
+                )
             if not status and not search_field:
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
                     MainMember.parlour_id == parlour.id
-                ).all()
+                )
+
+            if rest_dict['start_date']:
+                start_date = rest_dict['start_date']
+                main_members = main_members.filter(
+                    MainMember.created_at >= start_date
+                )
+
             if not contacts:
-                contacts = [m.localize_contact() for m in main_members]
+                contacts = [m.localize_contact() for m in main_members.all()]
             else:
                 contacts = [''.join(['+27', contact[1:]]) if len(contact) == 10 else contact for contact in contacts]
 
