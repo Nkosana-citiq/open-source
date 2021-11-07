@@ -16,6 +16,7 @@ ordered-set==4.0.2
 openpyxl==3.0.9
 pandas==1.1.5
 Pillow==8.3.2
+PyPDF2==1.26.0
 PyJWT==2.1.0
 python-barcode==0.13.1
 python-dateutil==2.8.2
