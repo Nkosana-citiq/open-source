@@ -140,7 +140,6 @@ class ConsultantGetEndpoint:
                     Consultant.state == Consultant.STATE_ACTIVE
                 ).first()
 
-
                 if consultant is None:
                     raise falcon.HTTPNotFound(title="Consultant Not Found")
 
@@ -148,42 +147,6 @@ class ConsultantGetEndpoint:
         except:
             logger.exception("Error, Failed to get Consultant with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Consultant with ID {}.".format(id))
-
-
-
-# class ConsultantGetAllPendingEndpoint:
-
-#     def __init__(self, secure=False, basic_secure=False):
-#         self.secure = secure
-#         self.basic_secure = basic_secure
-
-#     def is_basic_secure(self):
-#         return self.basic_secure
-
-#     def is_not_secure(self):
-#         return not self.secure
-
-#     def on_get(self, req, resp, id):
-#         try:
-#             with db.transaction() as session:
-#                 parlour = session.query(Parlour).filter(
-#                     Parlour.state == Parlour.STATE_PENDING,
-#                     Parlour.id == id).one_or_none()
-#                 if not parlour:
-#                     raise falcon.HTTP_BAD_REQUEST()
-
-#                 consultants = session.query(Consultant).filter(
-#                     Consultant.state == Consultant.STATE_ACTIVE,
-#                     Consultant.parlour_id == id).all()
-
-#                 if consultants:
-#                     resp.body = json.dumps([consultant.to_dict() for consultant in consultants], default=str)
-#                 else:
-#                     resp.body = json.dumps([])
-
-#         except:
-#             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
-#             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Consultant for user with ID {}.".format(id))
 
 
 class ConsultantPostEndpoint:
@@ -227,14 +190,6 @@ class ConsultantPostEndpoint:
                 if consultant_exists:
                     raise falcon.HTTPBadRequest(title="Error", description="Email already exists. Email must be unique")
 
-                consultant_exists = session.query(Consultant).filter(
-                    Consultant.first_name == req["first_name"],
-                    Consultant.last_name == req["last_name"],
-                    Consultant.state == Consultant.STATE_ACTIVE).first()
-
-                if consultant_exists:
-                    raise falcon.HTTPBadRequest(title="Error", description="First name and last name fields already exist")
-
                 consultant = Consultant(
                     first_name = req['first_name'],
                     last_name = req['last_name'],
@@ -252,11 +207,10 @@ class ConsultantPostEndpoint:
                 consultant.save(session)
                 consultant_dict = consultant.to_dict()
                 resp.body = json.dumps(consultant_dict, default=str)
-        except:
+        except Exception as e:
             logger.exception(
                 "Error, experienced error while creating Consultant.")
-            # raise falcon.HTTPNotFound(
-            #     "Processing Failed. experienced error while creating Consultant.")
+            raise e
 
 
 class ConsultantPutEndpoint:
@@ -292,11 +246,10 @@ class ConsultantPutEndpoint:
                 consultant.username = req['username']
                 consultant.save(session)
                 resp.body = json.dumps(consultant.to_dict(), default=str)
-        except:
+        except Exception as e:
             logger.exception(
                 "Error, experienced error while creating Consultant.")
-            # raise falcon.HTTPBadRequest(
-            #     "Processing Failed. experienced error while creating Consultant.")
+            raise e
 
 
 class ConsultantChangePasswordEndpoint:
