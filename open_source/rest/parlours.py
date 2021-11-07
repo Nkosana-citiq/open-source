@@ -666,13 +666,14 @@ class ParlourAddSMSEndpoint:
         req = json.loads(req.stream.read().decode('utf-8'))
         try:
             with db.transaction() as session:
-
+                print(req)
                 parlour = session.query(Parlour).filter(
                     Parlour.id == id).first()
 
                 if not parlour:
                     raise falcon.HTTPNotFound(title="Parlour not found", description="Could not find parlour with given ID.")
-
+                if not parlour.number_of_sms:
+                    parlour.number_of_sms = 0
                 if req.get("number_of_sms"):
                     parlour.number_of_sms = sum([parlour.number_of_sms, req.get("number_of_sms", 0)])
 
