@@ -365,7 +365,7 @@ def print_invoice(session, payment, applicant, user, amount, dates):
 
     pdf = PyPDF2.PdfFileReader(path)
     page0 = pdf.getPage(0)
-    page0.scaleTo(70, 140)  # float representing scale factor - this happens in-place
+    page0.scaleTo(170, 280)  # float representing scale factor - this happens in-place
     writer = PyPDF2.PdfFileWriter()  # create a writer to save the updated results
     writer.addPage(page0)
 
