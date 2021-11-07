@@ -445,7 +445,7 @@ class ConsultantAuthEndpoint:
             raise falcon.HTTPBadRequest('400 Malformed Json', str(e))
         except Exception as e:
             print(e)
-            raise falcon.HTTPInternalServerError('500 Internal Server Error', 'General Error')
+            raise e
 
 
 class ConsultantSignupEndpoint:
