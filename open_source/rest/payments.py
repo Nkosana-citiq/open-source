@@ -403,41 +403,37 @@ class PaymentDeleteEndpoint:
 
 def _build_invoice_information(invoice):
 
-    table_001 = Table(number_of_rows=31, number_of_columns=2, column_widths= [Decimal(2), Decimal(4)], horizontal_alignment=Alignment.LEFT)
+    table_001 = Table(number_of_rows=31, number_of_columns=2, column_widths= [Decimal(2), Decimal(6)], horizontal_alignment=Alignment.LEFT)
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
+
     paragraph = Paragraph("Date: ", font="Helvetica", font_size=Decimal(13))
     table_001.add(paragraph)
     now = datetime.now()
     table_001.add(Paragraph("%d/%d/%d" % (now.day, now.month, now.year), font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT,))
-    # table_001.add(Paragraph("  "))
+
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
+
 
     address = invoice.address if invoice.address else " "
     table_001.add(Paragraph("Address: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(address, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
+
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Contact: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(invoice.contact, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT,))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Email: ", font="Helvetica", font_size=Decimal(13)))
     email = invoice.email if invoice.email else " "
