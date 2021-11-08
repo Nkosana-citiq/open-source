@@ -71,7 +71,6 @@ class MainGetAllParlourEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
-                print("EXECUTE")
                 try:
                     status = None
                     search_field = None
@@ -108,7 +107,6 @@ class MainGetAllParlourEndpoint:
                     if "branch" in req.params:
                         parlour_branch = req.params.pop("branch")
                         consultants = session.query(Consultant).filter(Consultant.branch == parlour_branch.strip()).all()
-                        print([consultant.id for consultant in consultants])
 
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
@@ -129,8 +127,7 @@ class MainGetAllParlourEndpoint:
                     resp.body = json.dumps({"original": main_count, "month": month_count, "period": '-'.join([str(search.date().year), str(search.date().month)])}, default=str)
                 elif search_field:
                     main_members = session.query(
-                        MainMember,
-                        Applicant
+                        MainMember
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         Applicant.status != 'lapsed',
@@ -156,12 +153,16 @@ class MainGetAllParlourEndpoint:
                     if not main_members.all():
                         resp.body = json.dumps([])
                     else:
+                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all() if main_member.applicant_id is not None], default=str)
                         if consultant:
                             main_members = [main_member for main_member in main_members.all() if main_member.applicant.consultant.id == consultant.id]
+                            resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
                         if consultants:
                             consultant_ids = [consultant.id for consultant in consultants]
-                            main_members = [main_member for main_member in main_members.all() if main_member.applicant.consultant.id in consultant_ids]
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all()], default=str)
+                            main_members = [main_member.to_dict() for main_member in main_members.all() if main_member.applicant.consultant.id in consultant_ids]
+                            resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
+
+                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all() if main_member.applicant_id is not None], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -199,9 +200,10 @@ class MainGetAllParlourEndpoint:
                                     now = datetime.datetime.now()
                                     age = relativedelta(now, dob)
 
-                                    if age.years > max_age_limit:
+                                    years = str(age.years)[2:] if str(age.years)[2:].isdigit() else str(age.years)
+                                    if int(years) > max_age_limit:
                                         main_member.age_limit_exceeded = True
-                                    if age.years < min_age_limit:
+                                    if int(years) < min_age_limit:
                                         main_member.age_limit_exceeded = True
                                         session.commit()
                     applicant_ids = [applicant.id for applicant in applicants.all()]
@@ -278,8 +280,7 @@ class MainGetAllConsultantEndpoint:
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field))
-                            
+                            Applicant.policy_num.ilike('{}%'.format(search_field)) 
                         )
                     ).all()
 
@@ -718,7 +719,7 @@ class MainMemberPostEndpoint:
                 age = relativedelta(now, dob)
 
                 years = "{}".format(age.years)
-                print("TEST: ", years)
+
                 if len(years) > 2 and int(years[2:4]) > max_age_limit:
                     raise falcon.HTTPBadRequest(
                         title="Error",
