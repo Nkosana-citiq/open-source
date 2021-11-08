@@ -449,7 +449,7 @@ def _build_invoice_information(invoice):
     table_001.add(Paragraph(" "))
     # table_001.add(Paragraph(" "))
 
-    table_001.add(Paragraph("Customer Details ", font="Helvetica", font_size=Decimal(13)))
+    table_001.add(Paragraph("Customer Details ", font="Helvetica-Bold", font_size=Decimal(13)))
     # months = invoice.amount if invoice.amount else " "
     table_001.add(Paragraph(" "))
     # table_001.add(Paragraph(" "))
