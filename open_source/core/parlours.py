@@ -76,6 +76,14 @@ class Parlour(db.Base):
     def plans(cls):
         return relationship("Plan", back_populates="parlour")
 
+    @declared_attr
+    def consultants(cls):
+        return relationship("Consultant", back_populates="parlour")
+
+    @declared_attr
+    def main_members(cls):
+        return relationship("MainMember", back_populates="parlour")
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -103,7 +111,16 @@ class Parlour(db.Base):
 
     def delete(self, session):
         self.make_deleted()
+        self.on_delete_clean_up()
         session.commit()
+
+    def on_delete_clean_up(self):
+        for c in self.consultants:
+            c.make_deleted()
+        for p in self.plans:
+            p.make_deleted()
+        for m in self.main_members:
+            m.make_deleted()
 
     @property
     def pretty_name(self) -> str:

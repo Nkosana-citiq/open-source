@@ -199,9 +199,10 @@ class PaymentPostEndpoint:
                 dates = [dt for dt in rrule(MONTHLY, dtstart=start_date, until=end_date)]
 
                 is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
-                if len(is_up_to_date) > 1:
-                    applicant.status = "Skipped"
-                elif start_date <= datetime.now() <= end_date:
+
+                if len(is_up_to_date) >= 1:
+                    applicant.status = "paid"
+                elif start_date.date() <= datetime.now().date() <= end_date.date():
                     applicant.status = "Paid"
 
                 amount = plan.premium * len(dates)

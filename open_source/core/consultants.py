@@ -51,6 +51,10 @@ class Consultant(db.Base):
     def parlour(cls):
         return relationship('Parlour')
 
+    @declared_attr
+    def applicants(cls):
+        return relationship("Applicant", back_populates="consultant")
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -89,7 +93,12 @@ class Consultant(db.Base):
 
     def delete(self, session):
         self.make_deleted()
+        self.on_delete_clean_up()
         session.commit()
+
+    def on_delete_clean_up(self):
+        for a in self.applicants:
+            a.make_deleted()
 
     @property
     def pretty_name(self) -> str:

@@ -150,10 +150,6 @@ class ParlourPostEndpoint:
 
             user = Parlour()
 
-            if not utils.is_username_unique(session, rest_dict.get("username")):
-                errors['username'] = 'Username {} is already in use.'.format(
-                    rest_dict.get("username"))
-                raise falcon.HTTPBadRequest(title="Username", description=errors["username"])
             if not utils.is_valid_email_address(email):
                 errors['email'] = 'Email must be a valid email address'
                 raise falcon.HTTPBadRequest(title="Email", description=errors["email"])
