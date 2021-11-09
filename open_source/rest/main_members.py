@@ -675,7 +675,8 @@ class MainMemberPostEndpoint:
             try:
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
-                    personal_docs = applicant_req.get("file_path"),
+                    # personal_docs = applicant_req.get("file_path"),
+                    document = applicant_req.get("document"),
                     status = 'unpaid',
                     plan_id = plan.id,
                     consultant_id = consultant.id,
