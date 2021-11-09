@@ -511,7 +511,6 @@ class MainGetAllArchivedConsultantEndpoint:
 
 
 class MemberCertificateGetEndpoint:
-
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -525,13 +524,14 @@ class MemberCertificateGetEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
-                
+                # req = json.loads(req.stream.read().decode('utf-8'))
+
                 main_meber = session.query(MainMember).filter(
                     MainMember.id == id,
                     MainMember.state == MainMember.STATE_ACTIVE
                 ).first()
                 if main_meber is None:
-                    raise falcon.HTTPNotFound(title="Error", description="Document not found")
+                    raise falcon.HTTPNotFound(title="Error", description="Main member not found")
 
                 applicant = session.query(Applicant).filter(
                     Applicant.id == main_meber.applicant_id,
@@ -539,7 +539,7 @@ class MemberCertificateGetEndpoint:
                 ).first()
 
                 if applicant is None:
-                    raise falcon.HTTPNotFound(title="Error", description="Document not found")
+                    raise falcon.HTTPNotFound(title="Error", description="Applicant not found")
 
                 with open(applicant.document, 'rb') as f:
                     resp.downloadable_as = applicant.document
@@ -676,7 +676,7 @@ class MainMemberPostEndpoint:
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
                     # personal_docs = applicant_req.get("file_path"),
-                    document = applicant_req.get("document"),
+                    # document = applicant_req.get("document"),
                     status = 'unpaid',
                     plan_id = plan.id,
                     consultant_id = consultant.id,
