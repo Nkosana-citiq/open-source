@@ -94,13 +94,14 @@ class PaymentGetLastEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
-                
+
                 applicant = session.query(Applicant).filter(Applicant.id == id).first()
 
                 payment = session.query(Payment).filter(
                     Payment.applicant_id == applicant.id,
                     Payment.state == Payment.STATE_ACTIVE
-                ).order_by(Payment.applicant_id.desc()).first()
+                ).order_by(Payment.id.desc()).first()
+
                 if payment is None:
                     resp.body = json.dumps([])
                 else:
@@ -149,7 +150,7 @@ class PaymentsGetAllEndpoint:
 
 
 class PaymentPostEndpoint:
-    # cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -184,8 +185,8 @@ class PaymentPostEndpoint:
                     raise falcon.HTTPNotFound(title="Not Found", description="Applicant does not exist.")
 
                 plan = session.query(Plan).filter(
-                    Plan.id == applicant.plan_id
-                    # Plan.state == Plan.STATE_ACTIVE
+                    Plan.id == applicant.plan_id,
+                    Plan.state == Plan.STATE_ACTIVE
                 ).one_or_none()
 
                 if not plan:
@@ -206,6 +207,7 @@ class PaymentPostEndpoint:
                     applicant.status = "Paid"
 
                 amount = plan.premium * len(dates)
+                print("END DATE: ", end_date)
                 payment = Payment(
                     applicant=applicant,
                     parlour=parlour,
