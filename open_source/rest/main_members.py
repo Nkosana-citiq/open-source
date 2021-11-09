@@ -127,42 +127,24 @@ class MainGetAllParlourEndpoint:
                     resp.body = json.dumps({"original": main_count, "month": month_count, "period": '-'.join([str(search.date().year), str(search.date().month)])}, default=str)
                 elif search_field:
                     main_members = session.query(
-                        MainMember
+                        MainMember,
+                        Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
+                        Applicant.parlour_id == parlour.id,
                         Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
-                            MainMember.first_name.ilike('{}%'.format(search_field)),
+                            MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field)),
-                            Applicant.parlour_id == parlour.id
+                            Applicant.policy_num.ilike('{}%'.format(search_field))
                         )
-                    )
+                    ).all()
 
-                    if start_date:
-                        main_members = main_members.filter(
-                            MainMember.created_at >= start_date
-                        )
-
-                    if end_date:
-                        main_members = session.query(MainMember).filter(
-                            MainMember.created_at <= end_date
-                        )
-
-                    if not main_members.all():
+                    if not main_members:
                         resp.body = json.dumps([])
-                    else:
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all() if main_member.applicant_id is not None], default=str)
-                        if consultant:
-                            main_members = [main_member for main_member in main_members.all() if main_member.applicant.consultant.id == consultant.id]
-                            resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
-                        if consultants:
-                            consultant_ids = [consultant.id for consultant in consultants]
-                            main_members = [main_member.to_dict() for main_member in main_members.all() if main_member.applicant.consultant.id in consultant_ids]
-                            resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
 
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all() if main_member.applicant_id is not None], default=str)
+                    resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -278,7 +260,7 @@ class MainGetAllConsultantEndpoint:
                         Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
-                            MainMember.first_name.ilike('{}%'.format(search_field)),
+                            MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field)) 
                         )
@@ -390,14 +372,14 @@ class MainGetAllArchivedParlourEndpoint:
                         MainMember,
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        or_(MainMember.state != MainMember.STATE_ACTIVE,
-                            Applicant.status == 'lapsed'),
+                        MainMember.state == MainMember.STATE_ACTIVE,
+                        Applicant.parlour_id == parlour.id,
+                        Applicant.status == 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
-                            MainMember.first_name.ilike('{}%'.format(search_field)),
+                            MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field)),
-                            Applicant.parlour_id == parlour.id
+                            Applicant.policy_num.ilike('{}%'.format(search_field))
                         )
                     ).all()
 
