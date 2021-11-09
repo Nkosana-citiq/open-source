@@ -911,10 +911,12 @@ class MainMemberRestorePutEndpoint:
                 if not main_member:
                     raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-                main_member.state = MainMember.STATE_ACTIVE,
+                main_member.state = MainMember.STATE_ACTIVE
+                applicant = session.query(Applicant).get(main_member.applicant_id)
+                applicant.state = Applicant.STATE_ACTIVE
 
                 main_member.save(session)
-                print(main_member.to_dict())
+
                 resp.body = json.dumps(main_member.to_dict(), default=str)
         except:
             logger.exception(
