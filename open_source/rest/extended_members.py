@@ -445,8 +445,6 @@ def update_certificate(applicant):
             ExtendedMember.applicant_id == applicant.id,
             ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
             ExtendedMember.type == ExtendedMember.TYPE_ADDITIONAL_EXTENDED_MEMBER).all()
-        
-    
 
         try:
             canvas = Certificate(parlour.parlourname.strip())
@@ -495,6 +493,7 @@ def update_certificate(applicant):
 
             canvas.set_benefits(plan.benefits)
             canvas.save()
+            applicant.document = canvas.get_file_path()
 
         except Exception as e:
             logger.exception("Error, experienced an error while creating certificate.")

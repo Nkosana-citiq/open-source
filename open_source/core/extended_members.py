@@ -42,6 +42,7 @@ class ExtendedMember(db.Base):
     RELATION_GRAND_PARENT = 8
     RELATION_WIFE = 9
     RELATION_HUSBAND = 10
+    RELATION_COUSIN = 11
 
     relation_to_text = {
         RELATION_CHILD: 'Child',
@@ -54,7 +55,8 @@ class ExtendedMember(db.Base):
         RELATION_UNCLE: 'Uncle',
         RELATION_GRAND_PARENT: 'Grand Parent',
         RELATION_WIFE: 'Wife',
-        RELATION_HUSBAND: 'Husband'
+        RELATION_HUSBAND: 'Husband',
+        RELATION_COUSIN: 'Cousin'
     }
 
     id = Column(Integer, primary_key=True)

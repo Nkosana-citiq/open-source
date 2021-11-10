@@ -1,5 +1,6 @@
 import datetime
 from dateutil.relativedelta import relativedelta
+from falcon.errors import HTTPBadRequest
 from open_source import config
 from open_source.core import consultants
 from open_source.core import main_members
@@ -1097,11 +1098,16 @@ class ApplicantExportToExcelEndpoint:
                     applicants = applicants.filter(Applicant.status == status.lower()).all()
 
                 applicant_ids = [applicant.id for applicant in applicants]
+
+                if not applicant_ids:
+                    raise falcon.HTTPBadRequest(title="Error", description="No Applicants available")
+
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
                     MainMember.applicant_id.in_(applicant_ids)
                 ).all()
                 results = []
+
                 for main in main_members:
                     d = main.to_short_dict()
                     results.append(d)
@@ -1113,6 +1119,7 @@ class ApplicantExportToExcelEndpoint:
                     for ex in extended_members:
                        e = ex.to_short_dict()
                        results.append(e)
+
                 if results:
                     data = []
                     for res in results:

@@ -94,4 +94,3 @@ class MainMember(db.Base):
     
     def on_delete_clean_up(self):
         self.applicant.state = self.applicant.STATE_ARCHIVED
-
