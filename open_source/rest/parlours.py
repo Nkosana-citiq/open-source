@@ -336,7 +336,7 @@ class ParlourSignupEndpoint:
             user.personname = rest_dict.get("person_name")
             user.number = rest_dict.get("number")
             user.agreed_to_terms = rest_dict.get("agreed_to_terms")
-            user.state = Parlour.STATE_ACTIVE
+            user.state = Parlour.STATE_PENDING
             user.created_at = datetime.now()
             user.modified_at = datetime.now()
 
