@@ -548,8 +548,6 @@ class ResetPasswordPostEndpoint:
             # if not utils.is_valid_password(password):
             #     raise falcon.HTTPBadRequest(title='Error', description='Password is invalid')
 
-            # Non CIC users must confirm their new password -
-            # CIC user password confirmation handled by CIC Web
             if 'confirm_password' in rest_dict:
 
                 confirm_password = rest_dict.get('confirm_password')
