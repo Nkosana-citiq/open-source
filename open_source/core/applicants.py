@@ -1,3 +1,4 @@
+from sqlalchemy.sql.sqltypes import Boolean
 from open_source import db
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text, func
 from sqlalchemy.ext.declarative import declared_attr
@@ -28,6 +29,7 @@ class Applicant(db.Base):
     address = Column(String(length=100))
     certificate = Column(String(length=250))
     document = Column(Text)
+    old_url = Column(Boolean)
     personal_docs = Column(Text)
     state = Column(Integer, default=1)
     status = Column(String(length=15), default="unpaid")
@@ -65,6 +67,7 @@ class Applicant(db.Base):
             'id': self.id,
             'policy_num': self.policy_num,
             'document': self.document,
+            'old_url': self.old_url,
             'personal_docs':self.personal_docs,
             'address': self.address,
             'certificate': self.certificate,
@@ -87,6 +90,7 @@ class Applicant(db.Base):
             'certificate': self.certificate,
             'address': self.address,
             'document': self.document,
+            'old_url': self.old_url,
             'personal_docs':self.personal_docs,
             'date': self.date,
             'status': self.status.capitalize(),
