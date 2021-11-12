@@ -664,6 +664,7 @@ class MainMemberPostEndpoint:
                     plan_id = plan.id,
                     consultant_id = consultant.id,
                     parlour_id = parlour.id,
+                    old_url = False,
                     date = datetime.datetime.now(),
                     state = Applicant.STATE_ACTIVE,
                     modified_at = datetime.datetime.now(),
@@ -810,6 +811,7 @@ class MainMemberPutEndpoint:
                 applicant.address = applicant_req.get("address")
                 if applicant_req.get("document"):
                     applicant.document = applicant_req.get("document")
+                    applicant.old_url = False
 
                 main_member = session.query(MainMember).filter(
                     MainMember.id == id,
