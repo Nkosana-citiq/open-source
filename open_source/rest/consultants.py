@@ -625,7 +625,6 @@ class ForgotPasswordEndpoint:
 
             resp.body = json.dumps({'status': 'success'})
 
-
     def get_user_by_email(self, session, email):
         try:
             user =  session.query(Consultant)\

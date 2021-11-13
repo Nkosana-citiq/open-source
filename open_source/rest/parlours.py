@@ -76,9 +76,9 @@ class ParlourGetEndpoint:
                     raise falcon.HTTPNotFound(title="Parlour Not Found")
 
                 resp.body = json.dumps(parlour.to_dict(), default=str)
-        except:
+        except Exception as e:
             logger.exception("Error, Failed to get Parlour with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Parlour with ID {}.".format(id))
+            raise e
 
 
 class ParlourGetAllEndpoint:
