@@ -109,8 +109,6 @@ class ExtendedMembersGetAllEndpoint:
                     ExtendedMember.applicant_id == applicant.id
                 ).all()
 
-                # extended_members = check_age_limit(extended_members, plan)
-
                 if notice:
                      extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
@@ -210,7 +208,8 @@ class ExtendedMembersPostEndpoint:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
 
                 if req.get("id_number"):
-                    id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number")).first()
+                    id_number = session.query(ExtendedMember).join(MainMember, applicant_id == ExtendedMember.applicant_id).filter(
+                        ExtendedMember.id_number == req.get("id_number")).first()
 
                     if id_number:
                         raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
@@ -250,6 +249,14 @@ class ExtendedMembersPostEndpoint:
                         max_age_limit = plan.additional_extended_maximum_age
 
                     dob = extended_member.date_of_birth
+                    if not dob:
+                        id_number = extended_member.id_number
+                        if int(id_number[0:2]) > 21:
+                            number = '19{}'.format(id_number[0:2])
+                        else:
+                            number = '20{}'.format(id_number[0:2])
+                        id_number = extended_member.id_number
+                        dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
                     dob = datetime.strptime(dob, "%Y-%m-%d")
                     now = datetime.now()
 
