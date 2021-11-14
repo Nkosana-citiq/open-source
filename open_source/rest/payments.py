@@ -207,7 +207,6 @@ class PaymentPostEndpoint:
                     applicant.status = "Paid"
 
                 amount = plan.premium * len(dates)
-                print("END DATE: ", end_date)
                 payment = Payment(
                     applicant=applicant,
                     parlour=parlour,

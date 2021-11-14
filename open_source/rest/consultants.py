@@ -371,7 +371,6 @@ class ConsultantGetAllPendingEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Consultant for user with ID {}.".format(id))
 
 
-
 class ConsultantGetAllArchivedEndpoint:
     # cors = public_cors
     def on_get(self, req, resp):

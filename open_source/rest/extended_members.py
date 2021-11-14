@@ -1,7 +1,6 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from open_source.core.main_members import MainMember
-
 from sqlalchemy.orm import relation
 
 from open_source.core.extended_members import ExtendedMember
@@ -209,6 +208,12 @@ class ExtendedMembersPostEndpoint:
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
+
+                if req.get("id_number"):
+                    id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number")).first()
+
+                    if id_number:
+                        raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
 
                 date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
                 date_joined = self.get_date_joined(req.get("date_joined"))

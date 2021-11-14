@@ -687,7 +687,6 @@ class MainMemberPostEndpoint:
                     created_at = datetime.datetime.now()
                 )
 
-
                 min_age_limit = plan.member_minimum_age
                 max_age_limit = plan.member_maximum_age
 
@@ -1238,6 +1237,12 @@ class SMSService:
                     MainMember.created_at >= start_date
                 )
 
+            if rest_dict['end_date']:
+                end_date = rest_dict['end_date']
+                main_members = main_members.filter(
+                    MainMember.created_at <= end_date
+                )
+
             if not contacts:
                 contacts = [m.localize_contact() for m in main_members.all()]
             else:
@@ -1252,4 +1257,3 @@ class SMSService:
 
             result = {'status_code': response.status_code, 'parlour': parlour.to_dict()}
             resp.body = json.dumps(result, default=str)
-        
