@@ -12,7 +12,10 @@ setup(name='open-source',
           'sqlalchemy',
           'raven',
           'deepdiff',
-          'mysqlclient'
+          'mysqlclient',
+          'reportlab',
+          'borb',
+          'Jinja2'
       ],
       extras_require={
           'dev': ['flake8'],

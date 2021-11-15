@@ -1,0 +1,1 @@
+web: gunicorn open_source.rest_service:api --timeout 90 --log-level DEBUG

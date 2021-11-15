@@ -36,7 +36,7 @@ class ApplicantGetEndpoint:
             if applicant is None:
                 raise falcon.HTTPNotFound(title="Applicant Not Found")
 
-            resp.text = json.dumps(applicant.to_dict(), default=str)
+            resp.body = json.dumps(applicant.to_dict(), default=str)
 
 
 class ApplicantGetAllEndpoint:
@@ -60,9 +60,9 @@ class ApplicantGetAllEndpoint:
                 ).all()
 
                 if applicants:
-                    resp.text = json.dumps([applicant.to_dict() for applicant in applicants], default=str)
+                    resp.body = json.dumps([applicant.to_dict() for applicant in applicants], default=str)
                 else:
-                    resp.text = json.dumps([])
+                    resp.body = json.dumps([])
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
@@ -87,15 +87,15 @@ class ApplicantPostEndpoint:
         try:
             with db.transaction() as session:
                 parlour = session.query(Parlour).filter(
-                    Parlour.parlour_id == req["parlour_id"],
+                    Parlour.id == req["parlour_id"],
                     Parlour.state == Parlour.STATE_ACTIVE).first()
 
                 consultant = session.query(Consultant).filter(
-                    Consultant.consultant_id == req["consultant_id"],
+                    Consultant.id == req["consultant_id"],
                     Consultant.state == Consultant.STATE_ACTIVE).first()
 
                 if not parlour:
-                    raise falcon.HTTP_BAD_REQUEST("Parlour does not exist.")
+                    raise falcon.HTTPBadRequest(title="Error", description="Parlour does not exist.")
 
                 applicant = Applicant(
                     policy_num = req["policy_num"],
@@ -103,26 +103,18 @@ class ApplicantPostEndpoint:
                     date = req["date"],
                     status = req["status"],
                     canceled = req["canceled"],
-                    parlour_id = parlour.parlour_id,
+                    parlour_id = parlour.id,
                     consultant_id = req["consultant_id"],
                     plan_id = req['plan_id'],
                     state=Applicant.STATE_ACTIVE
                 )
 
-                AuditLogClient.save_log(
-                    session,
-                    consultant.consultant_id,
-                    consultant.email,
-                    data_new=applicant.to_dict(),
-                    notes='New applicant with ID [{}] added by consultant {} {}'.format(
-                        applicant.id, consultant.first_name, consultant.last_name)
-                )
                 applicant.save(session)
-                resp.text = json.dumps(applicant.to_dict(), default=str)
+                resp.body = json.dumps(applicant.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Applicant.")
-            raise falcon.HTTP_BAD_REQUEST(
+            raise falcon.HTTPBadRequest(
                 "Processing Failed. experienced error while creating Applicant.")
 
 
@@ -147,7 +139,7 @@ class ApplicantPutEndpoint:
                     Applicant.id == id).first()
 
                 consultant = session.query(Consultant).filter(
-                    Consultant.consultant_id == req["consultant_id"],
+                    Consultant.id == req["consultant_id"],
                     Consultant.state == Consultant.STATE_ACTIVE).first()
 
                 if not applicant:
@@ -172,12 +164,12 @@ class ApplicantPutEndpoint:
                 #         applicant.id, consultant.first_name, consultant.last_name)
                 # )
                 applicant.save(session)
-                resp.text = json.dumps(applicant.to_dict(), default=str)
+                resp.body = json.dumps(applicant.to_dict(), default=str)
         except:
             logger.exception(
                 "Error, experienced error while creating Applicant.")
-            raise falcon.HTTP_BAD_REQUEST(
-                "Processing Failed. experienced error while creating Applicant.")
+            raise falcon.HTTPBadRequest(title="Error",
+            description="Processing Failed. experienced error while creating Applicant.")
 
 
 class ApplicantDeleteEndpoint:
@@ -203,7 +195,7 @@ class ApplicantDeleteEndpoint:
                     falcon.HTTPNotFound("Applicant does not exist.")
 
                 applicant.delete(session)
-                resp.text = json.dumps({})
+                resp.body = json.dumps({})
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
-            raise falcon.HTTP_BAD_REQUEST("Failed to delete Applicant with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))

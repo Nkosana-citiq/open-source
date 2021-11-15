@@ -2,7 +2,7 @@ from datetime import datetime
 
 
 from sqlalchemy import event, DDL
-from open_source.core import parlours, plans, applicants, main_members, extended_members, audit
+from open_source.core import parlours, consultants, plans, applicants, main_members, extended_members, audit, certificate, admins
 from open_source import db
 
 

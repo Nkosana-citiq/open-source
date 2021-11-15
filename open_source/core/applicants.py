@@ -1,6 +1,4 @@
-from typing import Text
-from falcon import constants
-from sqlalchemy.sql.sqltypes import Boolean, DECIMAL
+from sqlalchemy.sql.sqltypes import Boolean
 from open_source import db
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text, func
 from sqlalchemy.ext.declarative import declared_attr
@@ -14,9 +12,25 @@ class Applicant(db.Base):
     STATE_ACTIVE = 1
     STATE_DELETED = 0
 
+    STATUS_LAPSED = 4
+    STATUS_SKIPPED = 3
+    STATUS_UNPAID= 2
+    STATUS_PAID = 1
+
+    status_to_text = {
+        STATUS_LAPSED: 'Lapsed',
+        STATUS_SKIPPED: 'Skipped',
+        STATUS_UNPAID: 'Unpaid',
+        STATUS_PAID: 'Paid'
+    }
+
     id = Column(Integer, primary_key=True)
     policy_num = Column(String(length=15))
-    document = Column(Date())
+    address = Column(String(length=100))
+    certificate = Column(String(length=250))
+    document = Column(Text)
+    old_url = Column(Boolean)
+    personal_docs = Column(Text)
     state = Column(Integer, default=1)
     status = Column(String(length=15), default="unpaid")
     date = Column(DateTime)
@@ -26,7 +40,7 @@ class Applicant(db.Base):
 
     @declared_attr
     def parlour_id(cls):
-        return Column(Integer, ForeignKey('parlours.parlour_id'))
+        return Column(Integer, ForeignKey('parlours.id'))
 
     @declared_attr
     def parlour(cls):
@@ -34,7 +48,7 @@ class Applicant(db.Base):
 
     @declared_attr
     def plan_id(cls):
-        return Column(Integer, ForeignKey('plans.plan_id'))
+        return Column(Integer, ForeignKey('plans.id'))
 
     @declared_attr
     def plan(cls):
@@ -42,21 +56,24 @@ class Applicant(db.Base):
 
     @declared_attr
     def consultant_id(cls):
-        return Column(Integer, ForeignKey('consultants.consultant_id'))
+        return Column(Integer, ForeignKey('consultants.id'))
 
     @declared_attr
     def consultant(cls):
         return relationship('Consultant')
 
     def to_dict(self):
-        print("Consultant ID: ", self.consultant_id)
         return {
             'id': self.id,
             'policy_num': self.policy_num,
             'document': self.document,
+            'old_url': self.old_url,
+            'personal_docs':self.personal_docs,
+            'address': self.address,
+            'certificate': self.certificate,
             'date': self.date,
             'state': self.state,
-            'status': self.status,
+            'status': self.status.capitalize(),
             'canceled': self.canceled,
             "modified": self.modified_at,
             'created': self.created_at,
@@ -67,11 +84,18 @@ class Applicant(db.Base):
 
     def to_short_dict(self):
         return {
-            'id': self.plan_id,
+            'id': self.id,
+            'plan_id': self.plan_id,
             'policy_num': self.policy_num,
+            'certificate': self.certificate,
+            'address': self.address,
+            'document': self.document,
+            'old_url': self.old_url,
+            'personal_docs':self.personal_docs,
             'date': self.date,
-            'status': self.status,
-            'canceled': self.canceled
+            'status': self.status.capitalize(),
+            'canceled': self.canceled,
+            'plan': self.plan.to_short_dict(),
         }
 
     def save(self, session):

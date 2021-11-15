@@ -21,10 +21,16 @@ class BaseConfig(object):
 
     basic_secret = 'uGmZQhbCbp76ceJGG3h'
 
-    MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
+    SMS_AUTH_TOKEN = "Basic QzQzMzdGOERCODRDNEZGNEI5QzNCQzBGOThEM0I4M0UtMDEtOTpkS1l1cTdRb3VibllRTTlXVGtNRGNUTWlBWTJ2cQ=="
+    SMS_FROM_NUMBER = '+27796579128'
 
+    # url = 'http://localhost:4200'
+    url = 'https://nkosana-citiq.github.io/open-source-frontend'
+
+    MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
     db = {
-        'url': "mysql://osourcec:opensource@{}/osourcec_opensource".format(MYSQL_HOST),
+        # 'url': "mysql://osourcec:opensource@{}/osourcec_opensource".format(MYSQL_HOST),
+        'url': "mysql://siv8flfmgau4pv3v:qweuej256tkkyhdx@ulsq0qqx999wqz84.chr7pe7iynqr.eu-west-1.rds.amazonaws.com:3306/wll5qd5htc19fk6e",
         'params': {'echo': False, 'pool_recycle': 3600, 'pool_size': 2}
     }
 
@@ -74,7 +80,13 @@ class PreprodConfig(BaseConfig):
     ...
 
 class ProdConfig(BaseConfig):
-    ...
+
+    url = 'http://localhost:4200'
+
+    db = {
+        'url': "mysql://eqa4wgn58w5q1nf4:r6rymog3csc13962@ulsq0qqx999wqz84.chr7pe7iynqr.eu-west-1.rds.amazonaws.com:3306/isupkx8fnsnozbtg",
+        'params': {'echo': False, 'pool_recycle': 3600, 'pool_size': 2}
+    }
 
 
     @classmethod
