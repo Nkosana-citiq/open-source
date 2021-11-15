@@ -102,6 +102,7 @@ api.add_route('/open-source/consultants/{id}/main-members/archived', main_member
 api.add_route('/open-source/parlours/{id}/main-members/all', main_members.MainGetAllParlourEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/archived', main_members.MainGetAllArchivedParlourEndpoint())
 api.add_route('/open-source/consultants/{id}/main-members', main_members.MainMemberPostEndpoint())
+api.add_route('/open-source/main-members/{id}/upload', main_members.MainMemberPostFileEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())
 api.add_route('/open-source/main-members/{id}/update', main_members.MainMemberPutEndpoint())
@@ -110,6 +111,7 @@ api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberR
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
 api.add_route('/open-source/main-members/send-sms', main_members.SMSService())
 api.add_route('/open-source/main-members/{id}/document', main_members.MemberCertificateGetEndpoint())
+api.add_route('/open-source/main-members/{id}/personal_docs', main_members.MemberPersonalDocsGetEndpoint())
 
 api.add_route('/open-source/applicants/{id}/dependants/all', dependants.DependantMembersGetAllEndpoint())
 api.add_route('/open-source/dependants', dependants.DependantPostEndpoint())

@@ -17,6 +17,8 @@ from open_source.core.certificate import Certificate
 
 import os
 import csv
+import uuid
+import mimetypes
 import falcon
 import json
 import logging
@@ -535,69 +537,107 @@ class MemberCertificateGetEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
 
 
-# class MainMemberPostFileEndpoint:
+class MemberPersonalDocsGetEndpoint:
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
 
-#     def __init__(self, secure=False, basic_secure=False):
-#         self.secure = secure
-#         self.basic_secure = basic_secure
+    def is_basic_secure(self):
+        return self.basic_secure
 
-#     def is_basic_secure(self):
-#         return self.basic_secure
+    def is_not_secure(self):
+        return not self.secure
 
-#     def is_not_secure(self):
-#         return not self.secure
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
 
-#     def merge_pdfs(paths, output):
-#         pdf_writer = PdfFileWriter()
+                main_meber = session.query(MainMember).filter(
+                    MainMember.id == id,
+                    MainMember.state == MainMember.STATE_ACTIVE
+                ).first()
+                if main_meber is None:
+                    raise falcon.HTTPNotFound(title="Error", description="Main member not found")
 
-#         for path in paths:
-#             pdf_reader = PdfFileReader(path)
-#             for page in range(pdf_reader.getNumPages()):
-#                 # Add each page to the writer object
-#                 pdf_writer.addPage(pdf_reader.getPage(page))
+                applicant = session.query(Applicant).filter(
+                    Applicant.id == main_meber.applicant_id,
+                    Applicant.state == Applicant.STATE_ACTIVE
+                ).first()
 
-#         # Write out the merged PDF
-#         with open(output, 'wb') as out:
-#             pdf_writer.write(out)
+                if applicant is None:
+                    raise falcon.HTTPNotFound(title="Error", description="Applicant not found")
 
-#     def on_post(self, req, resp, id):
+                with open(applicant.personal_docs, 'rb') as f:
+                    resp.downloadable_as = applicant.personal_docs
+                    resp.content_type = 'application/pdf'
+                    resp.stream = [f.read()]
+                    resp.status = falcon.HTTP_200
 
-#         req = json.loads(req.stream.read().decode('utf-8'))
-#         with db.transaction() as session:
-#             try:
-#                 pdf_writer = PdfFileWriter()
+        except:
+            logger.exception("Error, Failed to get Payment with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
 
-#                 applicant = session.query(Applicant).get(id)
-#                 applicant.document = ""
 
-#                 applicant.save(session)
-#                 main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).first()
 
-#                 env = req.env
-#                 form = cgi.FieldStorage(fp=req.stream,environ=env)
-#                 raw_data = form['fileinputname'].file.read()
-#                 pdf_reader = PdfFileReader(raw_data)
+class MainMemberPostFileEndpoint:
 
-#                 os.chdir('./assets/uploads/certificates')
-#                 path = os.getcwd()
-#                 for page in range(pdf_reader.getNumPages()):
-#                     # Add each page to the writer object
-#                     pdf_writer.addPage(pdf_reader.getPage(page))
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
 
-#                 save_file = '{}_{}.pdf'.format(main_member.first_name, main_member.last_name)
-#                 with open(save_file, 'wb') as out:
-#                     pdf_writer.write(out)
-#                 document = '/'.join([path, save_file])
-#                 applicant.personal_docs = document
-#                 self.merge_pdfs([applicant.certificate, applicant.personal_docs], '_'.join([save_file, 'docs.pdf']))
-#                 applicant.document = '_'.join([save_file, 'docs.pdf'])
-#                 os.chdir('../../..')
-#                 session.commit()
+    def is_basic_secure(self):
+        return self.basic_secure
 
-#             except Exception as e:
-#                 logger.exception(
-#                     "Error, experienced error while creating Applicant.")
-#                 raise e
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_post(self, req, resp, id):
+
+        with db.transaction() as session:
+            try:
+
+                try:
+                    main_member = session.query(MainMember).filter(
+                        MainMember.id == id,
+                        MainMember.state == MainMember.STATE_ACTIVE
+                    ).one_or_none()
+
+                except NoResultFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="No results found.")
+                except MultipleResultsFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="Multiple results found.")
+
+                applicant = session.query(Applicant).filter(
+                    Applicant.id == main_member.applicant_id,
+                    Applicant.state == Applicant.STATE_ACTIVE).first()
+
+                if not applicant:
+                    raise falcon.HTTPBadRequest(title="Error", description="No results found.")
+
+                pdf = req.get_param("myFile")
+  
+                filename = "{uuid}.{ext}".format(uuid=uuid.uuid4(), ext='pdf')
+
+                os.chdir('./assets/uploads/certificates')
+                pdf_path = os.path.join(os.getcwd(), filename)
+                with open(pdf_path, "wb") as pdf_file:
+                    while True:
+                        chunk = pdf.file.read()
+                        pdf_file.write(chunk)
+                        if not chunk:
+                            break
+
+                applicant.personal_docs = '{}/{}'.format(os.getcwd(), filename)
+                os.chdir('../../..')
+                resp.status = falcon.HTTP_200
+                resp.location = filename
+
+                resp.body = json.dumps("{name:" + pdf_path + "}")
+
+            except Exception as e:
+                logger.exception(
+                    "Error, experienced error while creating Applicant.")
+                raise e
 
 
 class MainMemberPostEndpoint:
@@ -643,7 +683,6 @@ class MainMemberPostEndpoint:
 
             if not plan:
                 raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
-
 
             applicant_req = req.get("applicant")
 
@@ -746,7 +785,7 @@ class MainMemberPostEndpoint:
                     session.commit()
                 except Exception as e:
                     logger.exception("Error, experienced an error while creating certificate.")
-                    print(e)
+                    raise e
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except Exception as e:
                 logger.exception(
