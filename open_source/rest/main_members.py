@@ -742,24 +742,29 @@ class MainMemberPostEndpoint:
                 age = relativedelta(now, dob)
 
                 years = "{}".format(age.years)
+                try:
+                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error",
+                            description="Age Limit exceeded.")
+                    elif int(years) > max_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error",
+                            description="Age Limit exceeded.")
+                except:
+                    pass
 
-                if len(years) > 2 and int(years[2:4]) > max_age_limit:
-                    raise falcon.HTTPBadRequest(
-                        title="Error",
-                        description="Age Limit exceeded.")
-                elif int(years) > max_age_limit:
-                    raise falcon.HTTPBadRequest(
-                        title="Error",
-                        description="Age Limit exceeded.")
-
-                if len(years) > 2 and int(years[2:4]) < min_age_limit:
-                    raise falcon.HTTPBadRequest(
-                        title="Error",
-                        description="Age not within required age limit.")
-                elif int(years) < min_age_limit:
-                    raise falcon.HTTPBadRequest(
-                        title="Error",
-                        description="Age not within required age limit.")
+                try:
+                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error",
+                            description="Age not within required age limit.")
+                    elif int(years) < min_age_limit:
+                        raise falcon.HTTPBadRequest(
+                            title="Error",
+                            description="Age not within required age limit.")
+                except:
+                    pass
 
                 main_member.save(session)
 
@@ -778,7 +783,8 @@ class MainMemberPostEndpoint:
                     canvas.set_current_plan(plan.plan)
                     canvas.set_current_premium(plan.premium)
                     canvas.set_physical_address(main_member.applicant.address if main_member.applicant.address else '')
-                    canvas.set_benefits(plan.benefits)
+                    if plan.benefits:
+                        canvas.set_benefits(plan.benefits)
                     canvas.save()
 
                     applicant.document = canvas.get_file_path()
