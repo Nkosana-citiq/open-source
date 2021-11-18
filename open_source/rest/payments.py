@@ -334,8 +334,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
             contact = applicant.parlour.number,
             policy_number = applicant.policy_num,
             id_number = main_member.id_number,
-            customer = '{} {}'.format(main_member.first_name, main_member.last_name),
-            assisted_by = '{} {}'.format(user.get("first_name"), user.get("last_name")),
+            customer = '{}. {}'.format(main_member.first_name[:1], main_member.last_name),
+            assisted_by = '{}. {}'.format(user.get("first_name")[:1], user.get("last_name")),
             number_of_months = str(len(dates)),
             months_paid = ", ".join([d.strftime("%b") for d in dates])
         )
@@ -439,14 +439,15 @@ def _build_invoice_information(invoice):
 
     table_001.add(Paragraph("Email: ", font="Helvetica", font_size=Decimal(13)))
     email = invoice.email if invoice.email else " "
-    table_001.add(Paragraph(email, respect_newlines_in_text=True, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
+    email = '{}\n{}'.format(email[:23], email[23:]) if len(email) > 23 else email
+    table_001.add(Paragraph('{}\n'.format(email), respect_newlines_in_text=True, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
     # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
     # table_001.add(Paragraph(" "))
 
-    table_001.add(Paragraph("--------------------------------------------------------------------------------"))
+    table_001.add(Paragraph("---------------------------------------------------------------"))
     table_001.add(Paragraph(" "))
     # table_001.add(Paragraph(" "))
 
