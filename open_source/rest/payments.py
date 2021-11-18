@@ -425,6 +425,7 @@ def _build_invoice_information(invoice):
 
     address = invoice.address if invoice.address else " "
     table_001.add(Paragraph("Address: ", font="Helvetica", font_size=Decimal(13)))
+    address = '{}\n{}'.format(address[:23], address[23:]) if len(address) > 23 else address
     table_001.add(Paragraph(address, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
 
 
