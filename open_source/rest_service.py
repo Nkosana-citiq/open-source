@@ -36,6 +36,10 @@ ALLOWED_ORIGINS = [
     'http://127.0.0.1:8009',
     "localhost:8009",
     "127.0.0.1:8009",
+    "http://backend.nocorpgroup.co.za/",
+    "https://backend.nocorpgroup.co.za/",
+    "http://nocorpgroup.co.za",
+    "https://nocorpgroup.co.za",
     "https://nocorpgroup.herokuapp.com/",
     "https://nkosana-citiq.github.io"]
 
@@ -47,12 +51,14 @@ whitelisted_methods = [
     "PATCH",
     "OPTIONS" # this is required for preflight request
 ]
+
+
 cors = CORS(
     allow_all_origins=True,
     allow_all_methods=True,
     allow_all_headers=True)
 
-api = falcon.API(
+api = application = falcon.API(
     middleware=[cors.middleware,
     MultipartMiddleware(),
     middleware.AuthMiddleware()]

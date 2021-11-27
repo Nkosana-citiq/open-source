@@ -125,7 +125,7 @@ class Consultant(db.Base):
             return choice(c) + choice(v) + choice(c + v)
 
         return chars() + chars() + str(randint(10, 99))
-    
+
     def to_webtoken_payload(self):
         return {'id': self.id}
 

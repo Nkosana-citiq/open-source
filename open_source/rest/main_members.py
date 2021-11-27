@@ -11,6 +11,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy import or_
 from open_source.core.main_members import MainMember
 from open_source.core.extended_members import ExtendedMember
+from open_source.rest.extended_members import update_certificate
 from open_source.core.parlours import Parlour
 from falcon_cors import CORS
 from open_source.core.certificate import Certificate
@@ -146,8 +147,8 @@ class MainGetAllParlourEndpoint:
 
                     if not main_members:
                         resp.body = json.dumps([])
-
-                    resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
+                    else:
+                        resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -578,7 +579,6 @@ class MemberPersonalDocsGetEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
 
 
-
 class MainMemberPostFileEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -654,7 +654,7 @@ class MainMemberPostEndpoint:
 
     def on_post(self, req, resp, id):
         
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
             parlour = session.query(Parlour).filter(
@@ -744,54 +744,23 @@ class MainMemberPostEndpoint:
                 years = "{}".format(age.years)
                 try:
                     if len(years) > 2 and int(years[2:4]) > max_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error",
-                            description="Age Limit exceeded.")
+                        main_member.age_limit_exceeded = True
                     elif int(years) > max_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error",
-                            description="Age Limit exceeded.")
+                        main_member.age_limit_exceeded = True
                 except:
                     pass
 
                 try:
                     if len(years) > 2 and int(years[2:4]) < min_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error",
-                            description="Age not within required age limit.")
+                        main_member.age_limit_exceeded = True
                     elif int(years) < min_age_limit:
-                        raise falcon.HTTPBadRequest(
-                            title="Error",
-                            description="Age not within required age limit.")
+                        main_member.age_limit_exceeded = True
                 except:
                     pass
-
                 main_member.save(session)
 
-                try:
-                    canvas = Certificate("{}_{}".format(main_member.first_name.strip(), main_member.last_name.strip()))
-                    canvas.set_title(parlour.parlourname)
-                    canvas.set_address(parlour.address if parlour.address else '')
-                    canvas.set_contact(parlour.number)
-                    canvas.set_email(parlour.email)
-                    canvas.membership_certificate()
-                    canvas.set_member("Main Member")
-                    canvas.set_name(' '.join([main_member.first_name, main_member.last_name]))
-                    canvas.set_id_number(main_member.id_number)
-                    canvas.set_date_joined(main_member.date_joined)
-                    canvas.set_member_contact(main_member.contact)
-                    canvas.set_current_plan(plan.plan)
-                    canvas.set_current_premium(plan.premium)
-                    canvas.set_physical_address(main_member.applicant.address if main_member.applicant.address else '')
-                    if plan.benefits:
-                        canvas.set_benefits(plan.benefits)
-                    canvas.save()
+                applicant = update_certificate(applicant)
 
-                    applicant.document = canvas.get_file_path()
-                    session.commit()
-                except Exception as e:
-                    logger.exception("Error, experienced an error while creating certificate.")
-                    raise e
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except Exception as e:
                 logger.exception(
@@ -812,7 +781,7 @@ class MainMemberPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -878,9 +847,9 @@ class MainMemberPutEndpoint:
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
 
+                applicant = update_certificate(applicant)
 
                 main_member.save(session)
-
                 resp.body = json.dumps(main_member.to_dict(), default=str)
         except:
             logger.exception(
@@ -902,7 +871,7 @@ class MainMemberPutAgeLimitExceptionEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -939,7 +908,7 @@ class MainMemberRestorePutEndpoint:
 
     def on_put(self, req, resp, id):
 
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
 
         try:
             with db.transaction() as session:
@@ -1017,7 +986,6 @@ class MainMemberDownloadCSVGetEndpoint:
         return not self.secure
 
     def on_get(self, req, resp, id):
-        # req = json.loads(req.stream.read().decode('utf-8'))
 
         try:
             with db.transaction() as session:
@@ -1217,7 +1185,7 @@ class SMSService:
 
     def on_post(self, req, resp):
         import requests
-        rest_dict = json.loads(req.stream.read().decode('utf-8'))
+        rest_dict = json.load(req.bounded_stream)
         with db.transaction() as session:
             status = None
             search_field = None

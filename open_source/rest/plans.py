@@ -94,7 +94,7 @@ class PlanPostEndpoint:
         return not self.secure
 
     def on_post(self, req, resp):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 parlour = session.query(Parlour).filter(
@@ -161,7 +161,7 @@ class PlanPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 

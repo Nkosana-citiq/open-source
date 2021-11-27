@@ -11,6 +11,7 @@ from open_source.core.plans import Plan
 from falcon_cors import CORS
 
 import falcon
+import os
 import json
 import logging
 
@@ -144,7 +145,7 @@ class ExtendedMemberPutAgeLimitExceptionEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -194,7 +195,7 @@ class ExtendedMembersPostEndpoint:
         return date_joined.replace('T', " ")[:10]
 
     def on_post(self, req, resp):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
 
         try:
             with db.transaction() as session:
@@ -285,7 +286,8 @@ class ExtendedMembersPostEndpoint:
                                 description="Age not within required age limit.")
 
                 extended_member.save(session)
-                update_certificate(applicant)
+                applicant = update_certificate(applicant)
+
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
 
         except Exception as e:
@@ -321,7 +323,7 @@ class ExtendedMemberPutEndpoint:
         return date_joined.replace('T', " ")[:10]
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 applicant_id = req.get("applicant_id")
@@ -397,7 +399,8 @@ class ExtendedMemberPutEndpoint:
                             description="Age not within required age limit.")
 
                 extended_member.save(session)
-                update_certificate(applicant)
+                applicant = update_certificate(applicant)
+
                 resp.body = json.dumps(applicant.to_dict(), default=str)
         except:
             logger.exception(
@@ -437,7 +440,7 @@ class ExtededMemberDeleteEndpoint:
 
 
 def update_certificate(applicant):
-    with db.no_transaction() as session:
+    with db.transaction() as session:
         parlour = session.query(Parlour).filter(Parlour.id == applicant.parlour.id).one_or_none()
         plan = session.query(Plan).filter(Plan.id == applicant.plan.id).one_or_none()
         main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id, MainMember.state == MainMember.STATE_ACTIVE).one_or_none()
@@ -510,3 +513,5 @@ def update_certificate(applicant):
         except Exception as e:
             logger.exception("Error, experienced an error while creating certificate.")
             print(e)
+
+    return applicant

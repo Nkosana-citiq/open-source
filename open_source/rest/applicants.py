@@ -82,7 +82,7 @@ class ApplicantPostEndpoint:
         return not self.secure
 
     def on_post(self, req, resp):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
 
         try:
             with db.transaction() as session:
@@ -131,7 +131,7 @@ class ApplicantPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -155,14 +155,6 @@ class ApplicantPutEndpoint:
                 applicant.consultant_id = req["consultant_id"]
                 applicant.state=Applicant.STATE_ACTIVE
 
-                # AuditLogClient.save_log(
-                #     session,
-                #     consultant.consultant_id,
-                #     consultant.email,
-                #     data_new=applicant.to_dict(),
-                #     notes='New applicant with ID [{}] added by consultant {} {}'.format(
-                #         applicant.id, consultant.first_name, consultant.last_name)
-                # )
                 applicant.save(session)
                 resp.body = json.dumps(applicant.to_dict(), default=str)
         except:

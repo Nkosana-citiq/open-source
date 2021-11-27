@@ -164,7 +164,7 @@ class PaymentPostEndpoint:
     def on_post(self, req, resp, id):
         try:
             with db.transaction() as session:
-                rest_dict = get_json_body(req)
+                rest_dict = json.load(req.bounded_stream)
 
                 parlour = session.query(Parlour).filter(
                     Parlour.id == id,
@@ -276,7 +276,7 @@ class PaymentPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             print(req)
             with db.transaction() as session:
@@ -426,7 +426,7 @@ def _build_invoice_information(invoice):
     address = invoice.address if invoice.address else " "
     table_001.add(Paragraph("Address: ", font="Helvetica", font_size=Decimal(13)))
     address = '{}\n{}'.format(address[:23], address[23:]) if len(address) > 23 else address
-    table_001.add(Paragraph(address, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
+    table_001.add(Paragraph(address, respect_newlines_in_text=True, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
 
 
     table_001.add(Paragraph(" "))

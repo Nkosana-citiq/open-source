@@ -162,7 +162,7 @@ class ConsultantPostEndpoint:
         return not self.secure
 
     def on_post(self, req, resp):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -226,7 +226,7 @@ class ConsultantPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 if 'email' not in req:
@@ -265,7 +265,7 @@ class ConsultantChangePasswordEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 if 'password' not in req or req.get("password").strip() == '':
@@ -403,7 +403,7 @@ class ConsultantAuthEndpoint:
     def on_post(self, req, resp):
         try:
             with db.transaction() as session:
-                rest_dict = get_json_body(req)
+                rest_dict = json.load(req.bounded_stream)
 
                 if 'username' not in rest_dict:
                     raise falcon.HTTPBadRequest(
@@ -463,7 +463,7 @@ class ConsultantSignupEndpoint:
 
         with db.transaction() as session:
             errors = {}
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
             parlour = session.query(Parlour).filter(
                 Parlour.id == rest_dict.get("parlour_id"),
                 Parlour.state == Parlour.STATE_ACTIVE
@@ -539,7 +539,7 @@ class ForgotPasswordEndpoint:
 
         with db.transaction() as session:
             
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
 
             email = None
 
