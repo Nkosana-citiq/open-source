@@ -1,5 +1,6 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
+from falcon.errors import HTTPBadRequest
 from open_source.core.main_members import MainMember
 from sqlalchemy.orm import relation
 
@@ -14,6 +15,7 @@ import falcon
 import os
 import json
 import logging
+import uuid
 
 from open_source import db
 
@@ -233,60 +235,40 @@ class ExtendedMembersPostEndpoint:
                     modified_at = datetime.now()
                 )
                 plan = applicant.plan
-                
-                plan = applicant.plan
+
                 if extended_member:
                     if extended_member.type == 0:
-                        min_age_limit = plan.spouse_minimum_age
-                        max_age_limit = plan.spouse_maximum_age
+                        if not plan.spouse:
+                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
+
+                        if plan.spouse <= len([member for member in applicant.extended_members if member.type == 0]):
+                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                     elif extended_member.type == 1:
-                        min_age_limit = plan.dependant_minimum_age
-                        max_age_limit = plan.dependant_maximum_age
+                        if not plan.beneficiaries:
+                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+
+                        if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1]):
+                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
                     elif extended_member.type == 2:
-                        min_age_limit = plan.extended_minimum_age
-                        max_age_limit = plan.extended_maximum_age
+                        if not plan.extended_members:
+                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
+
+                        if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2]):
+                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of extended-member members has been reached.")
                     elif extended_member.type == 3:
-                        min_age_limit = plan.additional_extended_minimum_age
-                        max_age_limit = plan.additional_extended_maximum_age
+                        if not plan.additional_extended_members:
+                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
 
-                    dob = extended_member.date_of_birth
-                    if not dob:
-                        id_number = extended_member.id_number
-                        if int(id_number[0:2]) > 21:
-                            number = '19{}'.format(id_number[0:2])
-                        else:
-                            number = '20{}'.format(id_number[0:2])
-                        id_number = extended_member.id_number
-                        dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                    dob = datetime.strptime(dob, "%Y-%m-%d")
-                    now = datetime.now()
+                        if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3]):
+                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of additional-extended-member members has been reached.")
 
-                    age = relativedelta(now, dob)
-
-                    years = "{}".format(age.years)
-
-                    if max_age_limit:
-                        if len(years) > 2 and int(years[2:4]) > max_age_limit:
-                            raise falcon.HTTPBadRequest(
-                                title="Error",
-                                description="Age Limit exceeded.")
-                        elif int(years) > max_age_limit:
-                            raise falcon.HTTPBadRequest(
-                                title="Error",
-                                description="Age Limit exceeded.")
-
-                    if min_age_limit:
-                        if len(years) > 2 and int(years[2:4]) < min_age_limit:
-                            raise falcon.HTTPBadRequest(
-                                title="Error",
-                                description="Age not within required age limit.")
-                        elif int(years) < min_age_limit:
-                            raise falcon.HTTPBadRequest(
-                                title="Error",
-                                description="Age not within required age limit.")
-
+                applicant.extended_members.append(extended_member)
                 extended_member.save(session)
-                applicant = update_certificate(applicant)
+                old_file = applicant.document
+                update_certificate(applicant)
+
+                if os.path.exists(old_file):
+                    os.remove(old_file)
 
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
 
@@ -294,6 +276,102 @@ class ExtendedMembersPostEndpoint:
             logger.exception(
                 "Error, experienced error while creating Applicant.")
             raise e
+
+
+class ExtendedMemberCheckAgeLimitEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def get_date_of_birth(self, date_of_birth=None, id_number=None):
+        current_year = datetime.now().year
+        year_string = str(current_year)[2:]
+        century = 19
+        if date_of_birth:
+            return date_of_birth.replace('T', " ")[:10]
+        if id_number:
+            if 0 <= int(id_number[:2]) <= int(year_string):
+                century = 20
+            return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+
+    def on_get(self, req, resp, id):
+
+        with db.no_transaction() as session:
+            age_limit_exceeded = False
+            id_number = None
+            date_of_birth = None
+            plan = None
+            max_age_limit = None
+            min_age_limit = None
+
+            if "id_number" in req.params:
+                id_number = req.params.pop("id_number")
+
+            if "dob" in req.params:
+                date_of_birth = req.params.pop("dob")
+
+            if "type" in req.params:
+                member_type = req.params.pop("type")
+
+            if not member_type:
+                raise falcon.HTTPBadRequest(title="Error", description="extended member type is required.")
+
+            applicant = session.query(Applicant).get(id)
+
+            if not applicant:
+                    raise falcon.HTTPBadRequest(title="Applicant not found", description="Applicant does not exist.")
+
+            plan = applicant.plan
+
+            if member_type == '0':
+                min_age_limit = plan.spouse_minimum_age
+                max_age_limit = plan.spouse_maximum_age
+            elif member_type == '1':
+                min_age_limit = plan.dependant_minimum_age
+                max_age_limit = plan.dependant_maximum_age
+            elif member_type == '2':
+                min_age_limit = plan.extended_minimum_age
+                max_age_limit = plan.extended_maximum_age
+            elif member_type == '3':
+                min_age_limit = plan.additional_extended_minimum_age
+                max_age_limit = plan.additional_extended_maximum_age
+
+            if not date_of_birth:
+                if int(id_number[0:2]) > 21:
+                    number = '19{}'.format(id_number[0:2])
+                else:
+                    number = '20{}'.format(id_number[0:2])
+                date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+            dob = datetime.strptime(date_of_birth, "%Y-%m-%d")
+            now = datetime.now()
+
+            age = relativedelta(now, dob)
+
+            years = "{}".format(age.years)
+
+            if max_age_limit:
+                if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                    age_limit_exceeded = True
+                elif int(years) > max_age_limit:
+                    age_limit_exceeded = True
+
+            if min_age_limit:
+                if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                    age_limit_exceeded = True
+                elif int(years) < min_age_limit:
+                    age_limit_exceeded = True
+
+            if age_limit_exceeded:
+                resp.body = json.dumps({'result': 'Age limit exceeded!'})
+            else:
+                resp.body = json.dumps({'result': 'OK!'})
 
 
 class ExtendedMemberPutEndpoint:
@@ -399,7 +477,11 @@ class ExtendedMemberPutEndpoint:
                             description="Age not within required age limit.")
 
                 extended_member.save(session)
-                applicant = update_certificate(applicant)
+                old_file = applicant.document
+                update_certificate(applicant)
+
+                if os.path.exists(old_file):
+                    os.remove(old_file)
 
                 resp.body = json.dumps(applicant.to_dict(), default=str)
         except:
@@ -462,7 +544,7 @@ def update_certificate(applicant):
             ExtendedMember.type == ExtendedMember.TYPE_ADDITIONAL_EXTENDED_MEMBER).all()
 
         try:
-            canvas = Certificate(parlour.parlourname.strip())
+            canvas = Certificate(uuid.uuid4())
             canvas.set_title(parlour.parlourname)
             canvas.set_address(parlour.address if parlour.address else '')
             canvas.set_contact(parlour.number)
@@ -475,7 +557,7 @@ def update_certificate(applicant):
             canvas.set_member_contact(main_member.contact)
             canvas.set_current_plan(plan.plan)
             canvas.set_current_premium(plan.premium)
-            canvas.set_physical_address(main_member.applicant.address if main_member.applicant.address else '')
+            canvas.set_physical_address(applicant.address if applicant.address else '')
             count = 0
 
             for s in spouse:
@@ -505,13 +587,11 @@ def update_certificate(applicant):
                 if count == 4:
                     canvas.showPage()
                     canvas.y_position = 60
-
-            canvas.set_benefits(plan.benefits)
+            if plan.benefits:
+                canvas.set_benefits(plan.benefits)
             canvas.save()
             applicant.document = canvas.get_file_path()
 
         except Exception as e:
             logger.exception("Error, experienced an error while creating certificate.")
             print(e)
-
-    return applicant

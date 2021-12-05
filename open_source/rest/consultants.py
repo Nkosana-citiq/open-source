@@ -636,3 +636,126 @@ class ForgotPasswordEndpoint:
             return None
 
         return user
+
+
+class ContactUsEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_post(self, req, resp):
+
+        with db.transaction() as session:
+            
+            rest_dict = json.load(req.bounded_stream)
+
+            email = None
+            full_name = None
+            message = None
+
+            user = None
+
+            if 'email' in rest_dict:
+                email = rest_dict.get('email')
+
+            if not email:
+                raise falcon.HTTPBadRequest(title='Error', description='An email address is required')
+
+            if 'full_name' in rest_dict:
+                full_name = rest_dict.get('full_name')
+
+            if not full_name:
+                raise falcon.HTTPBadRequest(title='Error', description='An full name is required')
+
+            if 'message' in rest_dict:
+                message = rest_dict.get('message')
+            if not message:
+                raise falcon.HTTPBadRequest(title='Error', description='An message is required')
+
+            import smtplib, ssl
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            port = 465  # For SSL
+            smtp_server = "smtp.gmail.com"
+            sender_email = "nkosananikani@gmail.com"  # Enter your address
+            receiver_email = email  # Enter receiver address
+            password = '3McsgoId1grf'
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "multipart test"
+            message["From"] = sender_email
+            message["To"] = receiver_email
+
+            args = {
+                "user": user.pretty_name,
+                "domain": conf.url,
+                "email": email,
+                "year": datetime.now().year
+            }
+
+            email_body = utils.render_template(
+            """
+            <html>
+            <body>
+                <p>Hi,<br>               
+                </p>
+                <table>
+                    <thead class="">
+                        <tr>
+                            <th class="text-muted">Name</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{permission.name}}</td>
+                            <td class="td-actions">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </body>
+            </html>
+            """.format(email=email),
+                args
+            )
+
+            subject = "Contact Us"
+
+
+            # Turn these into plain/html MIMEText objects
+            # part1 = MIMEText(text, "plain")
+            part2 = MIMEText(email_body, "html")
+
+            # Add HTML/plain-text parts to MIMEMultipart message
+            # The email client will try to render the last part first
+            # message.attach(part1)
+            message.attach(part2)
+            context = ssl.create_default_context()
+
+            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, receiver_email, message.as_string())
+
+            resp.body = json.dumps({'status': 'success'})
+
+    def get_user_by_email(self, session, email):
+        try:
+            user =  session.query(Consultant)\
+                .filter(Consultant.email == email, Consultant.state == Consultant.STATE_ACTIVE).one_or_none()
+            if not user:
+                user =  session.query(Parlour)\
+                .filter(Parlour.email == email, Parlour.state == Parlour.STATE_ACTIVE).one_or_none()
+
+        except MultipleResultsFound:
+            return None
+
+        return user

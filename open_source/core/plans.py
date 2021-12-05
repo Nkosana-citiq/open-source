@@ -23,20 +23,20 @@ class Plan(db.Base):
     member_minimum_age = Column(String(length=2))
     member_maximum_age = Column(String(length=2))
 
-    spouse = Column(String(length=2))
+    spouse = Column(Integer)
     spouse_age_restriction = Column(String(length=2))
     spouse_minimum_age = Column(String(length=2))
     spouse_maximum_age = Column(String(length=2))
 
-    extended_members = Column(String(length=2))
+    extended_members = Column(Integer)
     extended_age_restriction = Column(Boolean)
     extended_minimum_age = Column(String(length=2))
     extended_maximum_age = Column(String(length=2))
-    beneficiaries = Column(String(length=2))
+    beneficiaries = Column(Integer)
     consider_age = Column(Boolean)
     dependant_minimum_age = Column(String(length=2))
     dependant_maximum_age = Column(String(length=2))
-    additional_extended_members = Column(String(length=2))
+    additional_extended_members = Column(Integer)
     additional_extended_consider_age = Column(Boolean)
     additional_extended_minimum_age = Column(String(length=2))
     additional_extended_maximum_age = Column(String(length=2))
@@ -64,6 +64,10 @@ class Plan(db.Base):
             'member_age_restriction': self.member_age_restriction,
             'member_minimum_age': self.member_minimum_age,
             'member_maximum_age': self.member_maximum_age,
+            'spouse': self.spouse,
+            'spouse_age_restriction': self.spouse_age_restriction,
+            'spouse_minimum_age': self.spouse_minimum_age,
+            'spouse_maximum_age': self.spouse_maximum_age,
             'extended_members': self.extended_members,
             'extended_age_restriction': self.extended_age_restriction,
             'extended_minimum_age': self.extended_minimum_age,
@@ -96,9 +100,14 @@ class Plan(db.Base):
             'member_age_restriction': self.member_age_restriction,
             'member_minimum_age': self.member_minimum_age,
             'member_maximum_age': self.member_maximum_age,
+            'spouse': self.spouse,
+            'spouse_age_restriction': self.spouse_age_restriction,
+            'spouse_minimum_age': self.spouse_minimum_age,
+            'spouse_maximum_age': self.spouse_maximum_age,
             'extended_age_restriction': self.extended_age_restriction,
             'extended_minimum_age': self.extended_minimum_age,
             'extended_maximum_age': self.extended_maximum_age,
+            'consider_age': self.consider_age,
             'dependant_minimum_age': self.dependant_minimum_age,
             'dependant_maximum_age': self.dependant_maximum_age,
             'additional_extended_members': self.additional_extended_members,

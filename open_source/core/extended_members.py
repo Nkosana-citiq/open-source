@@ -80,7 +80,7 @@ class ExtendedMember(db.Base):
 
     @declared_attr
     def applicant(cls):
-        return relationship('Applicant')
+        return relationship('Applicant', back_populates='extended_members')
 
     @property
     def state_text(self):

@@ -13,7 +13,7 @@ class Certificate:
         os.chdir('./assets/uploads/certificates')
 
         self.y_position = 0
-        self.file_path = "{}/{}.pdf".format(os.getcwd(), file_name.lower().replace(" ", "-"))
+        self.file_path = "{}/{}.pdf".format(os.getcwd(), file_name)
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
 
@@ -94,7 +94,7 @@ class Certificate:
         self.y_position = sum([self.y_position, 50])
         self.can.drawString(30, self.y_position, "Benefits:")
         self.can.setFont('Helvetica', 10)
-        # self.y_position = sum([self.y_position, 15])
+
         for s in benefits.split(" "):
             if len(s) > 1 and s.lower() != "and":
                 self.y_position = sum([self.y_position, 15])

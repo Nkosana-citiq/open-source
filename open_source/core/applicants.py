@@ -62,6 +62,10 @@ class Applicant(db.Base):
     def consultant(cls):
         return relationship('Consultant')
 
+    @declared_attr
+    def extended_members(cls):
+        return relationship('ExtendedMember', back_populates='applicant')
+
     def to_dict(self):
         return {
             'id': self.id,

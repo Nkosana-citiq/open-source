@@ -118,6 +118,7 @@ api.add_route('/open-source/main-members/{id}/upload', main_members.MainMemberPo
 api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())
 api.add_route('/open-source/main-members/{id}/update', main_members.MainMemberPutEndpoint())
+api.add_route('/open-source/plans/{id}/check_age_limit', main_members.MainMemberCheckAgeLimitEndpoint())
 api.add_route('/open-source/main-members/{id}/exception', main_members.MainMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
@@ -132,6 +133,9 @@ api.add_route('/open-source/dependants/{id}/update', dependants.DependantPutEndp
 api.add_route('/open-source/dependants/{id}/delete', dependants.DependantDeleteEndpoint())
 
 api.add_route('/open-source/applicants/{id}/extended-members/all', extended_members.ExtendedMembersGetAllEndpoint())
+api.add_route('/open-source/applicants/{id}/extended-members/age-limit', extended_members.ExtendedMemberCheckAgeLimitEndpoint())
+
+
 api.add_route('/open-source/extended-members', extended_members.ExtendedMembersPostEndpoint())
 api.add_route('/open-source/extended-members/{id}/get', extended_members.ExtendedMemberGetEndpoint())
 api.add_route('/open-source/extended-members/{id}/update', extended_members.ExtendedMemberPutEndpoint())

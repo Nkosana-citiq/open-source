@@ -214,7 +214,7 @@ class MainGetAllParlourEndpoint:
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Applicants for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
 
 
 class MainGetAllConsultantEndpoint:
@@ -335,7 +335,7 @@ class MainGetAllConsultantEndpoint:
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Applicants for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
 
 
 class MainGetAllArchivedParlourEndpoint:
@@ -535,7 +535,7 @@ class MemberCertificateGetEndpoint:
 
         except:
             logger.exception("Error, Failed to get Payment with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Certificate with ID {}.".format(id))
 
 
 class MemberPersonalDocsGetEndpoint:
@@ -576,7 +576,7 @@ class MemberPersonalDocsGetEndpoint:
 
         except:
             logger.exception("Error, Failed to get Payment with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Invoice with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Invoice with ID {}.".format(id))
 
 
 class MainMemberPostFileEndpoint:
@@ -593,9 +593,10 @@ class MainMemberPostFileEndpoint:
 
     def on_post(self, req, resp, id):
 
+        # req = json.load(req.bounded_stream)
+
         with db.transaction() as session:
             try:
-
                 try:
                     main_member = session.query(MainMember).filter(
                         MainMember.id == id,
@@ -697,6 +698,7 @@ class MainMemberPostEndpoint:
             try:
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
+                    address = applicant_req.get("address"),
                     # personal_docs = applicant_req.get("file_path"),
                     # document = applicant_req.get("document"),
                     status = 'unpaid',
@@ -759,13 +761,87 @@ class MainMemberPostEndpoint:
                     pass
                 main_member.save(session)
 
-                applicant = update_certificate(applicant)
+                update_certificate(applicant)
 
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except Exception as e:
                 logger.exception(
                     "Error, experienced error while creating Applicant.")
                 raise e
+
+
+class MainMemberCheckAgeLimitEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def get_date_of_birth(self, date_of_birth=None, id_number=None):
+        current_year = datetime.datetime.now().year
+        year_string = str(current_year)[2:]
+        century = 19
+        if date_of_birth:
+            return date_of_birth.replace('T', " ")[:10]
+        if id_number:
+            if 0 <= int(id_number[:2]) <= int(year_string):
+                century = 20
+            return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+
+    def on_get(self, req, resp, id):
+
+        with db.no_transaction() as session:
+            age_limit_exceeded = False
+            id_number = None
+            date_of_birth = None
+            plan = None
+            max_age_limit = None
+            min_age_limit = None
+
+            id_number = req.params.pop("id_number")
+
+            plan = session.query(Plan).get(id)
+
+            if not plan:
+                    raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
+
+            min_age_limit = plan.member_minimum_age
+            max_age_limit = plan.member_maximum_age
+
+            if not date_of_birth:
+                if int(id_number[0:2]) > 21:
+                    number = '19{}'.format(id_number[0:2])
+                else:
+                    number = '20{}'.format(id_number[0:2])
+                date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+            dob = datetime.datetime.strptime(date_of_birth, "%Y-%m-%d")
+            now = datetime.datetime.now()
+
+            age = relativedelta(now, dob)
+
+            years = "{}".format(age.years)
+
+            if max_age_limit:
+                if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                    age_limit_exceeded = True
+                elif int(years) > max_age_limit:
+                    age_limit_exceeded = True
+
+            if min_age_limit:
+                if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                    age_limit_exceeded = True
+                elif int(years) < min_age_limit:
+                    age_limit_exceeded = True
+
+            if age_limit_exceeded:
+                resp.body = json.dumps({'result': 'Age limit exceeded!'})
+            else:
+                resp.body = json.dumps({'result': 'OK!'})
 
 
 class MainMemberPutEndpoint:
@@ -847,7 +923,11 @@ class MainMemberPutEndpoint:
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
 
-                applicant = update_certificate(applicant)
+                old_file = applicant.document
+                update_certificate(applicant)
+
+                if os.path.exists(old_file):
+                    os.remove(old_file)
 
                 main_member.save(session)
                 resp.body = json.dumps(main_member.to_dict(), default=str)

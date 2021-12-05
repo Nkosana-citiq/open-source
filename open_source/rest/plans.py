@@ -122,6 +122,10 @@ class PlanPostEndpoint:
                     member_age_restriction = req.get("member_age_restriction"),
                     member_minimum_age = req.get("member_minimum_age"),
                     member_maximum_age = req.get("member_maximum_age"),
+                    spouse = req.get("spouse"),
+                    spouse_age_restriction = req.get("spouse_age_restriction"),
+                    spouse_minimum_age = req.get('spouse_minimum_age'),
+                    spouse_maximum_age = req.get("spouse_maximum_age"),
                     beneficiaries = req.get("dependants"),
                     consider_age = req.get("consider_age"),
                     dependant_minimum_age = req.get("dependant_minimum_age"),
@@ -179,6 +183,10 @@ class PlanPutEndpoint:
                 plan.member_age_restriction = req["member_age_restriction"]
                 plan.member_minimum_age = req["member_minimum_age"]
                 plan.member_maximum_age = req["member_maximum_age"]
+                plan.spouse = req.get("spouse"),
+                plan.spouse_age_restriction = req.get("spouse_age_restriction"),
+                plan.spouse_minimum_age = req.get('spouse_minimum_age'),
+                plan.spouse_maximum_age = req.get("spouse_maximum_age"),
                 plan.additional_extended_maximum_age = req['additional_extended_maximum_age']
                 plan.additional_extended_minimum_age = req["additional_extended_minimum_age"] 
                 plan.additional_extended_consider_age = req["additional_extended_consider_age"]
