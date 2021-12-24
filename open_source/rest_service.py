@@ -36,10 +36,10 @@ ALLOWED_ORIGINS = [
     'http://127.0.0.1:8009',
     "localhost:8009",
     "127.0.0.1:8009",
-    "http://backend.nocorpgroup.co.za/",
-    "https://backend.nocorpgroup.co.za/",
-    "http://nocorpgroup.co.za",
-    "https://nocorpgroup.co.za",
+    "http://backend.osource.co.za",
+    "https://backend.osource.co.za",
+    "http://osource.co.za",
+    "https://osource.co.za",
     "https://nocorpgroup.herokuapp.com/",
     "https://nkosana-citiq.github.io"]
 
@@ -118,7 +118,7 @@ api.add_route('/open-source/main-members/{id}/upload', main_members.MainMemberPo
 api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())
 api.add_route('/open-source/main-members/{id}/update', main_members.MainMemberPutEndpoint())
-api.add_route('/open-source/plans/{id}/check_age_limit', main_members.MainMemberCheckAgeLimitEndpoint())
+api.add_route('/open-source/plans/{id}/check-age-limit', main_members.MainMemberCheckAgeLimitEndpoint())
 api.add_route('/open-source/main-members/{id}/exception', main_members.MainMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())

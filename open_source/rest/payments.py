@@ -319,6 +319,14 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     invoice_number = str(int(last_invoice.number) + 1) if last_invoice else "1" 
 
     if main_member:
+        
+        if user.get("first_name"):
+            assisted_by = '{}. {}'.format(user.get("first_name")[:1], user.get("last_name"))
+        else:
+            names = user.get("person_name").split() if user.get("person_name") else []
+            last_name = names.pop()
+            assisted_by = '{}. {}'.format('. '.join([n[:1] for n in names]), last_name)
+        customer = '{}. {}'.format(main_member.first_name[:1], main_member.last_name) if main_member.first_name else None
         invoice = Invoice(
             state = Invoice.STATE_ACTIVE,
             created =  datetime.now(),
@@ -334,8 +342,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
             contact = applicant.parlour.number,
             policy_number = applicant.policy_num,
             id_number = main_member.id_number,
-            customer = '{}. {}'.format(main_member.first_name[:1], main_member.last_name),
-            assisted_by = '{}. {}'.format(user.get("first_name")[:1], user.get("last_name")),
+            customer = customer,
+            assisted_by = assisted_by,
             number_of_months = str(len(dates)),
             months_paid = ", ".join([d.strftime("%b") for d in dates])
         )

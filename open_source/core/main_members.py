@@ -74,6 +74,7 @@ class MainMember(db.Base):
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'date_joined': self.date_joined,
+            'created_at': self.created_at,
             'applicant': self.applicant.to_short_dict() if self.applicant else {}
         }
     

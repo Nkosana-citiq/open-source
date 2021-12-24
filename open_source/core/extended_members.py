@@ -19,7 +19,7 @@ class ExtendedMember(db.Base):
         STATE_DELETED: 'Deleted'
     }
 
-    TYPE_SPOUSE = 0
+    TYPE_SPOUSE = 4
     TYPE_DEPENDANT = 1
     TYPE_EXTENDED_MEMBER = 2
     TYPE_ADDITIONAL_EXTENDED_MEMBER = 3
@@ -31,7 +31,7 @@ class ExtendedMember(db.Base):
         TYPE_ADDITIONAL_EXTENDED_MEMBER: 'Additional Extended Member'
     }
 
-    RELATION_CHILD = 0
+    RELATION_CHILD = 12
     RELATION_PARENT = 1
     RELATION_BROTHER = 2
     RELATION_SISTER = 3
@@ -101,7 +101,7 @@ class ExtendedMember(db.Base):
             'state': self.state,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'type': self.type_text,
+            'type': self.type,
             'number': self.number,
             'created_at': self.created_at,
             'id_number': self.id_number,
@@ -109,7 +109,7 @@ class ExtendedMember(db.Base):
             'date_joined': self.date_joined,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
-            'relation_to_main_member': self.relation_text,
+            'relation_to_main_member': self.relation_to_main_member,
             'applicant': self.applicant.to_short_dict()
         }
 
@@ -119,12 +119,12 @@ class ExtendedMember(db.Base):
             'date_of_birth': self.date_of_birth,
             'first_name': self.first_name,
             'last_name': self.last_name,
-            'type': self.type_text,
+            'type': self.type,
             'number': self.number,
             'id_number': self.id_number,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
-            'relation_to_main_member': self.relation_text,
+            'relation_to_main_member': self.relation_to_main_member,
             'date_joined': self.date_joined,
             'applicant': self.applicant.to_short_dict()
         }

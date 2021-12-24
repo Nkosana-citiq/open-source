@@ -85,6 +85,8 @@ class Certificate:
         self.can.drawString(30, self.y_position, "Date joined: {}".format(member.date_joined))
         self.y_position = sum([self.y_position, 15])
         self.can.drawString(30, self.y_position, "Relationship: {}".format(member.relation_text.title()))
+        self.y_position = sum([self.y_position, 15])
+        self.can.drawString(30, self.y_position, "Contact: {}".format(member.number))
 
     def set_relation(self, relation: str):
         self.can.drawString(30, 750, "Relationship: {}".format(relation.title()))
