@@ -651,11 +651,10 @@ class ParlourAddSMSEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        import datetime
+
         req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
-                print(req)
                 parlour = session.query(Parlour).filter(
                     Parlour.id == id).first()
 

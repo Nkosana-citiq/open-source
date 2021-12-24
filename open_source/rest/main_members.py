@@ -898,24 +898,20 @@ class MainMemberPutEndpoint:
             if not applicant:
                 raise falcon.HTTPNotFound(title="Applicant not found", description="Could not find Applicant with given ID.")
 
-            id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
+            entity = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
 
-            if not id_number:
+            if not entity:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
-                id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
+                entity = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
 
-            if id_number:
+            if entity and applicant.id != entity.applicant_id:
                 raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
             if plan:
                 applicant.plan_id = plan.id
             applicant.policy_num = applicant_req.get("policy_num")
             applicant.address = applicant_req.get("address")
-            # print(applicant_req.get("document"))
-            # if applicant_req.get("document"):
-            #     applicant.document = applicant_req.get("document")
-            #     applicant.old_url = False
 
             main_member = session.query(MainMember).filter(
                 MainMember.id == id,
@@ -925,10 +921,6 @@ class MainMemberPutEndpoint:
             if not main_member:
                 raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-                # id_number_exists = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
-
-                # if id_number_exists and main_member.id_number != id_number_exists.id_number:
-                #     raise falcon.HTTPBadRequest(title="Error", description="ID number already exists.")
             try:
                 main_member.first_name = req.get("first_name")
                 main_member.last_name = req.get("last_name")
@@ -938,15 +930,15 @@ class MainMemberPutEndpoint:
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
 
-                # old_file = applicant.document
-                # update_certificate(applicant)
-                # print('========================= FILE ==============================================')
-                # print(old_file)
-                # if os.path.exists(old_file):
-                #     os.remove(old_file)
+                old_file = applicant.document
+                update_certificate(applicant)
+
+                if os.path.exists(old_file):
+                    os.remove(old_file)
 
                 main_member.save(session)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
+
             except Exception as e:
                 logger.exception(
                     "Error, experienced error while creating Applicant.")

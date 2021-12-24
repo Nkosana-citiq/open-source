@@ -594,6 +594,7 @@ def update_certificate(applicant):
                 canvas.set_name(' '.join([main_member.first_name, main_member.last_name]))
                 canvas.set_id_number(main_member.id_number)
                 canvas.set_date_joined(main_member.date_joined)
+                canvas.set_date_created(main_member.created_at.date())
                 canvas.set_member_contact(main_member.contact)
                 canvas.set_current_plan(plan.plan)
                 canvas.set_current_premium(plan.premium)

@@ -61,15 +61,18 @@ class Certificate:
     def set_date_joined(self, date_joined):
         self.can.drawString(30, 240, "Date Joined: {}".format(date_joined))
 
+    def set_date_created(self, date_created):
+        self.can.drawString(30, 255, "Date Created: {}".format(date_created))
+
     def set_current_plan(self, plan: str):
-        self.can.drawString(30, 255, "Current Plan: {}".format(plan.title()))
+        self.can.drawString(30, 270, "Current Plan: {}".format(plan.title()))
 
     def set_current_premium(self, premium):
-        self.can.drawString(30, 270, "Premium: R{}".format(premium))
+        self.can.drawString(30, 285, "Premium: R{}".format(premium))
 
     def set_physical_address(self, address):
-        self.y_position = 285
-        self.can.drawString(30, 285, "Physical Address: {}".format(address))
+        self.y_position = 300
+        self.can.drawString(30, 300, "Physical Address: {}".format(address))
 
     def add_other_members(self, member):
         self.can.setFont('Helvetica-Bold', 10)

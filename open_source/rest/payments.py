@@ -278,7 +278,6 @@ class PaymentPutEndpoint:
     def on_put(self, req, resp, id):
         req = json.load(req.bounded_stream)
         try:
-            print(req)
             with db.transaction() as session:
                 if 'email' not in req:
                     raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
