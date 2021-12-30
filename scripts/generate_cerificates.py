@@ -13,7 +13,7 @@ def update_payments(applicant=None):
 
 
 def create_certificate():
-    with db.no_transaction() as session:
+    with db.transaction() as session:
         applicants = get_all_applicants(session)
         for applicant in applicants:
             update_payments(applicant)
