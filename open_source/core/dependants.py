@@ -15,14 +15,11 @@ class Dependant(db.Base):
 
     id = Column(Integer, primary_key=True)
     date_of_birth = Column(Date())
-    state = Column(Integer, default=1)
     first_name = Column(String(length=50))
     last_name = Column(String(length=50))
     number = Column(String(length=12))
     date_joined = Column(Date())
-    relation_to_main_member = Column(String(length=50))
     created_at = Column(DateTime, server_default=func.now())
-    modified_at = Column(DateTime, server_default=func.now())
 
     @declared_attr
     def applicant_id(cls):

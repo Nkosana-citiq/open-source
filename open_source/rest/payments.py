@@ -278,6 +278,7 @@ class PaymentPutEndpoint:
     def on_put(self, req, resp, id):
         req = json.load(req.bounded_stream)
         try:
+            print(req)
             with db.transaction() as session:
                 if 'email' not in req:
                     raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
@@ -313,12 +314,11 @@ class PaymentPutEndpoint:
 
 def print_invoice(session, payment, applicant, user, amount, dates):
 
-    main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).one_or_none()
+    main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).first()
     last_invoice = session.query(Invoice).filter(Invoice.parlour_id == applicant.parlour.id).order_by(Invoice.id.desc()).first()
     invoice_number = str(int(last_invoice.number) + 1) if last_invoice else "1" 
 
     if main_member:
-        
         if user.get("first_name"):
             assisted_by = '{}. {}'.format(user.get("first_name")[:1], user.get("last_name"))
         else:
@@ -344,7 +344,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
             customer = customer,
             assisted_by = assisted_by,
             number_of_months = str(len(dates)),
-            months_paid = ", ".join([d.strftime("%b") for d in dates])
+            months_paid = ", ".join([d.strftime("%b") for d in dates]),
+            payment_type=payment.payment_type
         )
 
     # Create document
@@ -449,99 +450,82 @@ def _build_invoice_information(invoice):
     email = invoice.email if invoice.email else " "
     email = '{}\n{}'.format(email[:23], email[23:]) if len(email) > 23 else email
     table_001.add(Paragraph('{}\n'.format(email), respect_newlines_in_text=True, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("---------------------------------------------------------------"))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Customer Details ", font="Helvetica-Bold", font_size=Decimal(13)))
-    # months = invoice.amount if invoice.amount else " "
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Invoice: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph("#{}".format(invoice.number), font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Policy Number: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph("{}".format(invoice.policy_number), font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Premium: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph("R {}".format(invoice.premium), font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Name and Surname: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(invoice.customer, font="Helvetica", font_size=Decimal(16), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("ID Number: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(invoice.id_number, font="Helvetica", font_size=Decimal(14), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Amount Paid: ", font="Helvetica", font_size=Decimal(13)))
     amount = str(invoice.amount) if invoice.amount else " "
     table_001.add(Paragraph("R {}".format(amount), font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Month Paid: ", font="Helvetica", font_size=Decimal(13)))
     months = invoice.number_of_months if invoice.number_of_months else " "
     table_001.add(Paragraph(months, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Months Paid For: ", font="Helvetica", font_size=Decimal(13)))
     months_paid = invoice.months_paid if invoice.months_paid else " "
     table_001.add(Paragraph(months_paid, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
-    # table_001.add(Paragraph(" "))
+
+    table_001.add(Paragraph("Type of Payment: ", font="Helvetica", font_size=Decimal(13)))
+    table_001.add(Paragraph(invoice.payment_type, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
+
+    table_001.add(Paragraph(" "))
+    table_001.add(Paragraph(" "))
 
     table_001.add(Paragraph("Captured by: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(invoice.assisted_by, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-    # table_001.add(Paragraph(" "))
+
 
     table_001.set_padding_on_all_cells(Decimal(2), Decimal(1), Decimal(2), Decimal(1))
     table_001.no_borders()

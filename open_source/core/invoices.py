@@ -29,6 +29,7 @@ class Invoice(db.Base):
     contact = Column(String(length=12))
     branch = Column(String(length=100))
     months_paid = Column(String(length=255))
+    payment_type = Column(String(length=10))
 
     @declared_attr
     def payment_id(cls):
@@ -65,6 +66,7 @@ class Invoice(db.Base):
             'assisted_by': self.assisted_by,
             'number_of_months': self.number_of_months,
             'months_paid': self.months_paid,
+            'payment_type': self.payment_type,
             'document': self.document,
             'payment': self.payment.to_dict(),
             'parlour': self.parlour.to_dict()

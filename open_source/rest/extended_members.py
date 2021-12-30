@@ -1,6 +1,5 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
-from falcon.errors import HTTPBadRequest
 from open_source.core.main_members import MainMember
 from sqlalchemy.orm import relation
 
@@ -194,7 +193,7 @@ class ExtendedMembersPostEndpoint:
             return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
 
     def get_date_joined(self, date_joined):
-        return date_joined.replace('T', " ")[:10]
+        return date_joined.replace('T', " ")[:10] if date_joined else date_joined 
 
     def on_post(self, req, resp):
         req = json.load(req.bounded_stream)
@@ -298,6 +297,8 @@ class ExtendedMembersPostEndpoint:
             raise e
 
 
+
+
 class ExtendedMemberCheckAgeLimitEndpoint:
     cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
@@ -346,12 +347,25 @@ class ExtendedMemberCheckAgeLimitEndpoint:
             applicant = session.query(Applicant).get(id)
 
             if not applicant:
-                    raise falcon.HTTPBadRequest(title="Applicant not found", description="Applicant does not exist.")
+                raise falcon.HTTPBadRequest(title="Applicant not found", description="Applicant does not exist.")
 
             plan = applicant.plan
 
             if not id_number and not date_of_birth:
-                    raise falcon.HTTPBadRequest(title="Error", description="ID number or date of birth field must be entered.")
+                raise falcon.HTTPBadRequest(title="Error", description="ID number or date of birth field must be entered.")
+
+            if member_type == '4':
+                if not plan.spouse:
+                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
+            elif member_type == '1':
+                if not plan.beneficiaries:
+                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+            elif member_type == '2':
+                if not plan.extended_members:
+                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
+            elif member_type == '3':
+                if not plan.additional_extended_members:
+                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
 
             if member_type == '4':
                 min_age_limit = plan.spouse_minimum_age
@@ -365,6 +379,9 @@ class ExtendedMemberCheckAgeLimitEndpoint:
             elif member_type == '3':
                 min_age_limit = plan.additional_extended_minimum_age
                 max_age_limit = plan.additional_extended_maximum_age
+
+            if min_age_limit is None or not max_age_limit:
+                raise falcon.HTTPBadRequest(title="Error", description="Make sure type of member is selected.")
 
             if not date_of_birth:
                 if int(id_number[0:2]) > 21:
@@ -453,15 +470,15 @@ class ExtendedMemberPutEndpoint:
 
             if req.get("id_number"):
                 id_number = session.query(ExtendedMember).join(MainMember, applicant_id == ExtendedMember.applicant_id).filter(
-                    ExtendedMember.id_number == req.get("id_number")).first()
+                ExtendedMember.id_number == req.get("id_number")).first()
 
-                if not id_number:
-                    applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
-                    applicant_ids = [applicant.id for applicant in applicants]
-                    id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
+            if not id_number:
+                applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
+                applicant_ids = [applicant.id for applicant in applicants]
+                id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
 
-                if id_number:
-                    raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
+            if id_number:
+                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
             plan = applicant.plan
             extended_member = session.query(ExtendedMember).filter(
@@ -636,3 +653,5 @@ def update_certificate(applicant):
             except Exception as e:
                 logger.exception("Error, experienced an error while creating certificate.")
                 print(e)
+
+    return applicant
