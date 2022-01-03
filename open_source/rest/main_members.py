@@ -594,8 +594,8 @@ class MainMemberPostFileEndpoint:
         return not self.secure
 
     def on_post(self, req, resp, id):
+        pdf = req.get_param('myFile')
 
-        req = json.load(req.bounded_stream)
         with db.transaction() as session:
             try:
                 try:
@@ -917,7 +917,7 @@ class MainMemberPutEndpoint:
             if not main_member:
                 raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-            id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
+            id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id, MainMember.id != main_member.id).first()
 
             if not id_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()

@@ -326,6 +326,7 @@ def print_invoice(session, payment, applicant, user, amount, dates):
             last_name = names.pop()
             assisted_by = '{}. {}'.format('. '.join([n[:1] for n in names]), last_name)
         customer = '{}. {}'.format(main_member.first_name[:1], main_member.last_name) if main_member.first_name else None
+
         invoice = Invoice(
             state = Invoice.STATE_ACTIVE,
             created =  datetime.now(),
@@ -413,7 +414,7 @@ class PaymentDeleteEndpoint:
 
 def _build_invoice_information(invoice):
 
-    table_001 = Table(number_of_rows=31, number_of_columns=2, column_widths= [Decimal(2), Decimal(6)], horizontal_alignment=Alignment.LEFT)
+    table_001 = Table(number_of_rows=33, number_of_columns=2, column_widths= [Decimal(2), Decimal(6)], horizontal_alignment=Alignment.LEFT)
 
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
@@ -525,7 +526,6 @@ def _build_invoice_information(invoice):
 
     table_001.add(Paragraph("Captured by: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(invoice.assisted_by, font="Helvetica", font_size=Decimal(13), horizontal_alignment=Alignment.LEFT))
-
 
     table_001.set_padding_on_all_cells(Decimal(2), Decimal(1), Decimal(2), Decimal(1))
     table_001.no_borders()
