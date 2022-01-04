@@ -485,7 +485,7 @@ def _build_invoice_information(invoice):
     table_001.add(Paragraph(" "))
     table_001.add(Paragraph(" "))
 
-    table_001.add(Paragraph("Name and Surname: ", font="Helvetica", font_size=Decimal(13)))
+    table_001.add(Paragraph("Initial and Surname: ", font="Helvetica", font_size=Decimal(13)))
     table_001.add(Paragraph(invoice.customer, font="Helvetica", font_size=Decimal(16), horizontal_alignment=Alignment.LEFT))
 
     table_001.add(Paragraph(" "))
