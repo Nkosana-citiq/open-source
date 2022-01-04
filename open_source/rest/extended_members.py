@@ -193,7 +193,7 @@ class ExtendedMembersPostEndpoint:
             return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
 
     def get_date_joined(self, date_joined):
-        return date_joined.replace('T', " ")[:10] if date_joined else date_joined 
+        return date_joined.replace('T', " ")[:10]
 
     def on_post(self, req, resp):
         req = json.load(req.bounded_stream)
@@ -469,13 +469,12 @@ class ExtendedMemberPutEndpoint:
                 raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
 
             if req.get("id_number"):
-                id_number = session.query(ExtendedMember).join(MainMember, applicant_id == ExtendedMember.applicant_id).filter(
-                ExtendedMember.id_number == req.get("id_number")).first()
+                id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == applicant.parlour_id).first()
 
             if not id_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
-                id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
+                id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.id != id, ExtendedMember.applicant_id.in_(applicant_ids)).first()
 
             if id_number:
                 raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")

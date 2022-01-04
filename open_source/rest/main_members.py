@@ -594,6 +594,7 @@ class MainMemberPostFileEndpoint:
         return not self.secure
 
     def on_post(self, req, resp, id):
+
         pdf = req.get_param('myFile')
 
         with db.transaction() as session:
@@ -652,6 +653,9 @@ class MainMemberPostEndpoint:
     def is_not_secure(self):
         return not self.secure
 
+    def get_date_joined(self, date_joined):
+        return date_joined.replace('T', " ")[:10]
+
     def on_post(self, req, resp, id):
         
         req = json.load(req.bounded_stream)
@@ -669,6 +673,10 @@ class MainMemberPostEndpoint:
                 raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
             if not req.get("last_name"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
+            if not req.get("date_joined"):
+                    raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
+            if not req.get("contact"):
+                    raise falcon.HTTPNotFound(title="Error", description="Contact number is a required field.")
 
             consultant = session.query(Consultant).get(id)
 
@@ -703,8 +711,6 @@ class MainMemberPostEndpoint:
                 applicant = Applicant(
                     policy_num = applicant_req.get("policy_num"),
                     address = applicant_req.get("address"),
-                    # personal_docs = applicant_req.get("file_path"),
-                    # document = applicant_req.get("document"),
                     status = 'unpaid',
                     plan_id = plan.id,
                     consultant_id = consultant.id,
@@ -717,7 +723,7 @@ class MainMemberPostEndpoint:
                 )
 
                 applicant.save(session)
-
+                date_joined = self.get_date_joined(req.get("date_joined"))
                 main_member = MainMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
@@ -725,7 +731,7 @@ class MainMemberPostEndpoint:
                     contact = req.get("contact"),
                     date_of_birth = req.get("date_of_birth"),
                     parlour_id = parlour.id,
-                    date_joined = datetime.datetime.now(),
+                    date_joined = date_joined,
                     state=MainMember.STATE_ACTIVE,
                     applicant_id = applicant.id,
                     modified_at = datetime.datetime.now(),
