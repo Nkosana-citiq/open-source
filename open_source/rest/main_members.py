@@ -62,6 +62,7 @@ class MainMemberGetEndpoint:
 
 class MainGetAllParlourEndpoint:
     cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -79,10 +80,8 @@ class MainGetAllParlourEndpoint:
                     status = None
                     search_field = None
                     search_date = None
-                    notice = None
                     consultant = None
                     consultants = None
-                    parlour_branch = None
                     start_date = None
                     end_date = None
 
@@ -94,9 +93,6 @@ class MainGetAllParlourEndpoint:
 
                     if "search_date" in req.params:
                         search_date = req.params.pop("search_date")
-
-                    if "notice" in req.params:
-                        notice = req.params.pop("notice")
 
                     if "start_date" in req.params:
                         start_date = req.params.pop("start_date")
@@ -219,6 +215,7 @@ class MainGetAllParlourEndpoint:
 
 class MainGetAllConsultantEndpoint:
     cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -342,6 +339,7 @@ class MainGetAllConsultantEndpoint:
 
 class MainGetAllArchivedParlourEndpoint:
     cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -422,6 +420,7 @@ class MainGetAllArchivedParlourEndpoint:
 
 class MainGetAllArchivedConsultantEndpoint:
     cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -474,7 +473,7 @@ class MainGetAllArchivedConsultantEndpoint:
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
-                        or_(Applicant.state != Applicant.STATE_ACTIVE,
+                        or_(Applicant.state == Applicant.STATE_ACTIVE,
                             Applicant.status == 'lapsed'),
                             Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
@@ -594,7 +593,6 @@ class MainMemberPostFileEndpoint:
         return not self.secure
 
     def on_post(self, req, resp, id):
-
         pdf = req.get_param('myFile')
 
         with db.transaction() as session:
@@ -709,17 +707,17 @@ class MainMemberPostEndpoint:
 
             try:
                 applicant = Applicant(
-                    policy_num = applicant_req.get("policy_num"),
-                    address = applicant_req.get("address"),
-                    status = 'unpaid',
-                    plan_id = plan.id,
-                    consultant_id = consultant.id,
-                    parlour_id = parlour.id,
-                    old_url = False,
-                    date = datetime.datetime.now(),
-                    state = Applicant.STATE_ACTIVE,
-                    modified_at = datetime.datetime.now(),
-                    created_at = datetime.datetime.now()
+                    policy_num=applicant_req.get("policy_num"),
+                    address=applicant_req.get("address"),
+                    status='unpaid',
+                    plan_id=plan.id,
+                    consultant_id=consultant.id,
+                    parlour_id=parlour.id,
+                    old_url=False,
+                    date=datetime.datetime.now(),
+                    state=Applicant.STATE_ACTIVE,
+                    modified_at=datetime.datetime.now(),
+                    created_at=datetime.datetime.now()
                 )
 
                 applicant.save(session)
@@ -782,6 +780,7 @@ class MainMemberPostEndpoint:
 
 class MainMemberCheckAgeLimitEndpoint:
     cors = public_cors
+
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
@@ -859,7 +858,6 @@ class MainMemberCheckAgeLimitEndpoint:
                 resp.body = json.dumps({'result': 'OK!'})
 
 
-
 class MainMemberPutEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -893,6 +891,7 @@ class MainMemberPutEndpoint:
                 raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
             if not req.get("last_name"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
+
 
             applicant_req = req.get("applicant")
 
@@ -930,8 +929,6 @@ class MainMemberPutEndpoint:
                 applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
 
-            if id_number:
-                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
             try:
                 main_member.first_name = req.get("first_name")
                 main_member.last_name = req.get("last_name")
@@ -940,6 +937,10 @@ class MainMemberPutEndpoint:
                 main_member.date_of_birth = req.get("date_of_birth")
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
+                if req.get("is_deceased"):
+                    main_member.is_deceased = req.get("is_deceased")
+                    main_member.state = MainMember.STATE_DELETED
+                    update_deceased_extended_members(session, main_member)
 
                 applicant = update_certificate(applicant)
 
@@ -1367,3 +1368,53 @@ class SMSService:
 
             result = {'status_code': response.status_code, 'parlour': parlour.to_dict()}
             resp.body = json.dumps(result, default=str)
+
+
+
+def update_deceased_extended_members(session, main_member):
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == main_member.applicant_id).all()
+    main_member.save(session)
+    for x in extended_members:
+        x.is_main_member_deceased = True
+    session.commit()
+
+
+def update_deceased_member(session, member):
+    applicant = member.applicant
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == member.applicant_id).all()
+    spouse = extended_members.pop()
+
+    new_applicant = Applicant(
+        policy_num=applicant.policy_num,
+        address=applicant.address,
+        status='unpaid',
+        plan_id=applicant.plan_id,
+        consultant_id=applicant.consultant_id,
+        parlour_id=applicant.parlour_id,
+        old_url=False,
+        date=datetime.datetime.now(),
+        state=Applicant.STATE_ACTIVE,
+        modified_at=datetime.datetime.now(),
+        created_at=datetime.datetime.now()
+    )
+
+    new_applicant.save(session)
+    date_joined = member.date_joined
+    main_member = MainMember(
+        first_name=spouse.first_name,
+        last_name=spouse.last_name,
+        id_number=spouse.id_number,
+        contact='0796579128',
+        date_of_birth=spouse.date_of_birth,
+        parlour_id=member.parlour_id,
+        date_joined=date_joined,
+        state=MainMember.STATE_ACTIVE,
+        applicant_id=new_applicant.id,
+        modified_at=datetime.datetime.now(),
+        created_at=datetime.datetime.now()
+    )
+
+    main_member.save(session)
+    for x in extended_members:
+        x.applicant_id = new_applicant.id
+    session.commit()

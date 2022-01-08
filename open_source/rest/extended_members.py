@@ -1,5 +1,8 @@
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from open_source.core import main_members
+from open_source.core import extended_members
 from open_source.core.main_members import MainMember
 from sqlalchemy.orm import relation
 
@@ -573,6 +576,157 @@ class ExtededMemberDeleteEndpoint:
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
             raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))
+
+
+class MainMemberPromoteEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def get_date_joined(self, date_joined):
+        return date_joined.replace('T', " ")[:10]
+
+    def on_post(self, req, resp, id):
+
+        req = json.load(req.bounded_stream)
+
+        with db.transaction() as session:
+            extended_member = session.query(ExtendedMember).filter(ExtendedMember.id == id, ExtendedMember.state == ExtendedMember.STATE_ACTIVE).one()
+
+            applicant = session.query(Applicant).filter(
+                Applicant.id == extended_member.applicant_id,
+                Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
+
+            if not applicant:
+                raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
+
+            if not req.get("first_name"):
+                raise falcon.HTTPNotFound(title="Error", description="First name is a required field.")
+
+            if not req.get("last_name"):
+                raise falcon.HTTPNotFound(title="Error", description="Lat name is a required field.")
+
+            if not req.get("type"):
+                raise falcon.HTTPNotFound(title="Error", description="Type of member is a required field.")
+
+            if not req.get("relation_to_main_member"):
+                raise falcon.HTTPNotFound(title="Error", description="Relationship to main member is a required field.")
+
+            if not req.get("date_joined"):
+                raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
+
+            if not req.get("id_number"):
+                raise falcon.HTTPNotFound(title="Error", description="ID number required when promoting to main member.")
+
+            if not req.get("number"):
+                raise falcon.HTTPNotFound(title="Error", description="Contact number required when promoting to main member.")
+
+            plan = session.query(Plan).filter(
+                Plan.id == applicant.plan_id,
+                Plan.state == Plan.STATE_ACTIVE).one_or_none()
+
+            if not plan:
+                raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
+
+            try:
+                # main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).one_or_none()
+                main_member = update_deceased_member(session, applicant, extended_member)
+
+                min_age_limit = plan.member_minimum_age
+                max_age_limit = plan.member_maximum_age
+
+                id_number = main_member.id_number
+                if int(id_number[0:2]) > 21:
+                    number = '19{}'.format(id_number[0:2])
+                else:
+                    number = '20{}'.format(id_number[0:2])
+                dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+                # dob = main_member.date_of_birth
+                dob = datetime.strptime(dob, "%Y-%m-%d")
+                now = datetime.now()
+
+                age = relativedelta(now, dob)
+
+                years = "{}".format(age.years)
+                try:
+                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                        main_member.age_limit_exceeded = True
+                    elif int(years) > max_age_limit:
+                        main_member.age_limit_exceeded = True
+                except:
+                    pass
+
+                try:
+                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                        main_member.age_limit_exceeded = True
+                    elif int(years) < min_age_limit:
+                        main_member.age_limit_exceeded = True
+                except:
+                    pass
+                main_member.save(session)
+
+                applicant = update_certificate(applicant)
+
+                resp.body = json.dumps(main_member.to_dict(), default=str)
+            except MultipleResultsFound as e:
+                raise falcon.HTTPBadRequest(title="Error", description="More than one member exists for this applicant")
+            except NoResultFound as e:
+                raise falcon.HTTPBadRequest(title="Error", description="No member exists for this applicant")
+            except Exception as e:
+                logger.exception(
+                    "Error, experienced error while creating Applicant.")
+                raise e
+
+
+def update_deceased_member(session, applicant, extended_member):
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == applicant.id).all()
+
+    new_applicant = Applicant(
+        policy_num=applicant.policy_num,
+        address=applicant.address,
+        status='unpaid',
+        plan_id=applicant.plan_id,
+        consultant_id=applicant.consultant_id,
+        parlour_id=applicant.parlour_id,
+        old_url=False,
+        date=datetime.now(),
+        state=Applicant.STATE_ACTIVE,
+        modified_at=datetime.now(),
+        created_at=datetime.now()
+    )
+
+    new_applicant.save(session)
+    date_joined = extended_member.date_joined
+    main_member = MainMember(
+        first_name=extended_member.first_name,
+        last_name=extended_member.last_name,
+        id_number=extended_member.id_number,
+        contact=extended_member.number,
+        date_of_birth=extended_member.date_of_birth,
+        parlour_id=applicant.parlour_id,
+        date_joined=date_joined,
+        state=MainMember.STATE_ACTIVE,
+        applicant_id=new_applicant.id,
+        modified_at=datetime.now(),
+        created_at=datetime.now()
+    )
+
+    main_member.save(session)
+    for x in extended_members:
+        if x.id == extended_member.id:
+            x.make_deleted()
+        else:
+            x.applicant_id = new_applicant.id
+            x.is_main_member_deceased = False
+    session.commit()
+    return main_member
 
 
 def update_certificate(applicant):

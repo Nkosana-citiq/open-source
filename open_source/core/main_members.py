@@ -22,6 +22,7 @@ class MainMember(db.Base):
     first_name = Column(String(length=50))
     last_name = Column(String(length=50))
     contact = Column(String(length=12))
+    is_deceased = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
     date_joined = Column(DateTime, server_default=func.now())
@@ -57,6 +58,7 @@ class MainMember(db.Base):
             'created_at': self.created_at,
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
+            'is_deceased': self.is_deceased,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'parlour': self.parlour.to_dict()  if self.parlour else {} ,
@@ -74,6 +76,7 @@ class MainMember(db.Base):
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'date_joined': self.date_joined,
+            'is_deceased': self.is_deceased,
             'created_at': self.created_at,
             'applicant': self.applicant.to_short_dict() if self.applicant else {}
         }
