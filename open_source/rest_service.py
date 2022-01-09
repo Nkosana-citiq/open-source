@@ -32,16 +32,16 @@ from falcon_multipart.middleware import MultipartMiddleware
 # else:
 
 ALLOWED_ORIGINS = [
+    "http://backend.osource.co.za",
+    "https://backend.osource.co.za",
+    "https://nkosana-citiq.github.io",
     'http://localhost:8009',
     'http://127.0.0.1:8009',
     "localhost:8009",
     "127.0.0.1:8009",
-    "http://backend.osource.co.za",
-    "https://backend.osource.co.za",
+
     "http://osource.co.za",
-    "https://osource.co.za",
-    "https://nocorpgroup.herokuapp.com/",
-    "https://nkosana-citiq.github.io"]
+    "https://osource.co.za"]
 
 
 whitelisted_methods = [
