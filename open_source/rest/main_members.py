@@ -246,10 +246,12 @@ class MainGetAllConsultantEndpoint:
                     consultant = session.query(Consultant).filter(
                         Consultant.state == Consultant.STATE_ACTIVE,
                         Consultant.id == id
-                    ).one_or_none()
+                    ).one()
 
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                except NoResultFound as e:
+                    raise falcon.HTTPBadRequest(title="Error", description="No results found.")
 
                 if search_field:
                     main_members = session.query(
