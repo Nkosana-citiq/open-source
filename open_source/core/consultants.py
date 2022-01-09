@@ -66,7 +66,6 @@ class Consultant(db.Base):
             'branch': self.branch,
             'number': self.number,
             "modified": self.modified_at,
-            'temp_password': self.temp_password,
             'created': self.created_at,
             'parlour': self.parlour.to_dict()
         }

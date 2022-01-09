@@ -288,7 +288,7 @@ class ExtendedMembersPostEndpoint:
                 old_file = applicant.document
                 update_certificate(applicant)
 
-                if os.path.exists(old_file):
+                if old_file and os.path.exists(old_file):
                     os.remove(old_file)
 
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
@@ -449,8 +449,7 @@ class ExtendedMemberPutEndpoint:
             applicant_id = req.get("applicant_id")
 
             applicant = session.query(Applicant).filter(
-                Applicant.id == applicant_id,
-                Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
+                Applicant.id == applicant_id).one_or_none()
 
             if not applicant:
                 raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
@@ -540,12 +539,10 @@ class ExtendedMemberPutEndpoint:
                     os.remove(old_file)
 
                 resp.body = json.dumps(applicant.to_dict(), default=str)
-            except:
+            except Exception as e:
                 logger.exception(
                     "Error, experienced error while creating Applicant.")
-                raise falcon.HTTPBadRequest(
-                    title="Error", 
-                    description="Processing Failed. experienced error while creating Applicant.")
+                raise e
 
 
 class ExtededMemberDeleteEndpoint:
@@ -578,7 +575,7 @@ class ExtededMemberDeleteEndpoint:
 
 
 class MainMemberPromoteEndpoint:
-
+    # cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
         self.secure = secure
         self.basic_secure = basic_secure
