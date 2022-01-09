@@ -473,9 +473,9 @@ class MainGetAllArchivedConsultantEndpoint:
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
-                        or_(Applicant.state == Applicant.STATE_ACTIVE,
-                            Applicant.status == 'lapsed'),
-                            Applicant.consultant_id == consultant.id
+                        or_(Applicant.state == Applicant.STATE_ARCHIVED,
+                        Applicant.status == 'Lapsed'),
+                        Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
 
                     if status:
@@ -483,7 +483,6 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
-                        MainMember.state != MainMember.STATE_ACTIVE,
                         MainMember.applicant_id.in_(applicant_ids)
                     ).all()
 
@@ -939,7 +938,8 @@ class MainMemberPutEndpoint:
                 main_member.applicant_id = applicant.id
                 if req.get("is_deceased"):
                     main_member.is_deceased = req.get("is_deceased")
-                    main_member.state = MainMember.STATE_DELETED
+                    main_member.state = MainMember.STATE_ARCHIVED
+                    applicant.state = MainMember.STATE_ARCHIVED
                     update_deceased_extended_members(session, main_member)
 
                 applicant = update_certificate(applicant)

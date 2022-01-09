@@ -101,7 +101,6 @@ class ExtendedMembersGetAllEndpoint:
                         notice = req.params.pop("notice")
 
                 applicant = session.query(Applicant).filter(
-                    Applicant.state == Applicant.STATE_ACTIVE,
                     Applicant.id == id
                 ).one_or_none()
 
@@ -601,8 +600,7 @@ class MainMemberPromoteEndpoint:
             extended_member = session.query(ExtendedMember).filter(ExtendedMember.id == id, ExtendedMember.state == ExtendedMember.STATE_ACTIVE).one()
 
             applicant = session.query(Applicant).filter(
-                Applicant.id == extended_member.applicant_id,
-                Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
+                Applicant.id == extended_member.applicant_id).one_or_none()
 
             if not applicant:
                 raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
