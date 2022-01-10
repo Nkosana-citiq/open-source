@@ -26,7 +26,6 @@ ALLOWED_ORIGINS = [
     "http://osource.co.za",
     "https://osource.co.za"]
 
-
 whitelisted_methods = [
     "GET",
     "PUT",
@@ -34,12 +33,14 @@ whitelisted_methods = [
     "PATCH",
     "OPTIONS" # this is required for preflight request
 ]
+
+
 cors = CORS(
     allow_all_origins=True,
     allow_all_methods=True,
     allow_all_headers=True)
 
-api = falcon.API(
+api = application = falcon.API(
     middleware=[cors.middleware,
     MultipartMiddleware(),
     middleware.AuthMiddleware()]
@@ -99,9 +100,10 @@ api.add_route('/open-source/main-members/{id}/upload', main_members.MainMemberPo
 api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())
 api.add_route('/open-source/main-members/{id}/update', main_members.MainMemberPutEndpoint())
+api.add_route('/open-source/plans/{id}/check-age-limit', main_members.MainMemberCheckAgeLimitEndpoint())
 api.add_route('/open-source/main-members/{id}/exception', main_members.MainMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
-api.add_route('/open-source/plans/{id}/check-age-limit', main_members.MainMemberCheckAgeLimitEndpoint())
+api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
 api.add_route('/open-source/main-members/send-sms', main_members.SMSService())
 api.add_route('/open-source/main-members/{id}/document', main_members.MemberCertificateGetEndpoint())
 api.add_route('/open-source/main-members/{id}/personal_docs', main_members.MemberPersonalDocsGetEndpoint())
