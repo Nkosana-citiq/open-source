@@ -16,21 +16,6 @@ from open_source.rest import (
 from falcon_multipart.middleware import MultipartMiddleware
 
 
-# allowed_origins = None
-
-# if config.get_config().is_prod():
-#     allowed_origins = []
-# elif config.get_config().is_preprod():
-#     allowed_origins = []
-
-# if allowed_origins:
-#     cors = CORS(
-#         allow_origins_list=allowed_origins,
-#         allow_all_methods=True,
-#         allow_all_headers=True)
-
-# else:
-
 ALLOWED_ORIGINS = [
     "http://backend.osource.co.za",
     "https://backend.osource.co.za",
@@ -38,9 +23,6 @@ ALLOWED_ORIGINS = [
     "https://nkosana-citiq.github.io",
     'http://localhost:8009',
     'http://127.0.0.1:8009',
-    "localhost:8009",
-    "127.0.0.1:8009",
-
     "http://osource.co.za",
     "https://osource.co.za"]
 

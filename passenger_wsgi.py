@@ -16,33 +16,15 @@ from open_source.rest import (
 from falcon_multipart.middleware import MultipartMiddleware
 
 
-# allowed_origins = None
-
-# if config.get_config().is_prod():
-#     allowed_origins = []
-# elif config.get_config().is_preprod():
-#     allowed_origins = []
-
-# if allowed_origins:
-#     cors = CORS(
-#         allow_origins_list=allowed_origins,
-#         allow_all_methods=True,
-#         allow_all_headers=True)
-
-# else:
-
 ALLOWED_ORIGINS = [
+    "http://backend.osource.co.za",
+    "https://backend.osource.co.za",
+    "https://staging.osource.co.za",
+    "https://nkosana-citiq.github.io",
     'http://localhost:8009',
     'http://127.0.0.1:8009',
-    "localhost:8009",
-    "127.0.0.1:8009",
-    "http://backend.nocorpgroup.co.za",
-    "https://backend.nocorpgroup.co.za",
-    "http://nocorpgroup.co.za",
-    "https://nocorpgroup.co.za",
-    "https://nocorpgroup.herokuapp.com/",
-    "https://nkosana-citiq.github.io"]
-
+    "http://osource.co.za",
+    "https://osource.co.za"]
 
 whitelisted_methods = [
     "GET",
@@ -135,10 +117,11 @@ api.add_route('/open-source/dependants/{id}/delete', dependants.DependantDeleteE
 api.add_route('/open-source/applicants/{id}/extended-members/all', extended_members.ExtendedMembersGetAllEndpoint())
 api.add_route('/open-source/extended-members', extended_members.ExtendedMembersPostEndpoint())
 api.add_route('/open-source/extended-members/{id}/get', extended_members.ExtendedMemberGetEndpoint())
-api.add_route('/open-source/applicants/{id}/extended-members/age-limit', extended_members.ExtendedMemberCheckAgeLimitEndpoint())
 api.add_route('/open-source/extended-members/{id}/update', extended_members.ExtendedMemberPutEndpoint())
 api.add_route('/open-source/extended-members/{id}/exception', extended_members.ExtendedMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/extended-members/{id}/delete', extended_members.ExtededMemberDeleteEndpoint())
+api.add_route('/open-source/extended-members/{id}/promote', extended_members.MainMemberPromoteEndpoint())
+api.add_route('/open-source/applicants/{id}/extended-members/age-limit', extended_members.ExtendedMemberCheckAgeLimitEndpoint())
 
 api.add_route('/open-source/applicants/{id}/additional_extended_members/all', additional_extended_members.AdditionalExtendedMembersGetAllEndpoint())
 api.add_route('/open-source/additional_extended_members', additional_extended_members.AdditionalExtendedMembersPostEndpoint())
