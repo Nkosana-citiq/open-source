@@ -721,6 +721,7 @@ def update_deceased_member(session, applicant, extended_member):
             x.applicant_id = new_applicant.id
             x.is_main_member_deceased = False
     session.commit()
+    update_certificate(new_applicant)
     return main_member
 
 
