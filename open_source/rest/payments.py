@@ -5,6 +5,7 @@ import json
 import logging
 import random
 import os
+import uuid
 
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
@@ -366,10 +367,8 @@ def print_invoice(session, payment, applicant, user, amount, dates):
     page_layout.add(Paragraph(" "))
 
     os.chdir('./assets/uploads/receipts')
-
-    path = '/'.join([os.getcwd(), "{}.pdf".format(invoice.customer.lower().replace(" ", "_"))])
-    if os.path.exists("{}".format(path)):
-        os.remove("{}".format(path))
+    filename = "{uuid}.{ext}".format(uuid=uuid.uuid4(), ext='pdf')
+    path = '/'.join([os.getcwd(), filename])
     os.chdir('../../..')
 
     with open(path, "wb") as pdf_file_handle:
