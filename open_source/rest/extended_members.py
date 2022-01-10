@@ -492,7 +492,7 @@ class ExtendedMemberPutEndpoint:
             try:
                 date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
                 date_joined = self.get_date_joined(req.get("date_joined"))
-
+                old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
                 extended_member.number = req.get("number")
@@ -506,25 +506,25 @@ class ExtendedMemberPutEndpoint:
 
                 plan = applicant.plan
                 if extended_member:
-                    if extended_member.type == 4:
+                    if extended_member.type == 4 and extended_member.type != old_type:
                         if not plan.spouse:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
 
                         if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
-                    elif extended_member.type == 1:
+                    elif extended_member.type == 1 and extended_member.type != old_type:
                         if not plan.beneficiaries:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
 
                         if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
-                    elif extended_member.type == 2:
+                    elif extended_member.type == 2 and extended_member.type != old_type:
                         if not plan.extended_members:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
 
                         if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of extended-member members has been reached.")
-                    elif extended_member.type == 3:
+                    elif extended_member.type == 3 and extended_member.type != old_type:
                         if not plan.additional_extended_members:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
 
