@@ -594,7 +594,7 @@ class MainMemberPromoteEndpoint:
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
-            extended_member = session.query(ExtendedMember).filter(ExtendedMember.id == id, ExtendedMember.state == ExtendedMember.STATE_ACTIVE).one()
+            extended_member = session.query(ExtendedMember).filter(ExtendedMember.id == id).one()
 
             applicant = session.query(Applicant).filter(
                 Applicant.id == extended_member.applicant_id).one_or_none()
