@@ -566,10 +566,10 @@ class ForgotPasswordEndpoint:
             from email.mime.multipart import MIMEMultipart
 
             port = 465  # For SSL
-            smtp_server = "smtp.gmail.com"
-            sender_email = "nkosananikani@gmail.com"  # Enter your address
+            smtp_server = "mail.osource.co.za"
+            sender_email = "DoNotReply@osource.co.za"  # Enter your address
             receiver_email = email  # Enter receiver address
-            password = '3McsgoId1grf'
+            password = 'BbJoQ~@4*$i)'
 
             message = MIMEMultipart("alternative")
             message["Subject"] = "multipart test"
