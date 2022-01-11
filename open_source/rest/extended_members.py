@@ -444,6 +444,7 @@ class ExtendedMemberPutEndpoint:
 
         with db.transaction() as session:
             applicant_id = req.get("applicant_id")
+            id_number = None
 
             applicant = session.query(Applicant).filter(
                 Applicant.id == applicant_id).one_or_none()
