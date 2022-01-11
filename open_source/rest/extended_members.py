@@ -382,9 +382,6 @@ class ExtendedMemberCheckAgeLimitEndpoint:
                 min_age_limit = plan.additional_extended_minimum_age
                 max_age_limit = plan.additional_extended_maximum_age
 
-            if min_age_limit is None or not max_age_limit:
-                raise falcon.HTTPBadRequest(title="Error", description="Make sure type of member is selected.")
-
             if not date_of_birth:
                 if int(id_number[0:2]) > 21:
                     number = '19{}'.format(id_number[0:2])
@@ -398,13 +395,13 @@ class ExtendedMemberCheckAgeLimitEndpoint:
 
             years = "{}".format(age.years)
 
-            if int(max_age_limit):
+            if max_age_limit and int(max_age_limit):
                 if len(years) > 2 and int(years[2:4]) > int(max_age_limit):
                     age_limit_exceeded = True
                 elif int(years) > int(max_age_limit):
                     age_limit_exceeded = True
 
-            if int(min_age_limit):
+            if min_age_limit and int(min_age_limit):
                 if len(years) > 2 and int(years[2:4]) < int(min_age_limit):
                     age_limit_exceeded = True
                 elif int(years) < int(min_age_limit):
@@ -475,6 +472,7 @@ class ExtendedMemberPutEndpoint:
             if not id_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
+
                 id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.id != id, ExtendedMember.applicant_id.in_(applicant_ids)).first()
 
             if id_number:
