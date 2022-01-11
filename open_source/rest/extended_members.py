@@ -470,7 +470,7 @@ class ExtendedMemberPutEndpoint:
             if req.get("id_number"):
                 id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == applicant.parlour_id).first()
 
-            if not id_number:
+            if req.get("id_number") and not id_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
 
