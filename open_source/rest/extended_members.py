@@ -534,7 +534,7 @@ class ExtendedMemberPutEndpoint:
                 old_file = applicant.document
                 update_certificate(applicant)
 
-                if os.path.exists(old_file):
+                if old_file and os.path.exists(old_file):
                     os.remove(old_file)
 
                 resp.body = json.dumps(applicant.to_dict(), default=str)
