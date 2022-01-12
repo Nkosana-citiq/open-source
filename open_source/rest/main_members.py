@@ -183,11 +183,11 @@ class MainGetAllParlourEndpoint:
                                     age = relativedelta(now, dob)
 
                                     years = str(age.years)[2:] if str(age.years)[2:].isdigit() else str(age.years)
-                                    if int(years) > max_age_limit:
+                                    if max_age_limit and int(years) > max_age_limit:
                                         main_member.age_limit_exceeded = True
-                                    if int(years) < min_age_limit:
+                                    if min_age_limit and int(years) < min_age_limit:
                                         main_member.age_limit_exceeded = True
-                                        session.commit()
+                                    session.commit()
                     applicant_ids = [applicant.id for applicant in applicants.all()]
                     main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
@@ -311,11 +311,11 @@ class MainGetAllConsultantEndpoint:
                                     if len(years) > 2:
                                         years = years[2:]
 
-                                    if int(years) > max_age_limit:
+                                    if max_age_limit and int(years) > max_age_limit:
                                         main_member.age_limit_exceeded = True
-                                    elif int(years) < min_age_limit:
+                                    elif min_age_limit and int(years) < min_age_limit:
                                         main_member.age_limit_exceeded = True
-                                        session.commit()
+                                    session.commit()
                     applicant_ids = [applicant.id for applicant in applicants]
                     if notice:
                         main_members = session.query(MainMember).filter(
@@ -754,17 +754,17 @@ class MainMemberPostEndpoint:
 
                 years = "{}".format(age.years)
                 try:
-                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                    if max_age_limit and len(years) > 2 and int(years[2:4]) > max_age_limit:
                         main_member.age_limit_exceeded = True
-                    elif int(years) > max_age_limit:
+                    elif max_age_limit and int(years) > max_age_limit:
                         main_member.age_limit_exceeded = True
                 except:
                     pass
 
                 try:
-                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                    if min_age_limit and len(years) > 2 and int(years[2:4]) < min_age_limit:
                         main_member.age_limit_exceeded = True
-                    elif int(years) < min_age_limit:
+                    elif min_age_limit and int(years) < min_age_limit:
                         main_member.age_limit_exceeded = True
                 except:
                     pass
