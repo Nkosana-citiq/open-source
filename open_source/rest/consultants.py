@@ -555,11 +555,6 @@ class ForgotPasswordEndpoint:
             user = self.get_user_by_email(session, email)
             if not user:
                 raise falcon.HTTPBadRequest(title='Error', description='Email address does not exist')
-            #  DoNotReply@osource.co.za 
-            # 7BHC9ko7T
-
-            # session.add(user)
-            # session.commit()
 
             import smtplib, ssl
             from email.mime.text import MIMEText
@@ -567,35 +562,18 @@ class ForgotPasswordEndpoint:
 
             port = 465  # For SSL
             smtp_server = "mail.osource.co.za"
-            sender_email = "DoNotReply@osource.co.za"  # Enter your address
+            sender_email = conf.SENDER_EMAIL
             receiver_email = email  # Enter receiver address
-            password = 'BbJoQ~@4*$i)'
+            password = conf.SENDER_PASSWORD
 
             message = MIMEMultipart("alternative")
             message["Subject"] = "multipart test"
             message["From"] = sender_email
             message["To"] = receiver_email
 
-            # Create the plain-text and HTML version of your message
-            # text = """\
-            # Hi,
-            # How are you?
-            # Real Python has many great tutorials:
-            # www.realpython.com"""
-            # html = """\
-            # <html>
-            # <body>
-            #     <p>Hi,<br>
-            #     <a href="http://localhost:4200/reset-password?email={email}">Reset password</a> 
-                
-            #     </p>
-            # </body>
-            # </html>
-            # """.format(email=email)
-
             args = {
                 "user": user.pretty_name,
-                "domain": conf.url,
+                "domain": conf.RESET_PASSWORD_URL,
                 "email": email,
                 "year": datetime.now().year
             }
