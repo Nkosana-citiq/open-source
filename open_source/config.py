@@ -36,7 +36,7 @@ class BaseConfig(object):
     MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'osourcec_opensource')
 
     db = {
-        'url': "mysql://{user}:{passwd}@{host}:{port}/{db}".format(user=MYSQL_USER, passwd=MYSQL_PASSWORD, HOST=MYSQL_HOST, port=MYSQL_PORT, db=MYSQL_DATABASE),
+        'url': "mysql://{user}:{passwd}@{host}:{port}/{db}".format(user=MYSQL_USER, passwd=MYSQL_PASSWORD, host=MYSQL_HOST, port=MYSQL_PORT, db=MYSQL_DATABASE),
         'params': {'echo': False, 'pool_recycle': 3600, 'pool_size': 2}
     }
 
