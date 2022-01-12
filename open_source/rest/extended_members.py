@@ -650,17 +650,17 @@ class MainMemberPromoteEndpoint:
 
                 years = "{}".format(age.years)
                 try:
-                    if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                    if max_age_limit and len(years) > 2 and int(years[2:4]) > max_age_limit:
                         main_member.age_limit_exceeded = True
-                    elif int(years) > max_age_limit:
+                    elif max_age_limit and  int(years) > max_age_limit:
                         main_member.age_limit_exceeded = True
                 except:
                     pass
 
                 try:
-                    if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                    if min_age_limit and len(years) > 2 and int(years[2:4]) < min_age_limit:
                         main_member.age_limit_exceeded = True
-                    elif int(years) < min_age_limit:
+                    elif min_age_limit and int(years) < min_age_limit:
                         main_member.age_limit_exceeded = True
                 except:
                     pass
