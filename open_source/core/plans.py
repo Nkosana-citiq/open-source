@@ -56,7 +56,7 @@ class Plan(db.Base):
     def to_dict(self):
         return {
             'id': self.id,
-            'plan': self.plan,
+            'name': self.plan,
             'cover': self.cover,
             'premium': self.premium,
             'underwriter_premium': self.underwriter_premium,
