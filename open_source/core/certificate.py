@@ -100,10 +100,9 @@ class Certificate:
         self.can.drawString(30, self.y_position, "Benefits:")
         self.can.setFont('Helvetica', 10)
 
-        for s in benefits.split(" "):
-            if len(s) > 1 and s.lower() != "and":
-                self.y_position = sum([self.y_position, 15])
-                self.can.drawString(30, self.y_position, "- {}".format(s.replace("-", "").strip()))
+        for s in benefits.split("\n"):
+            self.y_position = sum([self.y_position, 15])
+            self.can.drawString(30, self.y_position, "- {}".format(s.replace("-", "").strip()))
 
     def showPage(self):
         self.can.showPage()
