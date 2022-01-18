@@ -105,7 +105,7 @@ class PlanPostEndpoint:
                     raise falcon.HTTPBadRequest(title="Parlour not found", description="Parlour does not exist.")
 
                 plan_exists = session.query(Plan).filter(
-                    Plan.plan == req["plan"],
+                    Plan.plan == req["name"],
                     Plan.parlour_id == parlour.id,
                     Plan.state == Plan.STATE_ACTIVE
                 ).first()
@@ -114,7 +114,7 @@ class PlanPostEndpoint:
                     raise falcon.HTTPBadRequest(title="Name exists", description="You already have a plan with this name.")
 
                 plan = Plan(
-                    plan=req.get("plan"),
+                    plan=req.get("name"),
                     cover = req.get("cover"),
                     premium = req.get("premium"),
                     underwriter_premium = req.get("underwriter_premium"),
@@ -175,7 +175,7 @@ class PlanPutEndpoint:
                 if not plan:
                     raise falcon.HTTPNotFound(title="Plan not found", description="Could not find plan with given ID.")
 
-                plan.plan=req["plan"]
+                plan.plan=req["name"]
                 plan.cover = req["cover"]
                 plan.premium = req["premium"]
                 plan.underwriter_premium = req["underwriter_premium"]
