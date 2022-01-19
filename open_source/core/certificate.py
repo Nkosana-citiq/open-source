@@ -102,7 +102,8 @@ class Certificate:
 
         for s in benefits.split("\n"):
             self.y_position = sum([self.y_position, 15])
-            self.can.drawString(30, self.y_position, "- {}".format(s.replace("-", "").strip()))
+            if len(s.split()) > 0:
+                self.can.drawString(30, self.y_position, "- {}".format(s.replace("-", "").strip()))
 
     def showPage(self):
         self.can.showPage()
