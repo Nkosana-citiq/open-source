@@ -1,10 +1,17 @@
 import datetime
-from dateutil.relativedelta import relativedelta
-from falcon.errors import HTTPBadRequest
-from open_source import config
-from open_source.core import consultants
-from open_source.core import main_members
+import os
+import csv
+import uuid
+import falcon
+import json
+import logging
+import pandas as pd
 
+from dateutil.relativedelta import relativedelta
+
+from open_source import config, db
+
+from open_source.core.applicants import Applicant
 from open_source.core.consultants import Consultant
 from open_source.core.plans import Plan
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -14,21 +21,7 @@ from open_source.core.extended_members import ExtendedMember
 from open_source.rest.extended_members import update_certificate
 from open_source.core.parlours import Parlour
 from falcon_cors import CORS
-from open_source.core.certificate import Certificate
 
-import os
-import csv
-import uuid
-import mimetypes
-import falcon
-import json
-import logging
-import pandas as pd
-from PyPDF2 import PdfFileReader, PdfFileWriter
-import cgi
-from open_source import db
-
-from open_source.core.applicants import Applicant
 
 logger = logging.getLogger(__name__)
 public_cors = CORS(allow_all_origins=True)
