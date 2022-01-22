@@ -41,8 +41,9 @@ cors = CORS(
 
 api = falcon.API(
     middleware=[cors.middleware,
-    MultipartMiddleware(),
-    middleware.AuthMiddleware()]
+    middleware.AuthMiddleware(),
+    MultipartMiddleware()
+    ]
 )
 
 api.add_route('/open-source/parlours/active', parlours.ParlourGetAllEndpoint())
