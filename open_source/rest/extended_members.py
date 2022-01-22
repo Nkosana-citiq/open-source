@@ -290,13 +290,13 @@ class ExtendedMembersPostEndpoint:
                 if member_type == 4:
                     min_age_limit = plan.spouse_minimum_age
                     max_age_limit = plan.spouse_maximum_age
-                elif member_type == '1':
+                elif member_type == 1:
                     min_age_limit = plan.dependant_minimum_age
                     max_age_limit = plan.dependant_maximum_age
-                elif member_type == '2':
+                elif member_type == 2:
                     min_age_limit = plan.extended_minimum_age
                     max_age_limit = plan.extended_maximum_age
-                elif member_type == '3':
+                elif member_type == 3:
                     min_age_limit = plan.additional_extended_minimum_age
                     max_age_limit = plan.additional_extended_maximum_age
 
@@ -318,12 +318,15 @@ class ExtendedMembersPostEndpoint:
                         extended_member.age_limit_exceeded = True
                     elif int(years) > int(max_age_limit):
                         extended_member.age_limit_exceeded = True
-
+                    else:
+                        extended_member.age_limit_exceeded = False
                 if min_age_limit and int(min_age_limit):
                     if len(years) > 2 and int(years[2:4]) < int(min_age_limit):
                         extended_member.age_limit_exceeded = True
                     elif int(years) < int(min_age_limit):
                         extended_member.age_limit_exceeded = True
+                    else:
+                        extended_member.age_limit_exceeded = False
 
                 applicant.extended_members.append(extended_member)
                 extended_member.save(session)
@@ -546,31 +549,72 @@ class ExtendedMemberPutEndpoint:
                 extended_member.modified_at = datetime.now()
 
                 plan = applicant.plan
-                if extended_member:
-                    if extended_member.type == 4 and extended_member.type != old_type:
-                        if not plan.spouse:
-                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
+                if extended_member.type == 4 and extended_member.type != old_type:
+                    if not plan.spouse:
+                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
 
-                        if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
-                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
-                    elif extended_member.type == 1 and extended_member.type != old_type:
-                        if not plan.beneficiaries:
-                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                    if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
+                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
+                elif extended_member.type == 1 and extended_member.type != old_type:
+                    if not plan.beneficiaries:
+                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
 
-                        if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
-                    elif extended_member.type == 2 and extended_member.type != old_type:
-                        if not plan.extended_members:
-                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
+                    if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
+                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
+                elif extended_member.type == 2 and extended_member.type != old_type:
+                    if not plan.extended_members:
+                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
 
-                        if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
-                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of extended-member members has been reached.")
-                    elif extended_member.type == 3 and extended_member.type != old_type:
-                        if not plan.additional_extended_members:
-                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
+                    if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
+                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of extended-member members has been reached.")
+                elif extended_member.type == 3 and extended_member.type != old_type:
+                    if not plan.additional_extended_members:
+                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
 
-                        if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
-                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of additional-extended-member members has been reached.")
+                    if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
+                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of additional-extended-member members has been reached.")
+
+                member_type = extended_member.type
+                min_age_limit = 0
+                max_age_limit = 120
+
+                if member_type == 4:
+                    min_age_limit = plan.spouse_minimum_age
+                    max_age_limit = plan.spouse_maximum_age
+                elif member_type == 1:
+                    min_age_limit = plan.dependant_minimum_age
+                    max_age_limit = plan.dependant_maximum_age
+                elif member_type == 2:
+                    min_age_limit = plan.extended_minimum_age
+                    max_age_limit = plan.extended_maximum_age
+                elif member_type == 3:
+                    min_age_limit = plan.additional_extended_minimum_age
+                    max_age_limit = plan.additional_extended_maximum_age
+
+                if not date_of_birth:
+                    if int(id_number[0:2]) > 21:
+                        number = '19{}'.format(id_number[0:2])
+                    else:
+                        number = '20{}'.format(id_number[0:2])
+                    date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+                dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                now = datetime.now().date()
+
+                age = relativedelta(now, dob)
+
+                years = "{}".format(age.years)
+
+                if max_age_limit and int(max_age_limit):
+                    if len(years) > 2 and int(years[2:4]) > int(max_age_limit):
+                        extended_member.age_limit_exceeded = True
+                    elif int(years) > int(max_age_limit):
+                        extended_member.age_limit_exceeded = True
+
+                if min_age_limit and int(min_age_limit):
+                    if len(years) > 2 and int(years[2:4]) < int(min_age_limit):
+                        extended_member.age_limit_exceeded = True
+                    elif int(years) < int(min_age_limit):
+                        extended_member.age_limit_exceeded = True
 
                 extended_member.save(session)
                 old_file = applicant.document
