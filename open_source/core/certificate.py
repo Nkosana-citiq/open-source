@@ -78,17 +78,40 @@ class Certificate:
         self.can.setFont('Helvetica-Bold', 10)
         self.y_position = sum([self.y_position, 50])
 
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "{}".format(member.type_text.title()))
         self.can.setFont('Helvetica', 10)
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Name: {} {}".format(member.first_name.title(), member.last_name.title()))
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "DOB: {}".format(member.date_of_birth))
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Date joined: {}".format(member.date_joined))
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Relationship: {}".format(member.relation_text.title()))
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Contact: {}".format(member.number))
 
     def set_relation(self, relation: str):
@@ -103,6 +126,9 @@ class Certificate:
         for s in benefits.split("\n"):
             self.y_position = sum([self.y_position, 15])
             if len(s.split()) > 0:
+                if self.y_position > 820:
+                    self.showPage()
+                    self.y_position = 60
                 self.can.drawString(30, self.y_position, "- {}".format(s.replace("-", "").strip()))
 
     def showPage(self):

@@ -817,22 +817,9 @@ def update_certificate(applicant):
         main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id, MainMember.state == MainMember.STATE_ACTIVE).first()
 
         if main_member:
-            spouse = session.query(ExtendedMember).filter(
+            extended_members = session.query(ExtendedMember).filter(
                 ExtendedMember.applicant_id == applicant.id,
-                ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                ExtendedMember.type == ExtendedMember.TYPE_SPOUSE).all()
-            dependants = session.query(ExtendedMember).filter(
-                ExtendedMember.applicant_id == applicant.id,
-                ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                ExtendedMember.type == ExtendedMember.TYPE_DEPENDANT).all()
-            extended_member = session.query(ExtendedMember).filter(
-                ExtendedMember.applicant_id == applicant.id,
-                ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                ExtendedMember.type == ExtendedMember.TYPE_EXTENDED_MEMBER).all()
-            additional_extended_member = session.query(ExtendedMember).filter(
-                ExtendedMember.applicant_id == applicant.id,
-                ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                ExtendedMember.type == ExtendedMember.TYPE_ADDITIONAL_EXTENDED_MEMBER).all()
+                ExtendedMember.state == ExtendedMember.STATE_ACTIVE).all()
 
             try:
                 canvas = Certificate(uuid.uuid4())
@@ -850,35 +837,10 @@ def update_certificate(applicant):
                 canvas.set_current_plan(plan.plan)
                 canvas.set_current_premium(plan.premium)
                 canvas.set_physical_address(applicant.address if applicant.address else '')
-                count = 0
 
-                for s in spouse:
-                    canvas.add_other_members(s)
-                    count += 1
-                    if count == 4:
-                        canvas.showPage()
-                        canvas.y_position = 60
+                for extended_member in extended_members:
+                    canvas.add_other_members(extended_member)
 
-                for d in dependants:
-                    canvas.add_other_members(d)
-                    count += 1
-                    if count == 4:
-                        canvas.showPage()
-                        canvas.y_position = 60
-
-                for e in extended_member:
-                    canvas.add_other_members(e)
-                    count += 1
-                    if count == 4:
-                        canvas.showPage()
-                        canvas.y_position = 60
-
-                for a in additional_extended_member:
-                    canvas.add_other_members(a)
-                    count += 1
-                    if count == 4:
-                        canvas.showPage()
-                        canvas.y_position = 60
                 if plan.benefits:
                     canvas.set_benefits(plan.benefits)
                 canvas.save()
