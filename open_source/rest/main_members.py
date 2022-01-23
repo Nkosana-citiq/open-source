@@ -170,8 +170,10 @@ class MainGetAllParlourEndpoint:
                                     number = int(id_number[0:2])
                                     if number == 0:
                                         number = 2000
-
-                                    dob = datetime.datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
+                                    try:
+                                        dob = datetime.datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
+                                    except:
+                                        dob = datetime.datetime(number, int(id_number[2:4]),1,0,0,0,0)
                                     now = datetime.datetime.now()
                                     age = relativedelta(now, dob)
 
