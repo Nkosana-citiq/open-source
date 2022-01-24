@@ -196,16 +196,25 @@ class PaymentPostEndpoint:
                 start_date = datetime.strptime(rest_dict.get("date"), "%d/%m/%Y")
                 end_date = datetime.strptime(rest_dict.get("end_date"), "%d/%m/%Y")
 
+                if end_date < start_date: 
+                    falcon.HTTPBadRequest(title="Error", description='End date cannot be earlier than start date')
+
                 from dateutil.rrule import rrule, MONTHLY
 
-                dates = [dt for dt in rrule(MONTHLY, dtstart=start_date, until=end_date)]
+                dates = [dt for dt in rrule(MONTHLY, dtstart=start_date.replace(day=1), until=end_date.replace(day=1))]
 
                 is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
 
                 if len(is_up_to_date) >= 1:
                     applicant.status = "paid"
-                elif start_date.date() <= datetime.now().date() <= end_date.date():
-                    applicant.status = "Paid"
+                elif start_date.replace(day=1).date() <= datetime.now().replace(day=1).date() <= end_date.replace(day=1).date():
+                    applicant.status = "paid"
+                elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) == 2:
+                    applicant.status = "unpaid"
+                elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) == 3:
+                    applicant.status = "skipped"
+                elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) > 3:
+                    applicant.status = "lapsed"
 
                 amount = plan.premium * len(dates)
                 payment = Payment(
@@ -279,7 +288,6 @@ class PaymentPutEndpoint:
     def on_put(self, req, resp, id):
         req = json.load(req.bounded_stream)
         try:
-            print(req)
             with db.transaction() as session:
                 if 'email' not in req:
                     raise falcon.HTTPBadRequest(title="Error", description="Missing email field.")
@@ -289,7 +297,7 @@ class PaymentPutEndpoint:
 
                 if not payment:
                     raise falcon.HTTPNotFound(title="Payment not found", description="Could not find payment with given ID.")
-            
+
                 payment.payment=req["payment"],
                 payment.cover = req["cover"],
                 payment.premium = req["premium"],
