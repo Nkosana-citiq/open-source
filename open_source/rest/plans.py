@@ -61,16 +61,27 @@ class PlanGetParlourAllEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
+                search_string = None
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
                     Parlour.id == id).one_or_none()
                 if not parlour:
                     raise falcon.HTTPBadRequest()
 
-                plans = session.query(Plan).filter(
+                if "search_string" in req.params:
+                        search_string = req.params.pop("search_string")
+
+                if search_string:
+                    plans = session.query(Plan).filter(
+                    Plan.plan.ilike('%{}%'.format(search_string)),
                     Plan.state == Plan.STATE_ACTIVE,
                     Plan.parlour_id == parlour.id
                 ).all()
+                else:
+                    plans = session.query(Plan).filter(
+                        Plan.state == Plan.STATE_ACTIVE,
+                        Plan.parlour_id == parlour.id
+                    ).all()
 
                 if not plans:
                     resp.body = json.dumps([])
