@@ -694,7 +694,7 @@ class MainMemberPostEndpoint:
 
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == req.get("id_number"),
-                MainMember.state.in_(MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED),
+                MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
                 MainMember.parlour_id == parlour.id
             ).first()
 
@@ -703,7 +703,7 @@ class MainMemberPostEndpoint:
                 applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == req.get("id_number"),
-                    ExtendedMember.state.in_(ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED),
+                    ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
 
@@ -931,7 +931,7 @@ class MainMemberPutEndpoint:
                 MainMember.id_number == req.get("id_number"),
                 MainMember.parlour_id == parlour.id,
                 MainMember.id != main_member.id,
-                MainMember.state in (MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)
+                MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
             ).first()
 
             if not id_number:
@@ -939,7 +939,7 @@ class MainMemberPutEndpoint:
                 applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == req.get("id_number"),
-                    ExtendedMember.state in (ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED),
+                    ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
 
