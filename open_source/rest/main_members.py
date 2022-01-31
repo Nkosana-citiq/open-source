@@ -691,12 +691,20 @@ class MainMemberPostEndpoint:
             if not applicant_req.get("policy_num"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
 
-            id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id).first()
+            id_number = session.query(MainMember).filter(
+                MainMember.id_number == req.get("id_number"),
+                MainMember.state in (MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED),
+                MainMember.parlour_id == parlour.id
+            ).first()
 
             if not id_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
-                id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
+                id_number = session.query(ExtendedMember).filter(
+                    ExtendedMember.id_number == req.get("id_number"),
+                    ExtendedMember.state in (ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED),
+                    ExtendedMember.applicant_id.in_(applicant_ids)
+                ).first()
 
             if id_number:
                 raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
@@ -918,12 +926,21 @@ class MainMemberPutEndpoint:
             if not main_member:
                 raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-            id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == parlour.id, MainMember.id != main_member.id).first()
+            id_number = session.query(MainMember).filter(
+                MainMember.id_number == req.get("id_number"),
+                MainMember.parlour_id == parlour.id,
+                MainMember.id != main_member.id,
+                MainMember.state in (MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)
+            ).first()
 
             if not id_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
-                id_number = session.query(ExtendedMember).filter(ExtendedMember.id_number == req.get("id_number"), ExtendedMember.applicant_id.in_(applicant_ids)).first()
+                id_number = session.query(ExtendedMember).filter(
+                    ExtendedMember.id_number == req.get("id_number"),
+                    ExtendedMember.state in (ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED),
+                    ExtendedMember.applicant_id.in_(applicant_ids)
+                ).first()
 
             try:
                 main_member.first_name = req.get("first_name")
