@@ -34,9 +34,9 @@ def update_payments(session, applicant=None):
         elif relativedelta(NOW, last_payment.date).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
             set_state(session, 'paid', applicant.id)
     else:
-        if relativedelta(NOW, applicant.date).months > 3 and NOW.month > applicant.date.month:
+        if relativedelta(NOW, applicant.date).months > 3:
             set_state(session, 'lapsed', applicant.id)
-        elif relativedelta(NOW, applicant.date).months > 1 or relativedelta(NOW, applicant.date).months == 1 and NOW.month > applicant.date.month:
+        elif relativedelta(NOW, applicant.date).months > 0:
             set_state(session, 'skipped', applicant.id)
         else:
             set_state(session, 'unpaid', applicant.id)
