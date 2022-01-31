@@ -14,32 +14,34 @@ def get_all_applicants(session):
     return payment
 
 
-def set_state(session, status, applicant_id):
+def set_status(session, status, applicant_id):
     result = session.execute("""
         Update applicants set status=:status where id=:applicant_id
     """, {'status': status, 'applicant_id': applicant_id})
     return result.rowcount
 
 def update_payments(session, applicant=None):
-    last_payment = get_last_payment(session, applicant.id)
+    last_payment = get_last_payment(session, applicant.id).replace(day=1)
+    last_payment_date = last_payment.date.date()
+    applicant_date = applicant.date.date()
     NOW = datetime.now()
 
     if last_payment:
-        if relativedelta(NOW, last_payment.date).months > 3 and NOW.month > last_payment.date.month:
-            set_state(session, 'lapsed', applicant.id)
-        elif relativedelta(NOW, last_payment.date).months > 1 and NOW.month > last_payment.date.month:
-            set_state(session, 'skipped', applicant.id)
-        elif relativedelta(NOW, last_payment.date).months > 0 and NOW.month > last_payment.date.month:
-            set_state(session, 'unpaid', applicant.id)
-        elif relativedelta(NOW, last_payment.date).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
-            set_state(session, 'paid', applicant.id)
+        if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.month > last_payment.date.month:
+            set_status(session, 'lapsed', applicant.id)
+        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.month > last_payment.date.month:
+            set_status(session, 'skipped', applicant.id)
+        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 0 and NOW.month > last_payment.date.month:
+            set_status(session, 'unpaid', applicant.id)
+        elif relativedelta(NOW, last_payment_date.replace(day=1)).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
+            set_status(session, 'paid', applicant.id)
     else:
-        if relativedelta(NOW, applicant.date).months > 3:
-            set_state(session, 'lapsed', applicant.id)
-        elif relativedelta(NOW, applicant.date).months > 0:
-            set_state(session, 'skipped', applicant.id)
+        if relativedelta(NOW, applicant_date.replace(day=1)).months > 3:
+            set_status(session, 'lapsed', applicant.id)
+        elif relativedelta(NOW, applicant_date.replace(day=1)).months > 0:
+            set_status(session, 'skipped', applicant.id)
         else:
-            set_state(session, 'unpaid', applicant.id)
+            set_status(session, 'unpaid', applicant.id)
 
 
 def update_payment_status():
