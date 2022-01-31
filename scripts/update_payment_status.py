@@ -22,8 +22,8 @@ def set_status(session, status, applicant_id):
 
 def update_payments(session, applicant=None):
     last_payment = get_last_payment(session, applicant.id)
-    last_payment_date = last_payment.date.date()
-    applicant_date = applicant.date.date()
+    last_payment_date = last_payment.date.date() or None
+    applicant_date = applicant.date.date() or None
     NOW = datetime.now()
 
     if last_payment:
