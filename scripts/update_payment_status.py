@@ -22,11 +22,11 @@ def set_status(session, status, applicant_id):
 
 def update_payments(session, applicant=None):
     last_payment = get_last_payment(session, applicant.id)
-    last_payment_date = last_payment.date.date()
-    applicant_date = applicant.date.date()
+    applicant_date = applicant.date.date() or None
     NOW = datetime.now()
 
     if last_payment:
+        last_payment_date = last_payment.date.date() or None
         if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.month > last_payment.date.month:
             set_status(session, 'lapsed', applicant.id)
         elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.month > last_payment.date.month:
