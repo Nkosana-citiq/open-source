@@ -104,6 +104,7 @@ api.add_route('/open-source/plans/{id}/check-age-limit', main_members.MainMember
 api.add_route('/open-source/main-members/{id}/exception', main_members.MainMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
+api.add_route('/open-source/main-members/{id}/archive', main_members.MainMemberArchiveEndpoint())
 api.add_route('/open-source/main-members/send-sms', main_members.SMSService())
 api.add_route('/open-source/main-members/{id}/document', main_members.MemberCertificateGetEndpoint())
 api.add_route('/open-source/main-members/{id}/personal_docs', main_members.MemberPersonalDocsGetEndpoint())

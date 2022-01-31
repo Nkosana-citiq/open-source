@@ -96,5 +96,17 @@ class MainMember(db.Base):
         self.make_deleted()
         session.commit()
     
+    def is_archived(self) -> bool:
+        return self.state == self.STATE_ARCHIVED
+
+    def make_archived(self):
+        self.state = self.STATE_ARCHIVED
+        self.on_delete_clean_up()
+
+    def archive(self, session):
+        self.make_archived()
+        session.commit()
+
+
     def on_delete_clean_up(self):
         self.applicant.state = self.applicant.STATE_ARCHIVED

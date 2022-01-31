@@ -1082,6 +1082,38 @@ class MainMemberDeleteEndpoint:
             raise falcon.HTTPBadRequest(title="Bad Request", description="Failed to delete Applicant with ID {}.".format(id))
 
 
+class MainMemberArchiveEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_delete(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                try:
+                    main_member = session.query(MainMember).get(id)
+                except MultipleResultsFound:
+                    raise falcon.HTTPBadRequest(title="Error", description="Bad Request")
+                except NoResultFound:
+                    raise falcon.HTTPNotFound(title="Not Found", description="Member not found")
+
+                if main_member.is_archived:
+                    falcon.HTTPNotFound(title="Not Found", description="Member does not exist.")
+
+                main_member.archive(session)
+                resp.body = json.dumps({})
+        except:
+            logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Bad Request", description="Failed to delete Applicant with ID {}.".format(id))
+
+
 class MainMemberDownloadCSVGetEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
