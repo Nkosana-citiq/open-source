@@ -480,7 +480,8 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
-                        MainMember.applicant_id.in_(applicant_ids)
+                        MainMember.applicant_id.in_(applicant_ids),
+                        MainMember.state == MainMember.STATE_ARCHIVED
                     ).all()
 
                     if not main_members:
@@ -1067,6 +1068,7 @@ class MainMemberDeleteEndpoint:
             with db.transaction() as session:
                 try:
                     main_member = session.query(MainMember).get(id)
+                    applicant = main_member.applicant
                 except MultipleResultsFound:
                     raise falcon.HTTPBadRequest(title="Error", description="Bad Request")
                 except NoResultFound:
@@ -1076,6 +1078,7 @@ class MainMemberDeleteEndpoint:
                     falcon.HTTPNotFound(title="Not Found", description="Member does not exist.")
 
                 main_member.delete(session)
+                applicant.delete(session)
                 resp.body = json.dumps({})
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
