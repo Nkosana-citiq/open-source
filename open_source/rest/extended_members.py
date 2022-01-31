@@ -539,6 +539,7 @@ class ExtendedMemberPutEndpoint:
                     applicant_ids = [applicant.id for applicant in applicants]
                     id_number = session.query(ExtendedMember).filter(
                         ExtendedMember.id_number == req.get("id_number"),
+                        ExtendedMember.id != id,
                         ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                         ExtendedMember.applicant_id.in_(applicant_ids)
                     ).first()
