@@ -126,3 +126,7 @@ def cli():
         applicants = session.query(Applicant).filter(Applicant.state.in_((Applicant.STATE_ACTIVE, Applicant.STATE_ARCHIVED))).all()
         for applicant in applicants:
             update_age_limit(session, applicant)
+
+
+if __name__ == "__main__":
+    cli()
