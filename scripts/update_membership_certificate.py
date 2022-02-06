@@ -48,9 +48,8 @@ def update_certificate(session, applicant):
                 canvas.save()
                 old_document = applicant.document
                 applicant.document = canvas.get_file_path()
-                if os.path.exists(old_document):
+                if old_document and os.path.exists(old_document):
                     os.remove(old_document)
-                print("Add to session")
 
             except Exception as e:
                 logger.exception("Error, experienced an error while creating certificate.")
@@ -64,11 +63,9 @@ def cli():
         applicants = session.query(Applicant).filter(Applicant.state.in_((Applicant.STATE_ACTIVE, Applicant.STATE_ARCHIVED))).all()
         print(len(applicants))
         for applicant in applicants:
-            print("call update...")
             update_certificate(session, applicant)
         session.commit()
 
 
 if __name__ == "__main__":
-    print("======================================================================== ", os.getcwd())
     cli()
