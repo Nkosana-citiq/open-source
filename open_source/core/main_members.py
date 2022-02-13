@@ -61,6 +61,7 @@ class MainMember(db.Base):
             'is_deceased': self.is_deceased,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
+            'extended_member_limit': self.extended_member_limit(),
             'parlour': self.parlour.to_dict()  if self.parlour else {} ,
             'applicant': self.applicant.to_short_dict() if self.applicant else {} 
         }
@@ -75,6 +76,7 @@ class MainMember(db.Base):
             'contact': self.contact,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
+            'extended_member_limit': self.extended_member_limit(),
             'date_joined': self.date_joined,
             'is_deceased': self.is_deceased,
             'created_at': self.created_at,
@@ -95,7 +97,7 @@ class MainMember(db.Base):
     def delete(self, session):
         self.make_deleted()
         session.commit()
-    
+
     def is_archived(self) -> bool:
         return self.state == self.STATE_ARCHIVED
 
@@ -106,6 +108,12 @@ class MainMember(db.Base):
     def archive(self, session):
         self.make_archived()
         session.commit()
+
+    def extended_member_limit(self):
+        with db.no_transaction() as session:
+            sql = "select * from extended_members where id={} and age_limit_exceeded=1".format(self.id)
+            result = session.execute(sql)
+            return result.rowcount
 
 
     def on_delete_clean_up(self):

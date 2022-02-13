@@ -39,18 +39,28 @@ def age_limit_per_extended_member_type(extended_member, plan):
     if extended_member.type == 3:
         return plan.additional_extended_minimum_age, plan.additional_extended_maximum_age
 
+
 def update_extended_members_age_limit(session, plan, applicant):
     extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == applicant.id).all()
 
     if extended_members:
         for extended_member in extended_members:
+            age_limit_exceeded = False
             min_age_limit, max_age_limit = age_limit_per_extended_member_type(extended_member, plan)
 
             try:
-                date_of_birth = extended_member.date_of_birth
-                dob = datetime.datetime.strptime(get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                if extended_member.date_of_birth:
+                    date_of_birth = extended_member.date_of_birth
+                elif extended_member.id_number:
+                    if int(extended_member.id_number[0:2]) > 21:
+                        number = '19{}'.format(extended_member.id_number[0:2])
+                    else:
+                        number = '20{}'.format(extended_member.id_number[0:2])
+                    date_of_birth = '{}-{}-{}'.format(number, extended_member.id_number[2:4], extended_member.id_number[4:6])
+                dob = datetime.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
             except:
-                raise falcon.HTTPBadRequest(title="Error", description="Encountered error while formating date. Make sure you've entered a valid date.")
+                continue
+
             now = datetime.datetime.now().date()
 
             age = relativedelta(now, dob)
@@ -75,57 +85,65 @@ def update_extended_members_age_limit(session, plan, applicant):
                 extended_member.age_limit_exceeded = False
             session.commit()
 
+
 def update_age_limit(session, applicant):
     plan = session.query(Plan).filter(Plan.id == applicant.plan.id).one_or_none()
     main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).one_or_none()
 
     if main_member:
+        age_limit_exceeded = False
         min_age_limit = plan.member_minimum_age
         max_age_limit = plan.member_maximum_age
         id_number = main_member.id_number
 
-        if not plan:
-            raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
+        if id_number:
+            if not plan:
+                raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
+    
+            if int(id_number[0:2]) > 21:
+                number = '19{}'.format(id_number[0:2])
+            else:
+                number = '20{}'.format(id_number[0:2])
+            try:
+                date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
 
-        if int(id_number[0:2]) > 21:
-            number = '19{}'.format(id_number[0:2])
-        else:
-            number = '20{}'.format(id_number[0:2])
-        try:
-            date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-            dob = datetime.datetime.strptime(get_date_of_birth(date_of_birth, id_number), "%Y-%m-%d").date()
-        except:
-            raise falcon.HTTPBadRequest(title="Plan not found", description="Encountered error while formating date. Make sure you've entered a valid date.")
-        now = datetime.datetime.now().date()
+                dob = datetime.datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+            except:
+                ...
 
-        age = relativedelta(now, dob)
+            now = datetime.datetime.now().date()
 
-        years = "{}".format(age.years)
+            age = relativedelta(now, dob)
+    
+            years = "{}".format(age.years)
 
-        if max_age_limit:
-            if len(years) > 2 and int(years[2:4]) > max_age_limit:
-                age_limit_exceeded = True
-            elif int(years) > max_age_limit:
-                age_limit_exceeded = True
-
-        if min_age_limit:
-            if len(years) > 2 and int(years[2:4]) < min_age_limit:
-                age_limit_exceeded = True
-            elif int(years) < min_age_limit:
-                age_limit_exceeded = True
-
-        if age_limit_exceeded == True:
-            main_member.age_limit_exceeded = True
-        else:
-            main_member.age_limit_exceeded = False
-        update_extended_members_age_limit(session, plan, applicant)
+            if max_age_limit:
+                if len(years) > 2 and int(years[2:4]) > max_age_limit:
+                    age_limit_exceeded = True
+                elif int(years) > max_age_limit:
+                    age_limit_exceeded = True
+    
+            if min_age_limit:
+                if len(years) > 2 and int(years[2:4]) < min_age_limit:
+                    age_limit_exceeded = True
+                elif int(years) < min_age_limit:
+                    age_limit_exceeded = True
+    
+            if age_limit_exceeded == True:
+                main_member.age_limit_exceeded = True
+            else:
+                main_member.age_limit_exceeded = False
+            update_extended_members_age_limit(session, plan, applicant)
 
 
 def cli():
     with db.transaction() as session:
         applicants = session.query(Applicant).filter(Applicant.state.in_((Applicant.STATE_ACTIVE, Applicant.STATE_ARCHIVED))).all()
         for applicant in applicants:
-            update_age_limit(session, applicant)
+            try:
+                update_age_limit(session, applicant)
+            except:
+                continue
 
 
 if __name__ == "__main__":

@@ -353,8 +353,6 @@ class ExtendedMembersPostEndpoint:
             raise e
 
 
-
-
 class ExtendedMemberCheckAgeLimitEndpoint:
     cors = public_cors
     def __init__(self, secure=False, basic_secure=False):
@@ -483,12 +481,12 @@ class ExtendedMemberPutEndpoint:
         current_year = datetime.now().year
         year_string = str(current_year)[2:]
         century = 19
-        if date_of_birth:
-            return date_of_birth.replace('T', " ")[:10]
         if id_number:
             if 0 <= int(id_number[:2]) <= int(year_string):
                 century = 20
             return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+        if date_of_birth:
+            return date_of_birth.replace('T', " ")[:10]
 
     def get_date_joined(self, date_joined):
         return date_joined.replace('T', " ")[:10]

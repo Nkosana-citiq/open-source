@@ -648,8 +648,8 @@ class MainMemberPostEndpoint:
     def is_not_secure(self):
         return not self.secure
 
-    def get_date_joined(self, date_joined):
-        return date_joined.replace('T', " ")[:10]
+    def get_date(self, input_date):
+        return input_date.replace('T', " ")[:10]
 
     def on_post(self, req, resp, id):
         
@@ -726,13 +726,14 @@ class MainMemberPostEndpoint:
                 )
 
                 applicant.save(session)
-                date_joined = self.get_date_joined(req.get("date_joined"))
+                date_joined = self.get_date(req.get("date_joined"))
+                date_of_birth = self.get_date(req.get("date_of_birth"))
                 main_member = MainMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
                     id_number = req.get("id_number"),
                     contact = req.get("contact"),
-                    date_of_birth = req.get("date_of_birth"),
+                    date_of_birth = date_of_birth,
                     parlour_id = parlour.id,
                     date_joined = date_joined,
                     state=MainMember.STATE_ACTIVE,
@@ -874,6 +875,9 @@ class MainMemberPutEndpoint:
 
     def is_not_secure(self):
         return not self.secure
+
+    def get_date(self, input_date):
+        return input_date.replace('T', " ")[:10]
 
     def on_put(self, req, resp, id):
         req = json.load(req.bounded_stream)
