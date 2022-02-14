@@ -327,15 +327,12 @@ class ExtendedMembersPostEndpoint:
                         extended_member.age_limit_exceeded = True
                     elif int(years) > int(max_age_limit):
                         extended_member.age_limit_exceeded = True
-                    else:
-                        extended_member.age_limit_exceeded = False
+
                 if min_age_limit and int(min_age_limit):
                     if len(years) > 2 and int(years[2:4]) < int(min_age_limit):
                         extended_member.age_limit_exceeded = True
                     elif int(years) < int(min_age_limit):
                         extended_member.age_limit_exceeded = True
-                    else:
-                        extended_member.age_limit_exceeded = False
 
                 applicant.extended_members.append(extended_member)
                 extended_member.save(session)
