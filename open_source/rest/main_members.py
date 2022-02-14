@@ -590,7 +590,12 @@ class MainMemberPostFileEndpoint:
         return not self.secure
 
     def on_post(self, req, resp, id):
-        pdf = req.get_param('myFile')
+        body = json.load(req.bounded_stream)
+
+        if not body:
+            raise falcon.HTTPBadRequest(title='400 Bad Request', description='Body is empty or malformed.')
+
+        pdf = body['pdf']
 
         with db.transaction() as session:
             try:
@@ -617,11 +622,7 @@ class MainMemberPostFileEndpoint:
                 os.chdir('./assets/uploads/personal_docs')
                 pdf_path = os.path.join(os.getcwd(), filename)
                 with open(pdf_path, "wb") as pdf_file:
-                    while True:
-                        chunk = pdf.file.read()
-                        pdf_file.write(chunk)
-                        if not chunk:
-                            break
+                    pdf_file.write(pdf.encode('utf-8'))
 
                 applicant.personal_docs = '{}/{}'.format(os.getcwd(), filename)
                 os.chdir('../../..')
@@ -649,7 +650,9 @@ class MainMemberPostEndpoint:
         return not self.secure
 
     def get_date(self, input_date):
-        return input_date.replace('T', " ")[:10]
+        if input_date:
+            return input_date.replace('T', " ")[:10]
+        return None
 
     def on_post(self, req, resp, id):
         
@@ -877,7 +880,9 @@ class MainMemberPutEndpoint:
         return not self.secure
 
     def get_date(self, input_date):
-        return input_date.replace('T', " ")[:10]
+        if input_date:
+            return input_date.replace('T', " ")[:10]
+        return None
 
     def on_put(self, req, resp, id):
         req = json.load(req.bounded_stream)
