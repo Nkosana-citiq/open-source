@@ -111,7 +111,7 @@ class MainMember(db.Base):
 
     def extended_member_limit(self):
         with db.no_transaction() as session:
-            sql = "select * from extended_members where applicant_id={} and age_limit_exceeded=1 AND state=1".format(self.applicant_id)
+            sql = "select * from extended_members where applicant_id={} and age_limit_exceeded=1 AND age_limit_exception=0 AND state=1".format(self.applicant_id)
             result = session.execute(sql)
             return result.rowcount
 
