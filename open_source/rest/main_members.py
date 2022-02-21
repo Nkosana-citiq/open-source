@@ -590,6 +590,7 @@ class MainMemberPostFileEndpoint:
         return not self.secure
 
     def on_post(self, req, resp, id):
+        from base64 import b64decode
         body = json.load(req.bounded_stream)
 
         if not body:
@@ -622,7 +623,8 @@ class MainMemberPostFileEndpoint:
                 os.chdir('./assets/uploads/personal_docs')
                 pdf_path = os.path.join(os.getcwd(), filename)
                 with open(pdf_path, "wb") as pdf_file:
-                    pdf_file.write(pdf.encode('utf-8'))
+                    bytes = b64decode(pdf)
+                    pdf_file.write(bytes)
 
                 applicant.personal_docs = '{}/{}'.format(os.getcwd(), filename)
                 os.chdir('../../..')
