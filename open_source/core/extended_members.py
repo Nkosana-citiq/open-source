@@ -31,6 +31,13 @@ class ExtendedMember(db.Base):
         TYPE_ADDITIONAL_EXTENDED_MEMBER: 'Additional Extended Member'
     }
 
+    text_to_type = {
+        'spouse': TYPE_SPOUSE,
+        'dependant': TYPE_DEPENDANT,
+        'extended_member': TYPE_EXTENDED_MEMBER,
+        'additional_extended_member': TYPE_ADDITIONAL_EXTENDED_MEMBER
+    }
+
     RELATION_CHILD = 12
     RELATION_PARENT = 1
     RELATION_BROTHER = 2
@@ -57,6 +64,21 @@ class ExtendedMember(db.Base):
         RELATION_WIFE: 'Wife',
         RELATION_HUSBAND: 'Husband',
         RELATION_COUSIN: 'Cousin'
+    }
+
+    text_to_relation = {
+        'child': RELATION_CHILD,
+        'parent': RELATION_PARENT,
+        'brother': RELATION_BROTHER,
+        'sister': RELATION_SISTER,
+        'nephew': RELATION_NEPHEW,
+        'niece': RELATION_NIECE,
+        'aunt': RELATION_AUNT,
+        'Uncle': RELATION_UNCLE,
+        'grand_parent': RELATION_GRAND_PARENT,
+        'wife': RELATION_WIFE,
+        'husband': RELATION_HUSBAND,
+        'cousin': RELATION_COUSIN
     }
 
     id = Column(Integer, primary_key=True)
@@ -95,6 +117,12 @@ class ExtendedMember(db.Base):
     @property
     def relation_text(self):
         return self.relation_to_text.get(self.relation_to_main_member, 'Undefined')
+
+    def text_type(self, text):
+        return self.type_to_text.get(text, 'Undefined')
+
+    def text_relation(self, text):
+        return self.text_to_relation.get(text, 'Undefined')
 
     def to_dict(self):
         return {

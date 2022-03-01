@@ -209,7 +209,7 @@ class ExtendedMembersPostEndpoint:
                     Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
 
                 if not applicant:
-                    raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
+                    raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant not found.")
 
                 if not req.get("first_name"):
                     raise falcon.HTTPNotFound(title="Error", description="First name is a required field.")
@@ -869,3 +869,183 @@ def update_certificate(applicant):
                 print(e)
 
     return applicant
+
+
+def get_date_of_birth(date_of_birth=None, id_number=None):
+    current_year = datetime.now().year
+    year_string = str(current_year)[2:]
+    century = 19
+    if date_of_birth:
+        return date_of_birth.replace('T', " ")[:10]
+    if id_number:
+        if 0 <= int(id_number[:2]) <= int(year_string):
+            century = 20
+        return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+
+
+# def get_date_joined(self, date_joined):
+#     return date_joined.replace('T', " ")[:10]
+
+
+def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
+    ext_data = []
+    ext_data.append(csv_data)
+
+    for data in ext_data:
+        applicant = session.query(Applicant).filter(
+            Applicant.id == applicant_id,
+            Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
+
+        if not applicant:
+            error_data.append({'data': data, 'error': "Applicant not found."})
+            continue
+
+        if not data[0]:
+            error_data.append({'data': data, 'error': "First name is a required field."})
+            continue
+
+        if not data[1]:
+            error_data.append({'data': data, 'error': "Lat name is a required field."})
+            continue
+
+        if not data[8]:
+            error_data.append({'data': data, 'error': "Type of member is a required field."})
+            continue
+
+        if not data[9]:
+            error_data.append({'data': data, 'error': "Relationship to main member is a required field."})
+            continue
+
+        if not data[4]:
+            error_data.append({'data': data, 'error': "Date joined is a required field."})
+            continue
+
+        if data[2] and len(data[2]) == 13:
+            applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
+            applicant_ids = [applicant.id for applicant in applicants]
+            id_number = session.query(MainMember).filter(
+                MainMember.id_number == data[2],
+                MainMember.applicant_id.in_(applicant_ids),
+                MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
+            ).first()
+
+            if not id_number:
+                applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
+                applicant_ids = [applicant.id for applicant in applicants]
+                id_number = session.query(ExtendedMember).filter(
+                    ExtendedMember.id_number == data[2],
+                    ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
+                    ExtendedMember.applicant_id.in_(applicant_ids)
+                ).first()
+
+            if id_number:
+                error_data.append({'data': data, 'error': "ID number already exists for either main member or extended member."})
+                continue
+        date_of_birth = data[2] if len(data[2]) < 13 else None
+        date_of_birth = get_date_of_birth(date_of_birth, data[2])
+        date_joined = data[4]
+        member_type = ExtendedMember.text_to_type('_'.join(data[8].lower().split())) if ExtendedMember.text_to_type('_'.join(data[8].lower().split())) != 'undefined' else None
+        member_relation = ExtendedMember.text_to_relation('_'.join(data[9].lower().split())) if ExtendedMember.text_to_relation('_'.join(data[9].lower().split())) != 'undefined' else None
+        if not member_type:
+            error_data.append({'data': data, 'error': "Unrecognized member type."})
+            continue
+        if not member_relation:
+            error_data.append({'data': data, 'error': "Unrecognized member relation."})
+            continue
+
+        extended_member = ExtendedMember(
+            first_name = data[0],
+            last_name = data[1],
+            number = data[3],
+            date_of_birth = date_of_birth,
+            type = member_type,
+            id_number = id_number,
+            relation_to_main_member = member_relation,
+            applicant_id = applicant.id,
+            date_joined = date_joined,
+            state=ExtendedMember.STATE_ACTIVE,
+            created_at = datetime.now(),
+            modified_at = datetime.now()
+        )
+        plan = applicant.plan
+
+        if extended_member:
+            if extended_member.type == 4:
+                if not plan.spouse:
+                    error_data.append({'data': data, 'error': "This plan does not have a spouse."})
+                    continue
+
+                if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
+                    error_data.append({'data': data, 'error': "Limit for number of spouse members has been reached."})
+                    continue
+            elif extended_member.type == 1:
+                if not plan.beneficiaries:
+                    error_data.append({'data': data, 'error': "This plan does not have dependants."})
+                    continue
+
+                if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
+                    error_data.append({'data': data, 'error': "Limit for number of dependant members has been reached."})
+            elif extended_member.type == 2:
+                if not plan.extended_members:
+                    error_data.append({'data': data, 'error': "This plan does not have extended-members."})
+
+                if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
+                    error_data.append({'data': data, 'error': "Limit for number of extended-member members has been reached."})
+            elif extended_member.type == 3:
+                if not plan.additional_extended_members:
+                    error_data.append({'data': data, 'error': "This plan does not have additional-extended-members."})
+
+                if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
+                    error_data.append({'data': data, 'error': "Limit for number of additional-extended-member members has been reached."})
+
+        member_type = extended_member.type
+        min_age_limit = 0
+        max_age_limit = 120
+
+        if member_type == 4:
+            min_age_limit = plan.spouse_minimum_age
+            max_age_limit = plan.spouse_maximum_age
+        elif member_type == 1:
+            min_age_limit = plan.dependant_minimum_age
+            max_age_limit = plan.dependant_maximum_age
+        elif member_type == 2:
+            min_age_limit = plan.extended_minimum_age
+            max_age_limit = plan.extended_maximum_age
+        elif member_type == 3:
+            min_age_limit = plan.additional_extended_minimum_age
+            max_age_limit = plan.additional_extended_maximum_age
+
+        if not date_of_birth:
+            if int(id_number[0:2]) > 21:
+                number = '19{}'.format(id_number[0:2])
+            else:
+                number = '20{}'.format(id_number[0:2])
+            date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+
+        dob = datetime.strptime(get_date_of_birth(date_of_birth, id_number), "%Y-%m-%d").date()
+        now = datetime.now().date()
+
+        age = relativedelta(now, dob)
+
+        years = "{}".format(age.years)
+
+        if max_age_limit and int(max_age_limit):
+            if len(years) > 2 and int(years[2:4]) > int(max_age_limit):
+                extended_member.age_limit_exceeded = True
+            elif int(years) > int(max_age_limit):
+                extended_member.age_limit_exceeded = True
+
+        if min_age_limit and int(min_age_limit):
+            if len(years) > 2 and int(years[2:4]) < int(min_age_limit):
+                extended_member.age_limit_exceeded = True
+            elif int(years) < int(min_age_limit):
+                extended_member.age_limit_exceeded = True
+
+        applicant.extended_members.append(extended_member)
+        extended_member.save(session)
+        old_file = applicant.document
+        update_certificate(applicant)
+
+        if old_file and os.path.exists(old_file):
+            os.remove(old_file)
+    return error_data

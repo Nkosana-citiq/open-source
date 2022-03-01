@@ -83,6 +83,8 @@ api.add_route('/open-source/actions/forgot_password', consultants.ForgotPassword
 
 
 api.add_route('/open-source/actions/{id}/export_to_excel/', main_members.ApplicantExportToExcelEndpoint())
+api.add_route('/open-source/members/actions/export_to_excel', main_members.FailedMembersExcel())
+api.add_route('/open-source/actions/download_failed_members/', main_members.DownloadFailedMembers())
 
 api.add_route('/open-source/consultants/{id}/applicants/', applicants.ApplicantGetAllEndpoint())
 api.add_route('/open-source/applicants', applicants.ApplicantPostEndpoint())
@@ -96,6 +98,7 @@ api.add_route('/open-source/consultants/{id}/main-members/archived', main_member
 api.add_route('/open-source/parlours/{id}/main-members/all', main_members.MainGetAllParlourEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/archived', main_members.MainGetAllArchivedParlourEndpoint())
 api.add_route('/open-source/consultants/{id}/main-members', main_members.MainMemberPostEndpoint())
+api.add_route('/open-source/consultants/{id}/actions/import_members', main_members.MainMemberBulkPostEndpoint())
 api.add_route('/open-source/main-members/{id}/upload', main_members.MainMemberPostFileEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())

@@ -18,7 +18,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy import or_
 from open_source.core.main_members import MainMember
 from open_source.core.extended_members import ExtendedMember
-from open_source.rest.extended_members import update_certificate
+from open_source.rest.extended_members import update_certificate, bulk_insert_extended_members
 from open_source.core.parlours import Parlour
 from falcon_cors import CORS
 
@@ -789,6 +789,183 @@ class MainMemberPostEndpoint:
                 raise e
 
 
+class MainMemberBulkPostEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def get_date(self, input_date):
+        if input_date:
+            return input_date.replace('T', " ")[:10]
+        return None
+
+    @staticmethod
+    def format_csv(csv_data):
+        csv_data = csv_data.splitlines()
+        result = []
+
+        count = 1
+        for row in csv.reader(csv_data):
+            if count > 1:
+                result.append(row)
+            count +=1
+
+        return result
+
+    def on_post(self, req, resp, id):
+        req = json.load(req.bounded_stream)
+        plan_id = req.pop('plan')
+        csv_data = req.pop('csv')
+        csv_data = self.format_csv(csv_data)
+        error_data = []
+        prev_applicant = None
+
+        for data in csv_data:
+            with db.transaction() as session:
+
+                if data[8] and data[9]:
+                    if not prev_applicant:
+                        error_data.append({'data': data, 'error': "Extended member must come after main member."})
+                        continue
+                    error_data = bulk_insert_extended_members(data, error_data, prev_applicant, session)
+                    continue
+                if not data[2]:
+                    error_data.append({'data': data, 'error': "Missing id_number field."})
+                    continue
+                if not data[0]:
+                    error_data.append({'data': data, 'error': "Missing first name field."})
+                    continue
+                if not data[1]:
+                    error_data.append({'data': data, 'error': "Missing last name field."})
+                    continue
+                if not data[4]:
+                    error_data.append({'data': data, 'error': "Date joined is a required field."})
+                    continue
+                if not data[3]:
+                    error_data.append({'data': data, 'error': "Contact number is a required field."})
+                    continue
+
+                consultant = session.query(Consultant).get(id)
+
+                if not consultant:
+                    error_data.append({'data': data, 'error': "Consultant does not exist."})
+                    continue
+
+                plan = session.query(Plan).get(plan_id)
+
+                if not plan:
+                    error_data.append({'data': data, 'error': "Plan not found."})
+                    continue
+
+                parlour = session.query(Parlour).filter(
+                    Parlour.id == plan.parlour_id,
+                    Parlour.state == Parlour.STATE_ACTIVE).first()
+
+                if not parlour:
+                    error_data.append({'data': data, 'error': "Parlour does not exist."})
+                    continue
+
+                if not data[7]:
+                    error_data.append({'data': data, 'error': 'Missing policy number'})
+                    continue
+
+                id_number = session.query(MainMember).filter(
+                    MainMember.id_number == data[2],
+                    MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
+                    MainMember.parlour_id == parlour.id
+                ).first()
+
+                if not id_number:
+                    applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+                    applicant_ids = [applicant.id for applicant in applicants]
+                    id_number = session.query(ExtendedMember).filter(
+                        ExtendedMember.id_number == data[2],
+                        ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
+                        ExtendedMember.applicant_id.in_(applicant_ids)
+                    ).first()
+
+                if id_number:
+                    error_data.append({'data': data, 'error': 'ID number already exists'})
+                    continue
+
+                applicant = Applicant(
+                    policy_num=data[7],
+                    address=data[6],
+                    status='unpaid',
+                    plan_id=plan.id,
+                    consultant_id=consultant.id,
+                    parlour_id=parlour.id,
+                    old_url=False,
+                    date=datetime.datetime.now(),
+                    state=Applicant.STATE_ACTIVE,
+                    modified_at=datetime.datetime.now(),
+                    created_at=datetime.datetime.now()
+                )
+
+                applicant.save(session)
+                prev_applicant = applicant.id
+
+                date_joined = self.get_date(data[4])
+
+                main_member = MainMember(
+                    first_name = data[0],
+                    last_name = data[1],
+                    id_number = data[2],
+                    contact = data[3],
+                    parlour_id = parlour.id,
+                    date_joined = date_joined,
+                    state=MainMember.STATE_ACTIVE,
+                    applicant_id = applicant.id,
+                    modified_at = datetime.datetime.now(),
+                    created_at = datetime.datetime.now()
+                )
+
+                min_age_limit = plan.member_minimum_age
+                max_age_limit = plan.member_maximum_age
+
+                id_number = main_member.id_number
+
+                if int(id_number[0:2]) > 21:
+                    number = '19{}'.format(id_number[0:2])
+                else:
+                    number = '20{}'.format(id_number[0:2])
+                dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
+                # dob = main_member.date_of_birth
+                dob = datetime.datetime.strptime(dob, "%Y-%m-%d")
+                now = datetime.datetime.now()
+
+                age = relativedelta(now, dob)
+
+                years = "{}".format(age.years)
+                try:
+                    if max_age_limit and len(years) > 2 and int(years[2:4]) > max_age_limit:
+                        main_member.age_limit_exceeded = True
+                    elif max_age_limit and int(years) > max_age_limit:
+                        main_member.age_limit_exceeded = True
+                except:
+                    pass
+
+                try:
+                    if min_age_limit and len(years) > 2 and int(years[2:4]) < min_age_limit:
+                        main_member.age_limit_exceeded = True
+                    elif min_age_limit and int(years) < min_age_limit:
+                        main_member.age_limit_exceeded = True
+                except:
+                    pass
+                main_member.save(session)
+
+                applicant = update_certificate(applicant)
+
+        resp.body = json.dumps(error_data, default=str)
+
+
 class MainMemberCheckAgeLimitEndpoint:
     cors = public_cors
 
@@ -1325,6 +1502,73 @@ class ApplicantExportToExcelEndpoint:
         except Exception as e:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
             raise e
+
+
+class DownloadFailedMembers:
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_post(self, req, resp):
+        import requests
+        rest_dict = json.load(req.bounded_stream)
+        data = []
+
+        for res in rest_dict:
+            data.append({
+                'First Name': res.get('first_name'),
+                'Last Name': res.get('last_name'),
+                'ID Number': res.get('id_number'),
+                'Contact Number': res.get('contact'),
+                'Date Joined': res.get('date_joined'),
+                'Waiting Period': res.get('waiting_period'),
+                'Physical Address': res.get('physical_address'),
+                'Policy': res.get('policy_num'),
+                'Type Member': res.get('type_member'),
+                'Relation to Main Member': res.get('relation')
+                })
+
+        df = pd.DataFrame(data)
+        filename = uuid.uuid4()
+        writer = pd.ExcelWriter('{}.xlsx'.format(filename), engine='xlsxwriter')
+        df.to_excel(writer, sheet_name='Sheet1', index=False)
+        os.chdir('./assets/uploads/spreadsheets')
+        path = os.getcwd()
+        writer.save()
+        os.chdir('../../..')
+
+        resp.body = json.dumps({'filename': filename}, default=str)
+
+
+class FailedMembersExcel:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp):
+        filename = req.params.pop("filename")
+        os.chdir('./assets/uploads/spreadsheets')
+        path = os.getcwd()
+        os.chdir('../../..')
+        with open('{}/{}.xlsx'.format(path, filename), 'rb') as f:
+            resp.downloadable_as = '{}.xls'.format(filename)
+            resp.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            resp.stream = [f.read()]
+            resp.status = falcon.HTTP_200
+        
 
 
 class SMSService:
