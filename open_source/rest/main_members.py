@@ -21,7 +21,7 @@ from open_source.core.extended_members import ExtendedMember
 from open_source.rest.extended_members import update_certificate, bulk_insert_extended_members
 from open_source.core.parlours import Parlour
 from falcon_cors import CORS
-
+from za_id_number.za_id_number import SouthAfricanIdentityValidate
 
 logger = logging.getLogger(__name__)
 public_cors = CORS(allow_all_origins=True)
@@ -820,14 +820,37 @@ class MainMemberBulkPostEndpoint:
         return result
 
     def on_post(self, req, resp, id):
-        req = json.load(req.bounded_stream)
-        plan_id = req.pop('plan')
-        csv_data = req.pop('csv')
-        csv_data = self.format_csv(csv_data)
+        import io
+        from base64 import b64decode
+        import openpyxl
+        rest_dict = json.load(req.bounded_stream)
         error_data = []
         prev_applicant = None
+        plan_id = rest_dict.pop('plan')
+        csv_data = rest_dict.pop('csv')
+        filename = uuid.uuid4()
 
-        for data in csv_data:
+        os.chdir('./assets/uploads/spreadsheets')
+        with open('{}.xlsx'.format(filename), "wb") as file:
+            file.write(b64decode(csv_data))
+
+        wookbook = openpyxl.load_workbook('{}.xlsx'.format(filename))
+
+        # Define variable to read the active sheet:
+        worksheet = wookbook.active
+        rows = []
+        # Iterate the loop to read the cell values
+        for i in range(0, worksheet.max_row):
+            if not i == 0:
+                rows.append([])
+                for col in worksheet.iter_cols(1, worksheet.max_column):
+                    rows[i-1].append(col[i].value)
+
+        os.remove('{}.xlsx'.format(filename))
+        os.chdir('../../..')
+
+        for data in rows:
+
             with db.transaction() as session:
 
                 if data[8] and data[9]:
@@ -839,6 +862,12 @@ class MainMemberBulkPostEndpoint:
                 if not data[2]:
                     error_data.append({'data': data, 'error': "Missing id_number field."})
                     continue
+                if not data[2] and len(data[2]) == 13:
+                    za_validation = SouthAfricanIdentityValidate(data[2])
+                    valid = za_validation.validate()
+                    if not valid:
+                        error_data.append({'data': data, 'error': "Incorrect id_number entered."})
+                        continue
                 if not data[0]:
                     error_data.append({'data': data, 'error': "Missing first name field."})
                     continue
@@ -917,7 +946,7 @@ class MainMemberBulkPostEndpoint:
                 main_member = MainMember(
                     first_name = data[0],
                     last_name = data[1],
-                    id_number = data[2],
+                    id_number = '{}'.format(data[2]),
                     contact = data[3],
                     parlour_id = parlour.id,
                     date_joined = date_joined,
@@ -1516,7 +1545,6 @@ class DownloadFailedMembers:
         return not self.secure
 
     def on_post(self, req, resp):
-        import requests
         rest_dict = json.load(req.bounded_stream)
         data = []
 
