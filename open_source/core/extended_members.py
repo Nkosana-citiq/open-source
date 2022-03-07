@@ -33,7 +33,7 @@ class ExtendedMember(db.Base):
 
     text_to_type = {
         'spouse': TYPE_SPOUSE,
-        'dependant': TYPE_DEPENDANT,
+        'dependent': TYPE_DEPENDANT,
         'extended_member': TYPE_EXTENDED_MEMBER,
         'additional_extended_member': TYPE_ADDITIONAL_EXTENDED_MEMBER
     }
@@ -118,11 +118,13 @@ class ExtendedMember(db.Base):
     def relation_text(self):
         return self.relation_to_text.get(self.relation_to_main_member, 'Undefined')
 
-    def text_type(self, text):
-        return self.type_to_text.get(text, 'Undefined')
+    @staticmethod
+    def text_type(text):
+        return ExtendedMember.text_to_type.get(text, 'Undefined')
 
-    def text_relation(self, text):
-        return self.text_to_relation.get(text, 'Undefined')
+    @staticmethod
+    def text_relation(text):
+        return ExtendedMember.text_to_relation.get(text, 'Undefined')
 
     def to_dict(self):
         return {

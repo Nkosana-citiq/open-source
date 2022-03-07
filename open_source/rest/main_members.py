@@ -852,22 +852,31 @@ class MainMemberBulkPostEndpoint:
         for data in rows:
 
             with db.transaction() as session:
-
-                if data[8] and data[9]:
-                    if not prev_applicant:
-                        error_data.append({'data': data, 'error': "Extended member must come after main member."})
-                        continue
-                    error_data = bulk_insert_extended_members(data, error_data, prev_applicant, session)
+                id_check = '{}'.format(data[2])
+                if not any(data):
                     continue
-                if not data[2]:
+                try:
+                    if data[8] or data[9]:
+                        if not all([data[8], data[9]]):
+                            error_data.append({'data': data, 'error': "Extended member type and relation to main member are requires fieds."})
+                            continue
+                        if not prev_applicant:
+                            error_data.append({'data': data, 'error': "Main member to extended member has an issue."})
+                            continue
+                        error_data = bulk_insert_extended_members(data, error_data, prev_applicant, session)
+                        continue
+                except IndexError:
+                    pass
+                if not id_check:
                     error_data.append({'data': data, 'error': "Missing id_number field."})
                     continue
-                if not data[2] and len(data[2]) == 13:
-                    za_validation = SouthAfricanIdentityValidate(data[2])
-                    valid = za_validation.validate()
-                    if not valid:
-                        error_data.append({'data': data, 'error': "Incorrect id_number entered."})
-                        continue
+
+                za_validation = SouthAfricanIdentityValidate(id_check)
+                valid = za_validation.validate()
+                if not valid:
+                    error_data.append({'data': data, 'error': "Incorrect id_number entered."})
+                    continue
+
                 if not data[0]:
                     error_data.append({'data': data, 'error': "Missing first name field."})
                     continue
@@ -906,7 +915,7 @@ class MainMemberBulkPostEndpoint:
                     continue
 
                 id_number = session.query(MainMember).filter(
-                    MainMember.id_number == data[2],
+                    MainMember.id_number == id_check,
                     MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
                     MainMember.parlour_id == parlour.id
                 ).first()
@@ -915,7 +924,7 @@ class MainMemberBulkPostEndpoint:
                     applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                     applicant_ids = [applicant.id for applicant in applicants]
                     id_number = session.query(ExtendedMember).filter(
-                        ExtendedMember.id_number == data[2],
+                        ExtendedMember.id_number == id_check,
                         ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                         ExtendedMember.applicant_id.in_(applicant_ids)
                     ).first()
@@ -941,13 +950,12 @@ class MainMemberBulkPostEndpoint:
                 applicant.save(session)
                 prev_applicant = applicant.id
 
-                date_joined = self.get_date(data[4])
-
+                date_joined = data[4]
                 main_member = MainMember(
                     first_name = data[0],
                     last_name = data[1],
-                    id_number = '{}'.format(data[2]),
-                    contact = data[3],
+                    id_number = id_check,
+                    contact = data[3] if len(str(data[3])) == 10 else '0{}'.format(data[3]),
                     parlour_id = parlour.id,
                     date_joined = date_joined,
                     state=MainMember.STATE_ACTIVE,
@@ -1159,6 +1167,9 @@ class MainMemberPutEndpoint:
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
+
+            if id_number:
+                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
             try:
                 main_member.first_name = req.get("first_name")
@@ -1559,7 +1570,8 @@ class DownloadFailedMembers:
                 'Physical Address': res.get('physical_address'),
                 'Policy': res.get('policy_num'),
                 'Type Member': res.get('type_member'),
-                'Relation to Main Member': res.get('relation')
+                'Relation to Main Member': res.get('relation'),
+                'Reason': res.get('reason')
                 })
 
         df = pd.DataFrame(data)
