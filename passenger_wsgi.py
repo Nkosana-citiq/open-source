@@ -139,6 +139,7 @@ api.add_route('/open-source/parlours/{id}/payments', payments.PaymentPostEndpoin
 
 api.add_route('/open-source/applicants/{id}/invoices/all', payments.InvoicesGetAllEndpoint())
 api.add_route('/open-source/invoices/{id}', payments.RecieptGetEndpoint())
+api.add_route('/open-source/invoice/{id}/delete', payments.InvoiceDeleteEndpoint())
 
 
 api.add_route('/open-source/admins/signup', admins.AdminSignupEndpoint())

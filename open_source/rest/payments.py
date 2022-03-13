@@ -618,3 +618,33 @@ class InvoicesGetEndpoint:
         except:
             logger.exception("Error, Failed to get Parlour for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed while getting invoices.")
+
+
+class InvoiceDeleteEndpoint:
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_delete(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+
+                invoice = session.query(Invoice).filter(Invoice.id == id).first()
+
+                if invoice is None:
+                    raise falcon.HTTPNotFound(title="Invoice Not Found")
+
+                if invoice.is_deleted():
+                    falcon.HTTPNotFound("Invoice does not exist.")
+
+                invoice.delete(session)
+                resp.body = json.dumps(invoice.to_dict(), default=str)
+        except:
+            logger.exception("Error, Failed to delete invoice with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete invoice with ID {}.".format(id))
