@@ -263,6 +263,7 @@ class ExtendedMembersPostEndpoint:
                     relation_to_main_member = req.get("relation_to_main_member"),
                     applicant_id = applicant.id,
                     date_joined = date_joined,
+                    waiting_period = req.get("waiting_period", 0),
                     state=ExtendedMember.STATE_ACTIVE,
                     created_at = datetime.now(),
                     modified_at = datetime.now()
@@ -564,6 +565,7 @@ class ExtendedMemberPutEndpoint:
                 extended_member.date_of_birth = date_of_birth
                 extended_member.type = req.get("type")
                 extended_member.id_number = req.get("id_number")
+                extended_member.waiting_period = req.get("waiting_period", 0)
                 extended_member.relation_to_main_member = req.get("relation_to_main_member")
                 extended_member.applicant_id = applicant.id
                 extended_member.date_joined = date_joined
@@ -854,6 +856,7 @@ def update_certificate(applicant):
                 canvas.set_id_number(main_member.id_number)
                 canvas.set_date_joined(main_member.date_joined)
                 canvas.set_date_created(main_member.created_at.date())
+                canvas.set_waiting_period(main_member.waiting_period)
                 canvas.set_member_contact(main_member.contact)
                 canvas.set_current_plan(plan.plan)
                 canvas.set_current_premium(plan.premium)
@@ -954,7 +957,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                 continue
 
         if len(id_check) < 13:
-            date_of_birth = id_check 
+            date_of_birth = datetime.strptime(id_check, "%d/%m/%Y")
         else:
             dob = get_date_of_birth(id_check)
             date_of_birth = datetime.strptime(dob, "%Y-%m-%d")
@@ -981,6 +984,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
             relation_to_main_member = member_relation_value,
             applicant_id = applicant.id,
             date_joined = date_joined,
+            waiting_period=data[5] if data[5] else 0,
             state=ExtendedMember.STATE_ACTIVE,
             created_at = datetime.now(),
             modified_at = datetime.now()
@@ -1041,16 +1045,8 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
             min_age_limit = plan.additional_extended_minimum_age
             max_age_limit = plan.additional_extended_maximum_age
 
-        if not date_of_birth:
-            if int(id_number[0:2]) > 21:
-                number = '19{}'.format(id_number[0:2])
-            else:
-                number = '20{}'.format(id_number[0:2])
-            date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-
-        dob = date_of_birth
         now = datetime.now().date()
-        age = relativedelta(now, dob)
+        age = relativedelta(now, date_of_birth)
 
         years = "{}".format(age.years)
 

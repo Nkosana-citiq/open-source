@@ -740,6 +740,7 @@ class MainMemberPostEndpoint:
                     contact = req.get("contact"),
                     date_of_birth = date_of_birth,
                     parlour_id = parlour.id,
+                    waiting_period = req.get("waiting_period", 0),
                     date_joined = date_joined,
                     state=MainMember.STATE_ACTIVE,
                     applicant_id = applicant.id,
@@ -958,6 +959,7 @@ class MainMemberBulkPostEndpoint:
                     contact = data[3] if len(str(data[3])) == 10 else '0{}'.format(data[3]),
                     parlour_id = parlour.id,
                     date_joined = date_joined,
+                    waiting_period = data[5] if data[5] else 0,
                     state=MainMember.STATE_ACTIVE,
                     applicant_id = applicant.id,
                     modified_at = datetime.datetime.now(),
@@ -1177,6 +1179,7 @@ class MainMemberPutEndpoint:
                 main_member.id_number = req.get("id_number")
                 main_member.contact = req.get("contact")
                 main_member.date_of_birth = req.get("date_of_birth")
+                main_member.waiting_period = req.get("waiting_period", 0)
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
                 if req.get("is_deceased"):
@@ -1566,7 +1569,7 @@ class DownloadFailedMembers:
                 'ID Number': res.get('id_number'),
                 'Contact Number': res.get('contact'),
                 'Date Joined': res.get('date_joined'),
-                'Waiting Period': res.get('waiting_period'),
+                'Waiting Period': res.get('waiting_period', 0),
                 'Physical Address': res.get('physical_address'),
                 'Policy': res.get('policy_num'),
                 'Type Member': res.get('type_member'),

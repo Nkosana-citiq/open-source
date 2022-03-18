@@ -61,7 +61,7 @@ def update_certificate(session, applicant):
 def cli():
     with db.transaction() as session:
         applicants = session.query(Applicant).filter(Applicant.state.in_((Applicant.STATE_ACTIVE, Applicant.STATE_ARCHIVED))).all()
-        print(len(applicants))
+
         for applicant in applicants:
             update_certificate(session, applicant)
         session.commit()

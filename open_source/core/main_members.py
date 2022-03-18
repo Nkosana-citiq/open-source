@@ -23,6 +23,7 @@ class MainMember(db.Base):
     last_name = Column(String(length=50))
     contact = Column(String(length=12))
     is_deceased = Column(Boolean, default=False)
+    waiting_period = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
     date_joined = Column(DateTime, server_default=func.now())
@@ -59,6 +60,7 @@ class MainMember(db.Base):
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
             'is_deceased': self.is_deceased,
+            'waiting_period': self.waiting_period,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'extended_member_limit': self.extended_member_limit(),
@@ -74,6 +76,7 @@ class MainMember(db.Base):
             'first_name': self.first_name,
             'last_name': self.last_name,
             'contact': self.contact,
+            'waiting_period': self.waiting_period,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'extended_member_limit': self.extended_member_limit(),

@@ -94,6 +94,7 @@ class ExtendedMember(db.Base):
     is_main_member_deceased = Column(Boolean, default=False)
     age_limit_exceeded = Column(Boolean(), default=False)
     age_limit_exception = Column(Boolean(), default=False)
+    waiting_period = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
     date_joined = Column(DateTime, server_default=func.now())
@@ -142,6 +143,7 @@ class ExtendedMember(db.Base):
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'relation_to_main_member': self.relation_to_main_member,
+            'waiting_period': self.waiting_period,
             'is_deceased': self.is_deceased,
             'is_main_member_deceased': self.is_main_member_deceased,
             'applicant': self.applicant.to_short_dict()
@@ -160,6 +162,7 @@ class ExtendedMember(db.Base):
             'age_limit_exception': self.age_limit_exception,
             'relation_to_main_member': self.relation_to_main_member,
             'date_joined': self.date_joined,
+            'waiting_period': self.waiting_period,
             'is_deceased': self.is_deceased,
             'is_main_member_deceased': self.is_main_member_deceased,
             'applicant': self.applicant.to_short_dict()

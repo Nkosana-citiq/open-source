@@ -42,10 +42,6 @@ def get_applicant_members(session, applicant_id):
     if main_members and len(main_members) > 1:
         create_extended_member(session, main_members[1])
 
-        # print('=============================================== APPLICANT: {} ============================================='.format(applicant_id))
-        # print('{} {} with ID: {}'.format(main_members[0].first_name, main_members[0].last_name, main_members[0].id))
-        # print('{} {} with ID: {}'.format(main_members[1].first_name, main_members[1].last_name, main_members[0].id))
-
 
 def create_certificate():
     with db.transaction() as session:
