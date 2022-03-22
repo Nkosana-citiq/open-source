@@ -238,11 +238,6 @@ class MainGetAllConsultantEndpoint:
                     if "notice" in req.params:
                         notice = req.params.pop("notice")
 
-                    consultant = session.query(Consultant).filter(
-                        Consultant.state == Consultant.STATE_ACTIVE,
-                        Consultant.id == id
-                    ).one()
-
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
                 except NoResultFound as e:
@@ -254,7 +249,6 @@ class MainGetAllConsultantEndpoint:
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
-                        Applicant.consultant_id == consultant.id,
                         Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
@@ -271,8 +265,7 @@ class MainGetAllConsultantEndpoint:
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.status != 'lapsed',
-                        Applicant.consultant_id == consultant.id
+                        Applicant.status != 'lapsed'
                     ).order_by(Applicant.id.desc())
 
                     if status:
@@ -1611,7 +1604,6 @@ class FailedMembersExcel:
             resp.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             resp.stream = [f.read()]
             resp.status = falcon.HTTP_200
-        
 
 
 class SMSService:
