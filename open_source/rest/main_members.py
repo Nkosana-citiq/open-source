@@ -238,6 +238,16 @@ class MainGetAllConsultantEndpoint:
                     if "notice" in req.params:
                         notice = req.params.pop("notice")
 
+                    consultant = session.query(Consultant).filter(
+                        Consultant.state == Consultant.STATE_ACTIVE,
+                        Consultant.id == id
+                    ).one()
+
+                    parlour = session.query(Parlour).filter(
+                        Parlour.id == consultant.parlour_id,
+                        Parlour.state == Parlour.STATE_ACTIVE
+                    ).one()
+
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
                 except NoResultFound as e:
@@ -249,6 +259,7 @@ class MainGetAllConsultantEndpoint:
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
+                        MainMember.parlour_id == parlour.id,
                         Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
@@ -265,6 +276,7 @@ class MainGetAllConsultantEndpoint:
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.parlour_id == parlour.id,
                         Applicant.status != 'lapsed'
                     ).order_by(Applicant.id.desc())
 
@@ -308,12 +320,14 @@ class MainGetAllConsultantEndpoint:
                     if notice:
                         main_members = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
+                            MainMember.parlour_id == parlour.id,
                             MainMember.age_limit_exceeded == True,
                             MainMember.applicant_id.in_(applicant_ids)
                         ).all()
                     else:
                         main_members = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
+                            MainMember.parlour_id == parlour.id,
                             MainMember.applicant_id.in_(applicant_ids)
                         ).all()
 
