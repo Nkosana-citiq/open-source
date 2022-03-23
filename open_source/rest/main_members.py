@@ -147,7 +147,7 @@ class MainGetAllParlourEndpoint:
 
                     if consultant:
                         applicants = applicants.filter(Applicant.consultant_id == consultant.id)
-                    
+
                     if consultants:
                         consultant_ids = [consultant.id for consultant in consultants]
                         applicants = applicants.filter(Applicant.consultant_id.in_(consultant_ids))
@@ -228,6 +228,7 @@ class MainGetAllConsultantEndpoint:
                     status = None
                     search_field = None
                     notice = None
+                    consultants = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
@@ -237,6 +238,10 @@ class MainGetAllConsultantEndpoint:
 
                     if "notice" in req.params:
                         notice = req.params.pop("notice")
+
+                    if "branch" in req.params:
+                        parlour_branch = req.params.pop("branch")
+                        consultants = session.query(Consultant).filter(Consultant.branch == parlour_branch.strip()).all()
 
                     consultant = session.query(Consultant).filter(
                         Consultant.state == Consultant.STATE_ACTIVE,
@@ -281,7 +286,14 @@ class MainGetAllConsultantEndpoint:
                     ).order_by(Applicant.id.desc())
 
                     if status:
-                        applicants = applicants.filter(Applicant.status == status.lower()).all()
+                        applicants = applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
+
+                    if consultants:
+                        consultant_ids = [c.id for c in consultants]
+                        applicants = applicants.filter(Applicant.consultant_id.in_(consultant_ids))
+
+                    if not consultants:
+                        applicants = applicants.filter(Applicant.consultant_id == consultant.id).all()
 
                     applicant_res = [(applicant, applicant.plan) for applicant in applicants]
                     if applicant_res:
