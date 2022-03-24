@@ -228,6 +228,7 @@ class MainGetAllConsultantEndpoint:
                     status = None
                     search_field = None
                     notice = None
+                    consultant_id = None
                     consultants = None
 
                     if "status" in req.params:
@@ -239,14 +240,15 @@ class MainGetAllConsultantEndpoint:
                     if "notice" in req.params:
                         notice = req.params.pop("notice")
 
-                    if "branch" in req.params:
-                        parlour_branch = req.params.pop("branch")
-                        consultants = session.query(Consultant).filter(Consultant.branch == parlour_branch.strip()).all()
+                    if "consultant_id" in req.params:
+                        consultant_id = req.params.pop("consultant_id")
+                        consultant = session.query(Consultant).filter(Consultant.id == consultant_id, Consultant.state == Consultant.STATE_ACTIVE).first()
 
-                    consultant = session.query(Consultant).filter(
-                        Consultant.state == Consultant.STATE_ACTIVE,
-                        Consultant.id == id
-                    ).one()
+                    if not consultant_id:
+                        consultant = session.query(Consultant).filter(
+                            Consultant.state == Consultant.STATE_ACTIVE,
+                            Consultant.id == id
+                        ).one()
 
                     parlour = session.query(Parlour).filter(
                         Parlour.id == consultant.parlour_id,
@@ -281,19 +283,12 @@ class MainGetAllConsultantEndpoint:
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.parlour_id == parlour.id,
+                        Applicant.consultant_id == consultant.id,
                         Applicant.status != 'lapsed'
                     ).order_by(Applicant.id.desc())
 
                     if status:
                         applicants = applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
-
-                    if consultants:
-                        consultant_ids = [c.id for c in consultants]
-                        applicants = applicants.filter(Applicant.consultant_id.in_(consultant_ids))
-
-                    if not consultants:
-                        applicants = applicants.filter(Applicant.consultant_id == consultant.id).all()
 
                     applicant_res = [(applicant, applicant.plan) for applicant in applicants]
                     if applicant_res:
