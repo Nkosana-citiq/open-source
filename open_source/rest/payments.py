@@ -15,6 +15,7 @@ from open_source.core.applicants import Applicant
 from open_source.core.main_members import MainMember
 from open_source.core.invoices import Invoice
 from open_source.core.parlours import Parlour
+from open_source.core.consultants import Consultant
 from open_source.core.plans import Plan
 from open_source.core.payments import Payment
 from falcon_cors import CORS
@@ -32,6 +33,7 @@ from borb.pdf.canvas.layout.layout_element import Alignment
 from decimal import Decimal
 from borb.pdf.pdf import PDF
 import PyPDF2
+import pandas as pd
 
 from open_source.config import get_config
 
@@ -648,3 +650,101 @@ class InvoiceDeleteEndpoint:
         except:
             logger.exception("Error, Failed to delete invoice with ID {}.".format(id))
             raise falcon.HTTPBadRequest(title="Error", description="Failed to delete invoice with ID {}.".format(id))
+
+
+class InvoiceExportToExcelEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                try:
+                    permission = None
+                    parlour = None
+                    consultant = None
+
+                    if "status" in req.params:
+                        status = req.params.pop("status")
+
+                    if "permission" in req.params:
+                        permission = req.params.pop("permission")
+
+                    if permission.lower() == 'consultant':
+                        consultant = session.query(Consultant).filter(
+                            Consultant.state == Consultant.STATE_ACTIVE,
+                            Consultant.id == id
+                        ).one_or_none()
+
+                    if permission.lower() == 'parlour':
+                        parlour = session.query(Parlour).filter(
+                            Parlour.state == Parlour.STATE_ACTIVE,
+                            Parlour.id == id
+                        ).one_or_none()
+                except MultipleResultsFound as e:
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+
+                if not parlour:
+                    parlour = consultant.parlour
+
+                invoices = session.query(Invoice).filter(Invoice.parlour_id == parlour.id, Invoice.state == Invoice.STATE_ACTIVE).all()
+                results = []
+                for invoice in invoices:
+                    applicant = invoice.payment.applicant
+
+                    try:
+                        main_member = session.query(MainMember).filter(
+                            MainMember.state == MainMember.STATE_ACTIVE,
+                            MainMember.applicant_id == applicant.id
+                        ).one()
+                    except NoResultFound:
+                        continue
+                    d = main_member.to_dict()
+                    d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.created})
+                    results.append(d)
+
+                if results:
+                    data = []
+                    for res in results:
+                        applicant = res.get('applicant')
+                        plan = applicant.get('plan')
+                        underwriter = float(plan.get('underwriter_premium')) if plan.get('underwriter_premium') else None
+                        data.append({
+                            'First Name': res.get('first_name'),
+                            'Last Name': res.get('last_name'),
+                            'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
+                            'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
+                            'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
+                            'Status': applicant.get('status') if res.get else None,
+                            'Premium': float(plan.get('premium')),
+                            'Underwriter': underwriter,
+                            'Assisted By': res.get('assisted_by'),
+                            'Payment Date': res.get('payment_date')
+                            })
+
+                    df = pd.DataFrame(data)
+                    filename = '{}_{}'.format(invoice.assisted_by, invoice.payment_date)
+                    writer = pd.ExcelWriter('{}.xlsx'.format(filename), engine='xlsxwriter')
+                    df.to_excel(writer, sheet_name='Sheet1', index=False)
+                    os.chdir('./assets/uploads/spreadsheets')
+                    path = os.getcwd()
+                    writer.save()
+                    os.chdir('../../..')
+
+                    with open('{}/{}.xlsx'.format(path, filename), 'rb') as f:
+                        resp.downloadable_as = '{}.xls'.format(filename)
+                        resp.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        resp.stream = [f.read()]
+                        resp.status = falcon.HTTP_200
+
+        except Exception as e:
+            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            raise e

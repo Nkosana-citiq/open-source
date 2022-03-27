@@ -84,6 +84,7 @@ api.add_route('/open-source/actions/forgot_password', consultants.ForgotPassword
 
 api.add_route('/open-source/actions/{id}/export_to_excel/', main_members.ApplicantExportToExcelEndpoint())
 api.add_route('/open-source/members/actions/export_to_excel', main_members.FailedMembersExcel())
+api.add_route('/open-source/{id}/invoices/actions/export_to_excel', payments.InvoiceExportToExcelEndpoint())
 api.add_route('/open-source/actions/download_failed_members/', main_members.DownloadFailedMembers())
 
 api.add_route('/open-source/consultants/{id}/applicants/', applicants.ApplicantGetAllEndpoint())
