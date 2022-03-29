@@ -1283,6 +1283,7 @@ class MainMemberRestorePutEndpoint:
                     raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
                 main_member.state = MainMember.STATE_ACTIVE
+                main_member.waiting_period = req.get('waiting_period')
                 applicant = session.query(Applicant).get(main_member.applicant_id)
                 applicant.state = Applicant.STATE_ACTIVE
 

@@ -708,7 +708,7 @@ class InvoiceExportToExcelEndpoint:
                     except NoResultFound:
                         continue
                     d = main_member.to_dict()
-                    d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.created})
+                    d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.created, 'number_of_months': invoice.number_of_months})
                     results.append(d)
 
                 if results:
@@ -717,15 +717,15 @@ class InvoiceExportToExcelEndpoint:
                         applicant = res.get('applicant')
                         plan = applicant.get('plan')
                         underwriter = float(plan.get('underwriter_premium')) if plan.get('underwriter_premium') else None
+                        amount = float(plan.get('premium')) * int(res.get('number_of_months'))
                         data.append({
                             'First Name': res.get('first_name'),
                             'Last Name': res.get('last_name'),
                             'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
-                            'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
-                            'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
                             'Status': applicant.get('status') if res.get else None,
                             'Premium': float(plan.get('premium')),
-                            'Underwriter': underwriter,
+                            'Amount': amount,
+                            'Number of Months': int(res.get('number_of_months')),
                             'Assisted By': res.get('assisted_by'),
                             'Payment Date': res.get('payment_date')
                             })
