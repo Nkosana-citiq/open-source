@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from borb.pdf.canvas.layout.text.heading import Heading
 import falcon
 import json
@@ -695,7 +695,30 @@ class InvoiceExportToExcelEndpoint:
                 if not parlour:
                     parlour = consultant.parlour
 
-                invoices = session.query(Invoice).filter(Invoice.parlour_id == parlour.id, Invoice.state == Invoice.STATE_ACTIVE).all()
+                current_time = datetime.utcnow()
+                current_week = current_time - timedelta(days=7)
+                if consultant:
+                    applicants = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.consultant_id == consultant.id
+                    ).all()
+                else:
+                    applicants = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.parlour_id == parlour.id
+                    ).all()
+                applicant_ids = [applicant.id for applicant in applicants]
+                payments = session.query(Payment).filter(
+                    Payment.state == Payment.STATE_ACTIVE,
+                    Payment.date > current_week,
+                    Payment.applicant_id.in_(applicant_ids)
+                ).all()
+                payment_ids = [payment.id for payment in payments]
+                invoices = session.query(Invoice).filter(
+                    Invoice.parlour_id == parlour.id,
+                    Invoice.state == Invoice.STATE_ACTIVE,
+                    Invoice.payment_id.in_(payment_ids)
+                ).all()
                 results = []
                 for invoice in invoices:
                     applicant = invoice.payment.applicant
@@ -705,6 +728,7 @@ class InvoiceExportToExcelEndpoint:
                             MainMember.state == MainMember.STATE_ACTIVE,
                             MainMember.applicant_id == applicant.id
                         ).one()
+
                     except NoResultFound:
                         continue
                     d = main_member.to_dict()

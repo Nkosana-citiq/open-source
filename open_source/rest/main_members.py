@@ -1202,9 +1202,8 @@ class MainMemberPutEndpoint:
                     applicant.state = MainMember.STATE_ARCHIVED
                     update_deceased_extended_members(session, main_member)
 
-                applicant = update_certificate(applicant)
-
                 main_member.save(session)
+                applicant = update_certificate(applicant)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except:
                 logger.exception(
@@ -1288,7 +1287,7 @@ class MainMemberRestorePutEndpoint:
                 applicant.state = Applicant.STATE_ACTIVE
 
                 main_member.save(session)
-
+                applicant = update_certificate(applicant)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
         except:
             logger.exception(
