@@ -214,8 +214,6 @@ class PaymentPostEndpoint:
 
                 is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
 
-                applicant.state = Applicant.STATE_ACTIVE
-                main_member.state = MainMember.STATE_ACTIVE
 
                 if len(is_up_to_date) >= 1:
                     applicant.status = "paid"
