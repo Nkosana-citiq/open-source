@@ -181,11 +181,18 @@ class PaymentPostEndpoint:
 
                 applicant = session.query(Applicant).filter(
                     Applicant.id == applicant_id,
-                    Applicant.state == Applicant.STATE_ACTIVE
                 ).one_or_none()
 
                 if not applicant:
                     raise falcon.HTTPNotFound(title="Not Found", description="Applicant does not exist.")
+
+                main_member = session.query(MainMember).filter(
+                    MainMember.applicant_id == applicant.id,
+                ).one_or_none()
+
+                if not main_member:
+                    raise falcon.HTTPNotFound(title="Not Found", description="Main member does not exist.")
+
 
                 plan = session.query(Plan).filter(
                     Plan.id == applicant.plan_id,
@@ -207,6 +214,9 @@ class PaymentPostEndpoint:
 
                 is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
 
+                applicant.state = Applicant.STATE_ACTIVE
+                main_member.state = MainMember.STATE_ACTIVE
+
                 if len(is_up_to_date) >= 1:
                     applicant.status = "paid"
                 elif start_date.replace(day=1).date() <= datetime.now().replace(day=1).date() <= end_date.replace(day=1).date():
@@ -217,6 +227,8 @@ class PaymentPostEndpoint:
                     applicant.status = "skipped"
                 elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) > 3:
                     applicant.status = "lapsed"
+                    applicant.state = Applicant.STATE_ARCHIVED
+                    main_member.state = MainMember.STATE_ARCHIVED
 
                 amount = plan.premium * len(dates)
                 payment = Payment(
