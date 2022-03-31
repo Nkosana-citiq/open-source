@@ -43,8 +43,7 @@ class MainMemberGetEndpoint:
     def on_get(self, req, resp, id):
         with db.transaction() as session:
             main_member = session.query(MainMember).filter(
-                MainMember.id == id,
-                MainMember.state == MainMember.STATE_ACTIVE
+                MainMember.id == id
             ).first()
 
             if main_member is None:
@@ -125,7 +124,6 @@ class MainGetAllParlourEndpoint:
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         Applicant.parlour_id == parlour.id,
-                        Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
@@ -141,7 +139,6 @@ class MainGetAllParlourEndpoint:
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.status != 'lapsed',
                         Applicant.parlour_id == parlour.id
                     ).order_by(Applicant.id.desc())
 
@@ -267,7 +264,6 @@ class MainGetAllConsultantEndpoint:
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.parlour_id == parlour.id,
-                        Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
@@ -283,12 +279,11 @@ class MainGetAllConsultantEndpoint:
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.consultant_id == consultant.id,
-                        Applicant.status != 'lapsed'
+                        Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
 
-                    if status:
-                        applicants = applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
+                    if status :
+                        applicants = [] if status.lower() == 'lapsed' else applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
 
                     applicant_res = [(applicant, applicant.plan) for applicant in applicants]
                     if applicant_res:
@@ -387,8 +382,7 @@ class MainGetAllArchivedParlourEndpoint:
                         MainMember,
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        or_(MainMember.state == MainMember.STATE_ARCHIVED,
-                            Applicant.status == 'lapsed'),
+                        MainMember.state == MainMember.STATE_ARCHIVED,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
@@ -404,9 +398,8 @@ class MainGetAllArchivedParlourEndpoint:
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
-                        or_(Applicant.state == Applicant.STATE_ARCHIVED,
-                            Applicant.status == 'lapsed'),
-                            Applicant.parlour_id == parlour.id
+                        Applicant.state == Applicant.STATE_ARCHIVED,
+                        Applicant.parlour_id == parlour.id
                     ).order_by(Applicant.id.desc())
 
                     if status:
@@ -467,8 +460,7 @@ class MainGetAllArchivedConsultantEndpoint:
                         MainMember,
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        or_(MainMember.state == MainMember.STATE_ARCHIVED,
-                            Applicant.status == 'lapsed'),
+                        MainMember.state == MainMember.STATE_ARCHIVED,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
@@ -484,8 +476,7 @@ class MainGetAllArchivedConsultantEndpoint:
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
-                        or_(Applicant.state == Applicant.STATE_ARCHIVED,
-                        Applicant.status == 'lapsed'),
+                        Applicant.state == Applicant.STATE_ARCHIVED,
                         Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
 
@@ -1486,14 +1477,12 @@ class ApplicantExportToExcelEndpoint:
                 if consultant:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.status != 'lapsed',
                         Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
 
                 if parlour:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.status != 'lapsed',
                         Applicant.parlour_id == parlour.id
                     ).order_by(Applicant.id.desc())
 
@@ -1675,7 +1664,6 @@ class SMSService:
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         Applicant.parlour_id == parlour.id,
-                        Applicant.status != 'lapsed',
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.first_name.ilike('{}%'.format(search_field)),

@@ -101,7 +101,7 @@ class ConsultantGetAllEndpoint:
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
                     Parlour.id == id).one_or_none()
-                
+
                 if not parlour:
                     raise falcon.HTTPBadRequest(title="Error", description="Failed to get parlour with give ID")
 
