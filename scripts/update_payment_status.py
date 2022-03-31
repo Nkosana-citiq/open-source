@@ -27,11 +27,11 @@ def update_payments(session, applicant=None):
 
     if last_payment:
         last_payment_date = last_payment.date.date() or None
-        if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.month > last_payment.date.month:
+        if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.date() > last_payment.date.date():
             set_status(session, 'lapsed', applicant.id)
-        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.month > last_payment.date.month:
+        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.date() > last_payment.date.date():
             set_status(session, 'skipped', applicant.id)
-        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 0 and NOW.month > last_payment.date.month:
+        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 0 and NOW.date() > last_payment.date.date():
             set_status(session, 'unpaid', applicant.id)
         elif relativedelta(NOW, last_payment_date.replace(day=1)).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
             set_status(session, 'paid', applicant.id)
