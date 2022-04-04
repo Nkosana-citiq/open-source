@@ -2,6 +2,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from open_source import db, utils
 from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
 from open_source.core.payments import Payment
 
 def get_last_payment(session, applicant_id):
@@ -24,24 +25,32 @@ def update_payments(session, applicant=None):
     last_payment = get_last_payment(session, applicant.id)
     applicant_date = applicant.date.date() or None
     NOW = datetime.now()
-
-    if last_payment:
-        last_payment_date = last_payment.date.date() or None
-        if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.date() > last_payment.date.date():
-            set_status(session, 'lapsed', applicant.id)
-        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.date() > last_payment.date.date():
-            set_status(session, 'skipped', applicant.id)
-        elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 0 and NOW.date() > last_payment.date.date():
-            set_status(session, 'unpaid', applicant.id)
-        elif relativedelta(NOW, last_payment_date.replace(day=1)).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
-            set_status(session, 'paid', applicant.id)
-    else:
-        if relativedelta(NOW, applicant_date.replace(day=1)).months > 3:
-            set_status(session, 'lapsed', applicant.id)
-        elif relativedelta(NOW, applicant_date.replace(day=1)).months > 0:
-            set_status(session, 'skipped', applicant.id)
+    if applicant.id ==2157:
+        if last_payment:
+            last_payment_date = last_payment.date.date() or None
+            if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.date() > last_payment.date.date():
+                set_status(session, 'lapsed', applicant.id)
+                applicant.state = Applicant.STATE_ARCHIVED
+                main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).order_by(MainMember.id.desc()).first()
+                if main_member:
+                    main_member.state = MainMember.STATE_ARCHIVED
+            elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.date() > last_payment.date.date():
+                set_status(session, 'skipped', applicant.id)
+            elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 0 and NOW.date() > last_payment.date.date():
+                set_status(session, 'unpaid', applicant.id)
+            elif relativedelta(NOW, last_payment_date.replace(day=1)).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
+                set_status(session, 'paid', applicant.id)
         else:
-            set_status(session, 'unpaid', applicant.id)
+            if relativedelta(NOW, applicant_date.replace(day=1)).months > 3:
+                set_status(session, 'lapsed', applicant.id)
+                applicant.state = Applicant.STATE_ARCHIVED
+                main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).order_by(MainMember.id.desc()).first()
+                if main_member:
+                    main_member.state = MainMember.STATE_ARCHIVED
+            elif relativedelta(NOW, applicant_date.replace(day=1)).months > 0:
+                set_status(session, 'skipped', applicant.id)
+            else:
+                set_status(session, 'unpaid', applicant.id)
 
 
 def update_payment_status():

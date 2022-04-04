@@ -20,6 +20,8 @@ from open_source.core.main_members import MainMember
 from open_source.core.extended_members import ExtendedMember
 from open_source.rest.extended_members import update_certificate, bulk_insert_extended_members
 from open_source.core.parlours import Parlour
+from open_source.utils import localize_contact
+
 from falcon_cors import CORS
 from za_id_number.za_id_number import SouthAfricanIdentityValidate
 
@@ -1634,6 +1636,7 @@ class SMSService:
             status = None
             search_field = None
             contacts = None
+            consultant = None
 
             message = rest_dict.get("message")
 
@@ -1642,7 +1645,8 @@ class SMSService:
 
             if rest_dict["to"]:
                 cons = rest_dict.get("to").split(',')
-                contacts = [''.join(['+27', contact[1:].strip()]) if len(contact) == 10 else contact.strip() for contact in cons]
+                for contact in cons:
+                    contacts.append(localize_contact(contact.strip()))
 
             if rest_dict.get('state'):
                 status = rest_dict.get("state")
@@ -1657,35 +1661,53 @@ class SMSService:
             if not parlour:
                 raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
+            if rest_dict.get('consultant_id'):
+                consultant = session.query(Consultant).filter(
+                    Consultant.id == rest_dict.get('consultant_id'),
+                    Consultant.state == Consultant.STATE_ACTIVE
+                ).first()
+
             if search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        MainMember.state == MainMember.STATE_ACTIVE,
-                        Applicant.parlour_id == parlour.id,
-                        or_(
-                            MainMember.first_name.ilike('{}%'.format(search_field)),
-                            MainMember.first_name.ilike('{}%'.format(search_field)),
-                            MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field))
-                        )
+                main_members = session.query(
+                    MainMember,
+                    Applicant
+                ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    MainMember.state == MainMember.STATE_ACTIVE,
+                    Applicant.parlour_id == parlour.id,
+                    or_(
+                        MainMember.first_name.ilike('{}%'.format(search_field)),
+                        MainMember.first_name.ilike('{}%'.format(search_field)),
+                        MainMember.id_number.ilike('{}%'.format(search_field)),
+                        Applicant.policy_num.ilike('{}%'.format(search_field))
                     )
+                )
+                if consultant:
+                    main_members = main_members.filter(Applicant.consultant_id == consultant.id)
 
             if status:
                 applicants = session.query(Applicant).filter(
                     Applicant.status == status,
                     Applicant.parlour_id== parlour.id
-                ).all()
-                applicant_ids = [applicant.id for applicant in applicants]
+                )
+                if consultant:
+                    applicants = applicants.filter(Applicant.consultant_id == consultant.id)
+                applicant_ids = [applicant.id for applicant in applicants.all()]
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
                     MainMember.applicant_id.in_(applicant_ids)
                 )
+
             if not status and not search_field:
+                applicants = session.query(Applicant).filter(
+                    Applicant.state == Applicant.STATE_ACTIVE,
+                    Applicant.parlour_id== parlour.id
+                )
+                if consultant:
+                    applicants = applicants.filter(Applicant.consultant_id == consultant.id)
+                applicant_ids = [applicant.id for applicant in applicants.all()]
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
-                    MainMember.parlour_id == parlour.id
+                    MainMember.applicant_id.in_(applicant_ids)
                 )
 
             if rest_dict['start_date']:
@@ -1700,12 +1722,10 @@ class SMSService:
                     MainMember.created_at <= end_date
                 )
 
-            if not contacts and search_field:
-                contacts = [m.localize_contact() for m, _ in main_members.all()]
-            elif not contacts:
+            if not contacts:
                 contacts = [m.localize_contact() for m in main_members.all()]
             else:
-                contacts = [''.join(['+27', contact[1:]]) if len(contact) == 10 else contact for contact in contacts]
+                contacts = [localize_contact(contact) for contact in contacts]
 
             if parlour.number_of_sms < len(contacts):
                 raise falcon.HTTPBadRequest(title="Error", description="You need more smses to use this service.")
@@ -1716,7 +1736,6 @@ class SMSService:
 
             result = {'status_code': response.status_code, 'parlour': parlour.to_dict()}
             resp.body = json.dumps(result, default=str)
-
 
 
 def update_deceased_extended_members(session, main_member):

@@ -663,7 +663,7 @@ class ParlourAddSMSEndpoint:
                 if not parlour.number_of_sms:
                     parlour.number_of_sms = 0
                 if req.get("number_of_sms"):
-                    parlour.number_of_sms = sum([parlour.number_of_sms, req.get("number_of_sms")])
+                    parlour.number_of_sms = sum([int(parlour.number_of_sms), int(req.get("number_of_sms"))])
 
                 resp.body = json.dumps(parlour.to_dict(), default=str)
         except:

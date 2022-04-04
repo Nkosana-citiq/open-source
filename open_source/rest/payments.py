@@ -568,7 +568,6 @@ class InvoicesGetAllEndpoint:
             with db.transaction() as session:
                 try:
                     applicant = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.id == id
                     ).one()
                 except MultipleResultsFound:

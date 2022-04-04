@@ -45,7 +45,11 @@ class MainMember(db.Base):
         return relationship('Applicant')
     
     def localize_contact(self):
-        return ''.join(['+27', self.contact[1:]]) if len(self.contact) == 10 else self.contact
+        if len(self.contact) == 10:
+            return ''.join(['+27', self.contact[1:]])
+        elif len(self.contact) < 10:
+            return ''.join(['+27', self.contact])
+        return self.contact
 
     def to_dict(self):
         return {
