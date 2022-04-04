@@ -193,7 +193,6 @@ class PaymentPostEndpoint:
                 if not main_member:
                     raise falcon.HTTPNotFound(title="Not Found", description="Main member does not exist.")
 
-
                 plan = session.query(Plan).filter(
                     Plan.id == applicant.plan_id,
                     Plan.state == Plan.STATE_ACTIVE
@@ -212,22 +211,6 @@ class PaymentPostEndpoint:
 
                 dates = [dt for dt in rrule(MONTHLY, dtstart=start_date.replace(day=1), until=end_date.replace(day=1))]
 
-                is_up_to_date = [dt for dt in rrule(MONTHLY, dtstart=datetime.now(), until=end_date)]
-
-
-                if len(is_up_to_date) >= 1:
-                    applicant.status = "paid"
-                elif start_date.replace(day=1).date() <= datetime.now().replace(day=1).date() <= end_date.replace(day=1).date():
-                    applicant.status = "paid"
-                elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) == 2:
-                    applicant.status = "unpaid"
-                elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) == 3:
-                    applicant.status = "skipped"
-                elif len([dt for dt in rrule(MONTHLY, dtstart=end_date.replace(day=1).replace(day=1), until=datetime.now().replace(day=1))]) > 3:
-                    applicant.status = "lapsed"
-                    applicant.state = Applicant.STATE_ARCHIVED
-                    main_member.state = MainMember.STATE_ARCHIVED
-
                 amount = plan.premium * len(dates)
                 payment = Payment(
                     applicant=applicant,
@@ -239,6 +222,7 @@ class PaymentPostEndpoint:
                 )
 
                 payment.save(session)
+                Payment.update_payment_status(session, applicant)
                 user = rest_dict.get("user")
                 invoice = print_invoice(session, payment, applicant, user, amount, dates)
 
