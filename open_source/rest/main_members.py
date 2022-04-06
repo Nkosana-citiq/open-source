@@ -1635,7 +1635,7 @@ class SMSService:
         with db.transaction() as session:
             status = None
             search_field = None
-            contacts = None
+            contacts = []
             consultant = None
 
             message = rest_dict.get("message")
@@ -1724,8 +1724,6 @@ class SMSService:
 
             if not contacts:
                 contacts = [m.localize_contact() for m in main_members.all()]
-            else:
-                contacts = [localize_contact(contact) for contact in contacts]
 
             if parlour.number_of_sms < len(contacts):
                 raise falcon.HTTPBadRequest(title="Error", description="You need more smses to use this service.")
