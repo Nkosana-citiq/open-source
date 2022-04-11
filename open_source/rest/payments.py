@@ -661,27 +661,26 @@ class InvoiceExportToExcelEndpoint:
         try:
             with db.transaction() as session:
                 try:
-                    permission = None
+                    consultant_id = None
                     parlour = None
                     consultant = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
 
-                    if "permission" in req.params:
-                        permission = req.params.pop("permission")
+                    if "consultant_id" in req.params:
+                        consultant_id = req.params.pop("consultant_id")
 
-                    if permission.lower() == 'consultant':
+                    if consultant_id:
                         consultant = session.query(Consultant).filter(
                             Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.id == id
-                        ).one_or_none()
+                            Consultant.id == consultant_id
+                        ).one()
 
-                    if permission.lower() == 'parlour':
-                        parlour = session.query(Parlour).filter(
-                            Parlour.state == Parlour.STATE_ACTIVE,
-                            Parlour.id == id
-                        ).one_or_none()
+                    parlour = session.query(Parlour).filter(
+                        Parlour.state == Parlour.STATE_ACTIVE,
+                        Parlour.id == id
+                    ).one_or_none()
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
@@ -690,28 +689,27 @@ class InvoiceExportToExcelEndpoint:
 
                 current_time = datetime.utcnow()
                 current_week = current_time - timedelta(days=7)
+
                 if consultant:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id == consultant.id
                     ).all()
-                else:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.parlour_id == parlour.id
-                    ).all()
+
                 applicant_ids = [applicant.id for applicant in applicants]
                 payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
                     Payment.date > current_week,
                     Payment.applicant_id.in_(applicant_ids)
                 ).all()
+
                 payment_ids = [payment.id for payment in payments]
                 invoices = session.query(Invoice).filter(
                     Invoice.parlour_id == parlour.id,
                     Invoice.state == Invoice.STATE_ACTIVE,
                     Invoice.payment_id.in_(payment_ids)
                 ).all()
+
                 results = []
                 for invoice in invoices:
                     applicant = invoice.payment.applicant
