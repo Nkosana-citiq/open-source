@@ -695,6 +695,11 @@ class InvoiceExportToExcelEndpoint:
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id == consultant.id
                     ).all()
+                else:
+                    applicants = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.parlour_id == parlour.id
+                    ).all()
 
                 applicant_ids = [applicant.id for applicant in applicants]
                 payments = session.query(Payment).filter(
