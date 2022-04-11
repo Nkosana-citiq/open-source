@@ -690,14 +690,15 @@ class InvoiceExportToExcelEndpoint:
                 current_time = datetime.utcnow()
                 current_week = current_time - timedelta(days=7)
 
+                applicants_query = session.query(Applicant).filter(
+                    Applicant.state == Applicant.STATE_ACTIVE,
+                )
                 if consultant:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
+                    applicants = applicants_query.filter(
                         Applicant.consultant_id == consultant.id
                     ).all()
                 else:
                     applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.parlour_id == parlour.id
                     ).all()
 
