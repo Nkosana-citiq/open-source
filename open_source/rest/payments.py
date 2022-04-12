@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from borb.pdf.canvas.layout.text.heading import Heading
 import falcon
 import json
 import logging
-import random
 import os
 import uuid
 
@@ -25,9 +24,7 @@ from borb.pdf.canvas.layout.text.paragraph import Paragraph
 
 from borb.pdf.document import Document
 from borb.pdf.page.page import Page
-from borb.pdf.page.page_size import PageSize
 from borb.pdf.canvas.layout.page_layout.multi_column_layout import SingleColumnLayout
-from borb.pdf.canvas.layout.image.image import Image
 from borb.pdf.canvas.layout.text.paragraph import Paragraph
 from borb.pdf.canvas.layout.layout_element import Alignment
 from decimal import Decimal
@@ -218,6 +215,7 @@ class PaymentPostEndpoint:
                     plan=plan,
                     state=Payment.STATE_ACTIVE,
                     date=end_date,
+                    created=datetime.now(),
                     payment_type=rest_dict.get("payment_type")
                 )
 
@@ -680,19 +678,19 @@ class InvoiceExportToExcelEndpoint:
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
                         Parlour.id == id
-                    ).one_or_none()
+                    ).one()
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
                 if not parlour:
                     parlour = consultant.parlour
 
-                current_time = datetime.utcnow()
-                current_week = current_time - timedelta(days=7)
+                month_start = datetime.now().replace(day=1)
 
                 applicants_query = session.query(Applicant).filter(
                     Applicant.state == Applicant.STATE_ACTIVE,
                 )
+
                 if consultant:
                     applicants = applicants_query.filter(
                         Applicant.consultant_id == consultant.id
@@ -703,13 +701,15 @@ class InvoiceExportToExcelEndpoint:
                     ).all()
 
                 applicant_ids = [applicant.id for applicant in applicants]
+
                 payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
-                    Payment.date > current_week,
+                    Payment.created > month_start,
                     Payment.applicant_id.in_(applicant_ids)
                 ).all()
 
                 payment_ids = [payment.id for payment in payments]
+
                 invoices = session.query(Invoice).filter(
                     Invoice.parlour_id == parlour.id,
                     Invoice.state == Invoice.STATE_ACTIVE,
@@ -737,17 +737,15 @@ class InvoiceExportToExcelEndpoint:
                     for res in results:
                         applicant = res.get('applicant')
                         plan = applicant.get('plan')
-                        underwriter = float(plan.get('underwriter_premium')) if plan.get('underwriter_premium') else None
                         amount = float(plan.get('premium')) * int(res.get('number_of_months'))
                         data.append({
                             'First Name': res.get('first_name'),
                             'Last Name': res.get('last_name'),
                             'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
-                            'Status': applicant.get('status') if res.get else None,
                             'Premium': float(plan.get('premium')),
                             'Amount': amount,
                             'Number of Months': int(res.get('number_of_months')),
-                            'Assisted By': res.get('assisted_by'),
+                            'Consultant': res.get('assisted_by'),
                             'Payment Date': res.get('payment_date')
                             })
 
