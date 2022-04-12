@@ -20,6 +20,7 @@ class Payment(db.Base):
     state = Column(Integer, default=1)
     payment_type = Column(String(),)
     date = Column(DateTime, server_default=func.now())
+    created = Column(DateTime, server_default=func.now())
 
     @declared_attr
     def parlour_id(cls):
