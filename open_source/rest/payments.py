@@ -743,7 +743,7 @@ class InvoiceExportToExcelEndpoint:
                             'Last Name': res.get('last_name'),
                             'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
                             'Premium': float(plan.get('premium')),
-                            'Amount': amount,
+                            'Amount Paid': amount,
                             'Number of Months': int(res.get('number_of_months')),
                             'Consultant': res.get('assisted_by'),
                             'Payment Date': res.get('payment_date')
