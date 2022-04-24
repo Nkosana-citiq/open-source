@@ -993,10 +993,11 @@ class MainMemberBulkPostEndpoint:
                     try:
                         dob = datetime.datetime.strptime(dob, "%Y/%m/%d")
                     except ValueError:
-                        dob = datetime.datetime.strptime(dob, "%d-%m-%Y")
-                except:
-                    error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
-                    continue
+                        try:
+                            dob = datetime.datetime.strptime(dob, "%d-%m-%Y")
+                        except:
+                            error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
+                            continue
                 now = datetime.datetime.now()
 
                 age = relativedelta(now, dob)
