@@ -883,7 +883,7 @@ def get_date_of_birth(id_number=None):
     century = 19
     if 0 <= int(id_number[:2]) <= int(year_string):
         century = 20
-    return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:6])[:10]
+    return '{}{}/{}/{}'.format(century,id_number[:2], id_number[2:4], id_number[4:6])[:10]
 
 
 def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
