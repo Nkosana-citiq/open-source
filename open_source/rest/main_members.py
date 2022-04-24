@@ -984,7 +984,14 @@ class MainMemberBulkPostEndpoint:
                     number = '20{}'.format(id_number[0:2])
                 dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
                 # dob = main_member.date_of_birth
-                dob = datetime.datetime.strptime(dob, "%Y-%m-%d")
+                try:
+                    dob = datetime.datetime.strptime(dob, "%d/%m/%Y")
+                except ValueError:
+                    try:
+                        dob = datetime.datetime.strptime(dob, "%Y/%m/%d")
+                    except:
+                        error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
+                        continue
                 now = datetime.datetime.now()
 
                 age = relativedelta(now, dob)
