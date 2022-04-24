@@ -967,7 +967,8 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     date_of_birth = datetime.strptime(id_check, "%Y/%m/%d")
                 except ValueError:
                     date_of_birth = datetime.strptime(id_check, "%Y-%m-%d")
-            except:
+            except Exception as e:
+                print(e)
                 error_data.append({'data': data, 'error': 'Incorrect date format on date of birth'})
                 continue
         else:
