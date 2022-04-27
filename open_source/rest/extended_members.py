@@ -961,32 +961,27 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                 try:
                     date_of_birth = datetime.strptime(id_check, "%d/%m/%Y")
                 except ValueError:
+                    print("Failed on D/M/Y extended")
                     date_of_birth = datetime.strptime(id_check, "%d-%m-%Y")
             except:
+                print("Failed on D-M-Y extended")
                 try:
                     date_of_birth = datetime.strptime(id_check, "%Y/%m/%d")
                 except ValueError:
+                    print("Failed on Y/M/D extended")
                     try:
                         date_of_birth = datetime.strptime(id_check, "%Y-%m-%d")
                     except:
+                        print("Failed on Y-M-D extended")
                         error_data.append({'data': data, 'error': 'Incorrect date format on date of birth'})
                         continue
         else:
             dob = get_date_of_birth(id_check)
             try:
-                try:
-                    date_of_birth = datetime.strptime(dob, "%d/%m/%Y")
-                except ValueError:
-                    date_of_birth = datetime.strptime(id_check, "%d-%m-%Y")
-            except:
-                try:
-                    date_of_birth = datetime.strptime(dob, "%Y/%m/%d")
-                except ValueError:
-                    try:
-                        date_of_birth = datetime.strptime(id_check, "%Y-%m-%d")
-                    except:
-                        error_data.append({'data': data, 'error': 'Incorrect date format on date of birth or id_number'})
-                        continue
+                date_of_birth = datetime.strptime(dob, "%d/%m/%Y")
+            except ValueError:
+                error_data.append({'data': data, 'error': 'Incorrect date format on date of birth or id_number'})
+                continue
 
         date_joined = data[4]
         member_type = '_'.join('{}'.format(data[8]).lower().split(' '))
