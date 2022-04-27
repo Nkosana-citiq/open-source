@@ -962,7 +962,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     date_of_birth = datetime.strptime(id_check, "%d/%m/%Y")
                 except ValueError:
                     date_of_birth = datetime.strptime(id_check, "%d-%m-%Y")
-            except ValueError:
+            except:
                 try:
                     date_of_birth = datetime.strptime(id_check, "%Y/%m/%d")
                 except ValueError:
@@ -978,7 +978,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     date_of_birth = datetime.strptime(dob, "%d/%m/%Y")
                 except ValueError:
                     date_of_birth = datetime.strptime(id_check, "%d-%m-%Y")
-            except ValueError:
+            except:
                 try:
                     date_of_birth = datetime.strptime(dob, "%Y/%m/%d")
                 except ValueError:
