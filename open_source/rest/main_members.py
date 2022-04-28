@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 import os
 import csv
 import uuid
@@ -7,6 +7,7 @@ import json
 import logging
 import pandas as pd
 
+from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 
 from open_source import config, db
@@ -111,7 +112,7 @@ class MainGetAllParlourEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
                 if search_date:
-                    search = datetime.datetime.strptime(search_date, "%d/%m/%Y")
+                    search = parse(search_date)
 
                     main_members = session.query(MainMember).filter(MainMember.state == MainMember.STATE_ACTIVE, MainMember.parlour_id == parlour.id).all()
                     main_count = len(main_members)
@@ -170,10 +171,10 @@ class MainGetAllParlourEndpoint:
                                     if number == 0:
                                         number = 2000
                                     try:
-                                        dob = datetime.datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
+                                        dob = datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
                                     except:
-                                        dob = datetime.datetime(number, int(id_number[2:4]),1,0,0,0,0)
-                                    now = datetime.datetime.now()
+                                        dob = datetime(number, int(id_number[2:4]),1,0,0,0,0)
+                                    now = datetime.now()
                                     age = relativedelta(now, dob)
 
                                     years = str(age.years)[2:] if str(age.years)[2:].isdigit() else str(age.years)
@@ -304,10 +305,10 @@ class MainGetAllConsultantEndpoint:
                                     if number == 0:
                                         number = 2000
                                     try:
-                                        dob = datetime.datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
+                                        dob = datetime(number, int(id_number[2:4]), int(id_number[4:6]),0,0,0,0)
                                     except:
-                                        dob = datetime.datetime(number, int(id_number[2:4]), 1,0,0,0,0)
-                                    now = datetime.datetime.now()
+                                        dob = datetime(number, int(id_number[2:4]), 1,0,0,0,0)
+                                    now = datetime.now()
                                     age = relativedelta(now, dob)
 
                                     years = "{}".format(age.years)
@@ -704,15 +705,16 @@ class MainMemberPostEndpoint:
             if not applicant_req.get("policy_num"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
 
+            applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
+            applicant_ids = [applicant.id for applicant in applicants]
+
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == req.get("id_number"),
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
-                MainMember.parlour_id == parlour.id
+                MainMember.applicant_id.in_(applicant_ids)
             ).first()
 
             if not id_number:
-                applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
-                applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == req.get("id_number"),
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
@@ -731,10 +733,10 @@ class MainMemberPostEndpoint:
                     consultant_id=consultant.id,
                     parlour_id=parlour.id,
                     old_url=False,
-                    date=datetime.datetime.now(),
+                    date=datetime.now(),
                     state=Applicant.STATE_ACTIVE,
-                    modified_at=datetime.datetime.now(),
-                    created_at=datetime.datetime.now()
+                    modified_at=datetime.now(),
+                    created_at=datetime.now()
                 )
 
                 applicant.save(session)
@@ -751,8 +753,8 @@ class MainMemberPostEndpoint:
                     date_joined = date_joined,
                     state=MainMember.STATE_ACTIVE,
                     applicant_id = applicant.id,
-                    modified_at = datetime.datetime.now(),
-                    created_at = datetime.datetime.now()
+                    modified_at = datetime.now(),
+                    created_at = datetime.now()
                 )
 
                 min_age_limit = plan.member_minimum_age
@@ -763,10 +765,9 @@ class MainMemberPostEndpoint:
                     number = '19{}'.format(id_number[0:2])
                 else:
                     number = '20{}'.format(id_number[0:2])
-                dob = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                # dob = main_member.date_of_birth
-                dob = datetime.datetime.strptime(dob, "%Y-%m-%d")
-                now = datetime.datetime.now()
+                dob = parse('{}-{}-{}'.format(number, id_number[2:4], id_number[4:6]))
+
+                now = datetime.now()
 
                 age = relativedelta(now, dob)
 
@@ -949,10 +950,10 @@ class MainMemberBulkPostEndpoint:
                     consultant_id=consultant.id,
                     parlour_id=parlour.id,
                     old_url=False,
-                    date=datetime.datetime.now(),
+                    date=datetime.now(),
                     state=Applicant.STATE_ACTIVE,
-                    modified_at=datetime.datetime.now(),
-                    created_at=datetime.datetime.now()
+                    modified_at=datetime.now(),
+                    created_at=datetime.now()
                 )
 
                 applicant.save(session)
@@ -969,8 +970,8 @@ class MainMemberBulkPostEndpoint:
                     waiting_period = data[5] if data[5] else 0,
                     state=MainMember.STATE_ACTIVE,
                     applicant_id = applicant.id,
-                    modified_at = datetime.datetime.now(),
-                    created_at = datetime.datetime.now()
+                    modified_at = datetime.now(),
+                    created_at = datetime.now()
                 )
 
                 min_age_limit = plan.member_minimum_age
@@ -978,27 +979,18 @@ class MainMemberBulkPostEndpoint:
 
                 id_number = main_member.id_number
 
-                if int(id_number[0:2]) > 21:
+                if int(id_number[0:2]) > (int(str(datetime.now().year)[2:]) - 16):
                     number = '19{}'.format(id_number[0:2])
                 else:
                     number = '20{}'.format(id_number[0:2])
-                dob = '{}/{}/{}'.format(number, id_number[2:4], id_number[4:6])
-                # dob = main_member.date_of_birth
+
                 try:
-                    try:
-                        dob = datetime.datetime.strptime(dob, "%d/%m/%Y")
-                    except ValueError:
-                        dob = datetime.datetime.strptime(dob, "%d-%m-%Y")
+                    dob = parse('{}/{}/{}'.format(number, id_number[2:4], id_number[4:6]))
                 except ValueError:
-                    try:
-                        dob = datetime.datetime.strptime(dob, "%Y/%m/%d")
-                    except ValueError:
-                        try:
-                            dob = datetime.datetime.strptime(dob, "%d-%m-%Y")
-                        except:
-                            error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
-                            continue
-                now = datetime.datetime.now()
+                    error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
+                    continue
+
+                now = datetime.now()
 
                 age = relativedelta(now, dob)
 
@@ -1039,7 +1031,7 @@ class MainMemberCheckAgeLimitEndpoint:
         return not self.secure
 
     def get_date_of_birth(self, date_of_birth=None, id_number=None):
-        current_year = datetime.datetime.now().year
+        current_year = datetime.now().year
         year_string = str(current_year)[2:]
         century = 19
         if date_of_birth:
@@ -1078,10 +1070,10 @@ class MainMemberCheckAgeLimitEndpoint:
                 number = '20{}'.format(id_number[0:2])
             try:
                 date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                dob = datetime.datetime.strptime(self.get_date_of_birth(date_of_birth, id_number), "%Y-%m-%d").date()
+                dob = parse(self.get_date_of_birth(date_of_birth, id_number)).date()
             except:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Encountered error while formating date. Make sure you've entered a valid date.")
-            now = datetime.datetime.now().date()
+            now = datetime.now().date()
 
             age = relativedelta(now, dob)
 
@@ -1155,7 +1147,7 @@ class MainMemberPutEndpoint:
 
             applicant = session.query(Applicant).filter(
                 Applicant.id == applicant_req.get("id"),
-                Applicant.parlour_id == parlour.id,
+                Applicant.plan_id == plan.id,
                 Applicant.state == Applicant.STATE_ACTIVE).first()
 
             if not applicant:
@@ -1174,16 +1166,16 @@ class MainMemberPutEndpoint:
             if not main_member:
                 raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
+            applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+            applicant_ids = [applicant.id for applicant in applicants]
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == req.get("id_number"),
-                MainMember.parlour_id == parlour.id,
+                MainMember.applicant_id.in_(applicant_ids),
                 MainMember.id != main_member.id,
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
             ).first()
 
             if not id_number:
-                applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
-                applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == req.get("id_number"),
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
@@ -1410,7 +1402,7 @@ class MainMemberDownloadCSVGetEndpoint:
 
         folder = os.path.dirname(__file__)
 
-        today = datetime.datetime.today()
+        today = datetime.today()
 
         logger.info('Create CSV file...')
         filename = os.path.join(folder, 'applicants_{}.xlsx'.format(today))
@@ -1770,10 +1762,10 @@ def update_deceased_member(session, member):
         consultant_id=applicant.consultant_id,
         parlour_id=applicant.parlour_id,
         old_url=False,
-        date=datetime.datetime.now(),
+        date=datetime.now(),
         state=Applicant.STATE_ACTIVE,
-        modified_at=datetime.datetime.now(),
-        created_at=datetime.datetime.now()
+        modified_at=datetime.now(),
+        created_at=datetime.now()
     )
 
     new_applicant.save(session)
@@ -1788,8 +1780,8 @@ def update_deceased_member(session, member):
         date_joined=date_joined,
         state=MainMember.STATE_ACTIVE,
         applicant_id=new_applicant.id,
-        modified_at=datetime.datetime.now(),
-        created_at=datetime.datetime.now()
+        modified_at=datetime.now(),
+        created_at=datetime.now()
     )
 
     main_member.save(session)

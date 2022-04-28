@@ -1,10 +1,8 @@
-from datetime import datetime, date
+from datetime import datetime
+from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from open_source.core import main_members
-from open_source.core import extended_members
 from open_source.core.main_members import MainMember
-from sqlalchemy.orm import relation
 
 from open_source.core.extended_members import ExtendedMember
 from open_source.core.applicants import Applicant
@@ -230,7 +228,7 @@ class ExtendedMembersPostEndpoint:
                     raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
 
                 if req.get("id_number"):
-                    applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
+                    applicants = session.query(Applicant).filter(Applicant.plan_id == applicant.plan_id).all()
                     applicant_ids = [applicant.id for applicant in applicants]
                     id_number = session.query(MainMember).filter(
                         MainMember.id_number == req.get("id_number"),
@@ -239,7 +237,7 @@ class ExtendedMembersPostEndpoint:
                     ).first()
 
                     if not id_number:
-                        applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
+                        applicants = session.query(Applicant).filter(Applicant.plan_id == applicant.plan_id).all()
                         applicant_ids = [applicant.id for applicant in applicants]
                         id_number = session.query(ExtendedMember).filter(
                             ExtendedMember.id_number == req.get("id_number"),
@@ -956,29 +954,15 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                 error_data.append({'data': data, 'error': "ID number already exists for either main member or extended member."})
                 continue
 
-        if len(id_check) < 13:
+        if len(id_check) != 13:
             try:
-                try:
-                    date_of_birth = datetime.strptime(id_check, "%d/%m/%Y")
-                except ValueError:
-                    print("Failed on D/M/Y extended")
-                    date_of_birth = datetime.strptime(id_check, "%d-%m-%Y")
+                date_of_birth = parse(id_check)
             except:
-                print("Failed on D-M-Y extended")
-                try:
-                    date_of_birth = datetime.strptime(id_check, "%Y/%m/%d")
-                except ValueError:
-                    print("Failed on Y/M/D extended")
-                    try:
-                        date_of_birth = datetime.strptime(id_check, "%Y-%m-%d")
-                    except:
-                        print("Failed on Y-M-D extended")
-                        error_data.append({'data': data, 'error': 'Incorrect date format on date of birth'})
-                        continue
+                error_data.append({'data': data, 'error': 'Incorrect date format on date of birth or id_number'})
+                continue
         else:
-            dob = get_date_of_birth(id_check)
             try:
-                date_of_birth = datetime.strptime(dob, "%Y/%m/%d")
+                date_of_birth = parse(get_date_of_birth(id_check))
             except ValueError:
                 error_data.append({'data': data, 'error': 'Incorrect date format on date of birth or id_number'})
                 continue

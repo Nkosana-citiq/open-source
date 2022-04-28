@@ -26,7 +26,7 @@ class ExtendedMember(db.Base):
 
     type_to_text = {
         TYPE_SPOUSE: 'Spouse',
-        TYPE_DEPENDANT: 'Dependant',
+        TYPE_DEPENDANT: 'Dependent',
         TYPE_EXTENDED_MEMBER: 'Extended Member',
         TYPE_ADDITIONAL_EXTENDED_MEMBER: 'Additional Extended Member'
     }
