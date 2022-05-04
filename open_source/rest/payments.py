@@ -731,38 +731,42 @@ class InvoiceExportToExcelEndpoint:
                     d = main_member.to_dict()
                     d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.created, 'number_of_months': invoice.number_of_months})
                     results.append(d)
+                # print(d)
+                # if results:
+                data = []
+                for res in results:
+                    applicant = res.get('applicant')
+                    plan = applicant.get('plan')
+                    amount = float(plan.get('premium')) * int(res.get('number_of_months'))
+                    data.append({
+                        'First Name': res.get('first_name'),
+                        'Last Name': res.get('last_name'),
+                        'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
+                        'Premium': float(plan.get('premium')),
+                        'Amount Paid': amount,
+                        'Number of Months': int(res.get('number_of_months')),
+                        'Consultant': res.get('assisted_by'),
+                        'Payment Date': res.get('payment_date')
+                        })
 
-                if results:
-                    data = []
-                    for res in results:
-                        applicant = res.get('applicant')
-                        plan = applicant.get('plan')
-                        amount = float(plan.get('premium')) * int(res.get('number_of_months'))
-                        data.append({
-                            'First Name': res.get('first_name'),
-                            'Last Name': res.get('last_name'),
-                            'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
-                            'Premium': float(plan.get('premium')),
-                            'Amount Paid': amount,
-                            'Number of Months': int(res.get('number_of_months')),
-                            'Consultant': res.get('assisted_by'),
-                            'Payment Date': res.get('payment_date')
-                            })
-
-                    df = pd.DataFrame(data)
+                df = pd.DataFrame(data)
+                if data:
                     filename = '{}_{}'.format(invoice.assisted_by, invoice.payment_date)
-                    writer = pd.ExcelWriter('{}.xlsx'.format(filename), engine='xlsxwriter')
-                    df.to_excel(writer, sheet_name='Sheet1', index=False)
-                    os.chdir('./assets/uploads/spreadsheets')
-                    path = os.getcwd()
-                    writer.save()
-                    os.chdir('../../..')
+                else:
+                    filename = "no_entries"
 
-                    with open('{}/{}.xlsx'.format(path, filename), 'rb') as f:
-                        resp.downloadable_as = '{}.xls'.format(filename)
-                        resp.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                        resp.stream = [f.read()]
-                        resp.status = falcon.HTTP_200
+                writer = pd.ExcelWriter('{}.xlsx'.format(filename), engine='xlsxwriter')
+                df.to_excel(writer, sheet_name='Sheet1', index=False)
+                os.chdir('./assets/uploads/spreadsheets')
+                path = os.getcwd()
+                writer.save()
+                os.chdir('../../..')
+
+                with open('{}/{}.xlsx'.format(path, filename), 'rb') as f:
+                    resp.downloadable_as = '{}.xls'.format(filename)
+                    resp.content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    resp.stream = [f.read()]
+                    resp.status = falcon.HTTP_200
 
         except Exception as e:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
