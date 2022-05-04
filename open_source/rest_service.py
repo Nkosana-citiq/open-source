@@ -120,11 +120,14 @@ api.add_route('/open-source/dependants/{id}/update', dependants.DependantPutEndp
 api.add_route('/open-source/dependants/{id}/delete', dependants.DependantDeleteEndpoint())
 
 api.add_route('/open-source/applicants/{id}/extended-members/all', extended_members.ExtendedMembersGetAllEndpoint())
+api.add_route('/open-source/applicants/{id}/extended-members/archived', extended_members.ExtendedMembersGetAllArchivedEndpoint())
 api.add_route('/open-source/extended-members', extended_members.ExtendedMembersPostEndpoint())
 api.add_route('/open-source/extended-members/{id}/get', extended_members.ExtendedMemberGetEndpoint())
 api.add_route('/open-source/extended-members/{id}/update', extended_members.ExtendedMemberPutEndpoint())
 api.add_route('/open-source/extended-members/{id}/exception', extended_members.ExtendedMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/extended-members/{id}/delete', extended_members.ExtededMemberDeleteEndpoint())
+api.add_route('/open-source/extended-members/{id}/archive', extended_members.ExtededMemberArchiveEndpoint())
+api.add_route('/open-source/extended-members/{id}/restore', extended_members.ExtendedMemberRestorePutEndpoint())
 api.add_route('/open-source/extended-members/{id}/promote', extended_members.MainMemberPromoteEndpoint())
 api.add_route('/open-source/applicants/{id}/extended-members/age-limit', extended_members.ExtendedMemberCheckAgeLimitEndpoint())
 

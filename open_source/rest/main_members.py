@@ -19,6 +19,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy import or_
 from open_source.core.main_members import MainMember
 from open_source.core.extended_members import ExtendedMember
+from open_source.rest import extended_members
 from open_source.rest.extended_members import update_certificate, bulk_insert_extended_members
 from open_source.core.parlours import Parlour
 from open_source.utils import localize_contact
@@ -459,11 +460,15 @@ class MainGetAllArchivedConsultantEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
                 if search_field:
+                    extended_members = session.query(ExtendedMember).filter(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED).all()
+                    applicant_ids = [ext.applicant_id for ext in extended_members]
+                    print("EXTENDED: ", applicant_ids)
                     main_members = session.query(
                         MainMember,
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        MainMember.state == MainMember.STATE_ARCHIVED,
+                        or_(MainMember.state == MainMember.STATE_ARCHIVED,
+                        MainMember.applicant_id.in_(applicant_ids)),
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
@@ -478,8 +483,11 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
+                    extended_members = session.query(ExtendedMember).filter(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED).all()
+                    applicant_ids = [ext.applicant_id for ext in extended_members]
                     applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ARCHIVED,
+                        or_(Applicant.state == Applicant.STATE_ARCHIVED,
+                        Applicant.id.in_(applicant_ids)),
                         Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
 
@@ -488,8 +496,7 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
-                        MainMember.applicant_id.in_(applicant_ids),
-                        MainMember.state == MainMember.STATE_ARCHIVED
+                        MainMember.applicant_id.in_(applicant_ids)
                     ).all()
 
                     if not main_members:
@@ -835,6 +842,7 @@ class MainMemberBulkPostEndpoint:
         rest_dict = json.load(req.bounded_stream)
         error_data = []
         prev_applicant = None
+        is_main_member = False
         plan_id = rest_dict.pop('plan')
         csv_data = rest_dict.pop('csv')
         filename = uuid.uuid4()
@@ -866,6 +874,7 @@ class MainMemberBulkPostEndpoint:
                     continue
                 try:
                     if data[8] or data[9]:
+                        is_main_member = False
                         if not all([data[8], data[9]]):
                             error_data.append({'data': data, 'error': "Extended member type and relation to main member are requires fieds."})
                             continue
@@ -874,40 +883,50 @@ class MainMemberBulkPostEndpoint:
                             continue
                         error_data = bulk_insert_extended_members(data, error_data, prev_applicant, session)
                         continue
+                    else:
+                        is_main_member = True
                 except IndexError:
                     pass
                 if not id_check:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Missing id_number field."})
                     continue
 
                 za_validation = SouthAfricanIdentityValidate(id_check)
                 valid = za_validation.validate()
                 if not valid:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Incorrect id_number entered."})
                     continue
 
                 if not data[0]:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Missing first name field."})
                     continue
                 if not data[1]:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Missing last name field."})
                     continue
                 if not data[4]:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Date joined is a required field."})
                     continue
                 if not data[3]:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Contact number is a required field."})
                     continue
 
                 consultant = session.query(Consultant).get(id)
 
                 if not consultant:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Consultant does not exist."})
                     continue
 
                 plan = session.query(Plan).get(plan_id)
 
                 if not plan:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Plan not found."})
                     continue
 
@@ -916,10 +935,12 @@ class MainMemberBulkPostEndpoint:
                     Parlour.state == Parlour.STATE_ACTIVE).first()
 
                 if not parlour:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': "Parlour does not exist."})
                     continue
 
                 if not data[7]:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': 'Missing policy number'})
                     continue
 
@@ -930,7 +951,7 @@ class MainMemberBulkPostEndpoint:
                 ).first()
 
                 if not id_number:
-                    applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+                    applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
                     applicant_ids = [applicant.id for applicant in applicants]
                     id_number = session.query(ExtendedMember).filter(
                         ExtendedMember.id_number == id_check,
@@ -939,6 +960,7 @@ class MainMemberBulkPostEndpoint:
                     ).first()
 
                 if id_number:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': 'ID number already exists'})
                     continue
 
@@ -987,6 +1009,7 @@ class MainMemberBulkPostEndpoint:
                 try:
                     dob = parse('{}/{}/{}'.format(number, id_number[2:4], id_number[4:6]))
                 except ValueError:
+                    prev_applicant = None if is_main_member else prev_applicant
                     error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
                     continue
 

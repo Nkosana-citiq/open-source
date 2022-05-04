@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from dateutil.parser import parse
+from dateutil import tz
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from open_source.core.main_members import MainMember
@@ -136,6 +137,51 @@ class ExtendedMembersGetAllEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Extended Members for user with ID {}.".format(id))
 
 
+class ExtendedMembersGetAllArchivedEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+
+                applicant = session.query(Applicant).filter(
+                    Applicant.id == id
+                ).one_or_none()
+
+                if not applicant:
+                    raise falcon.HTTPBadRequest()
+
+                extended_members = session.query(ExtendedMember).filter(
+                    ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
+                    ExtendedMember.applicant_id == applicant.id
+                ).all()
+
+                if not extended_members:
+                    extended_members = session.query(ExtendedMember).filter(
+                        ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
+                        ExtendedMember.applicant_id == applicant.id
+                    ).all()
+
+                if not extended_members:
+                    resp.body = json.dumps([])
+                else:
+                    resp.body = json.dumps([extended_member.to_dict() for extended_member in extended_members], default=str)
+
+        except:
+            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Extended Members for user with ID {}.".format(id))
+
+
+
 class ExtendedMemberPutAgeLimitExceptionEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -248,13 +294,13 @@ class ExtendedMembersPostEndpoint:
                     if id_number:
                         raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
-                date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
-                date_joined = self.get_date_joined(req.get("date_joined"))
+                date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
 
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
-                    number = req.get("number"),
+                    number = req.get("number", None),
                     date_of_birth = date_of_birth,
                     type = req.get("type"),
                     id_number = req.get("id_number"),
@@ -554,8 +600,8 @@ class ExtendedMemberPutEndpoint:
                 raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
 
             try:
-                date_of_birth = self.get_date_of_birth(req.get("date_of_birth"), req.get("id_number"))
-                date_joined = self.get_date_joined(req.get("date_joined"))
+                date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
@@ -651,6 +697,44 @@ class ExtendedMemberPutEndpoint:
                 raise e
 
 
+class ExtendedMemberRestorePutEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_put(self, req, resp, id):
+
+        req = json.load(req.bounded_stream)
+
+        try:
+            with db.transaction() as session:
+                try:
+                    extended_member = session.query(ExtendedMember).get(id)
+                except:
+                    logger.exception("Error, failing getting extended member by id.")
+                    raise falcon.HTTPBadRequest(title="Error", description="failing getting extended member by id.")
+
+                extended_member.state = ExtendedMember.STATE_ACTIVE
+                applicant = session.query(Applicant).get(extended_member.applicant_id)
+
+                extended_member.save(session)
+                applicant = update_certificate(applicant)
+                resp.body = json.dumps(extended_member.to_dict(), default=str)
+        except:
+            logger.exception(
+                "Error, experienced error while creating Applicant.")
+            raise falcon.HTTPBadRequest(
+                "Processing Failed. experienced error while creating Applicant.")
+
+
+
 class ExtededMemberDeleteEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -674,7 +758,36 @@ class ExtededMemberDeleteEndpoint:
                     falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
 
                 extended_member.delete(session)
-                resp.body = json.dumps({})
+                resp.body = json.dumps(extended_member.to_dict(), default=str)
+        except:
+            logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))
+
+
+class ExtededMemberArchiveEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_delete(self, req, resp, id):
+        try:
+            with db.transaction() as session:
+                extended_member = session.query(ExtendedMember).get(id)
+
+                if extended_member is None:
+                    raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant Not Found")
+                if extended_member.is_deleted:
+                    falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
+
+                extended_member.archive(session)
+                resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
             raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))

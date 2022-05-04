@@ -187,7 +187,6 @@ class ExtendedMember(db.Base):
 
     def make_archived(self):
         self.state = self.STATE_ARCHIVED
-        self.on_delete_clean_up()
 
     def archive(self, session):
         self.make_archived()
