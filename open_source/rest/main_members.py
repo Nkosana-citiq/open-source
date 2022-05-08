@@ -230,7 +230,6 @@ class MainGetAllConsultantEndpoint:
                     search_field = None
                     notice = None
                     consultant_id = None
-                    consultants = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
@@ -274,17 +273,17 @@ class MainGetAllConsultantEndpoint:
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field)) 
                         )
-                    ).all()
+                    )
 
                     if not main_members:
                         resp.body = json.dumps([])
-
-                    resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
+                    result = MainMember._paginated_result(session, req.params, main_members)
+                    resp.body = json.dumps(result, default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id == consultant.id
-                    ).order_by(Applicant.id.desc())
+                    )
 
                     if status :
                         applicants = [] if status.lower() == 'lapsed' else applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
@@ -329,18 +328,19 @@ class MainGetAllConsultantEndpoint:
                             MainMember.parlour_id == parlour.id,
                             MainMember.age_limit_exceeded == True,
                             MainMember.applicant_id.in_(applicant_ids)
-                        ).all()
+                        )
                     else:
                         main_members = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
                             MainMember.parlour_id == parlour.id,
                             MainMember.applicant_id.in_(applicant_ids)
-                        ).all()
+                        )
 
                     if not main_members:
                         resp.body = json.dumps([])
                     else:
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
+                        result = MainMember._paginated_result(session, req.params, main_members)
+                        resp.body = json.dumps(result, default=str)
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
@@ -1080,9 +1080,24 @@ class MainMemberCheckAgeLimitEndpoint:
                 raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
 
             plan = session.query(Plan).get(id)
-
+            parlour = plan.parlour
             if not plan:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
+
+            is_ID_number = session.query(MainMember).filter(
+                MainMember.id_number == id_number,
+                MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
+                MainMember.parlour_id == parlour.id
+            ).first()
+
+            if not is_ID_number:
+                applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+                applicant_ids = [applicant.id for applicant in applicants]
+                id_number = session.query(ExtendedMember).filter(
+                    ExtendedMember.id_number == id_number,
+                    ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
+                    ExtendedMember.applicant_id.in_(applicant_ids)
+                ).first()
 
             min_age_limit = plan.member_minimum_age
             max_age_limit = plan.member_maximum_age
@@ -1114,10 +1129,11 @@ class MainMemberCheckAgeLimitEndpoint:
                 elif int(years) < min_age_limit:
                     age_limit_exceeded = True
 
-            if age_limit_exceeded:
-                resp.body = json.dumps({'result': 'Age limit exceeded!'})
+            if age_limit_exceeded or is_ID_number:
+                id_exists = True if is_ID_number else False
+                resp.body = json.dumps({'age_limit_exceeded': age_limit_exceeded, 'id_number_exists': id_exists })
             else:
-                resp.body = json.dumps({'result': 'OK!'})
+                resp.body = json.dumps({'result': 'OK!' })
 
 
 class MainMemberPutEndpoint:

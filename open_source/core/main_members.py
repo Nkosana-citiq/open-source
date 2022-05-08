@@ -1,4 +1,4 @@
-from typing import Text
+from typing import Dict, Any, Text
 from sqlalchemy.sql.sqltypes import Boolean, DECIMAL
 from open_source import db
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text, func
@@ -90,6 +90,36 @@ class MainMember(db.Base):
             'applicant': self.applicant.to_short_dict() if self.applicant else {}
         }
     
+    @classmethod
+    def rest_get_many(cls, session, params: Dict[str, Any], user, **kwargs) -> Dict[str, Any]:
+        return cls._paginated_result(session, params, user, cls.get_many_query)
+
+    @classmethod
+    def _paginated_result(cls, session, params: Dict[str, Any],result_query) -> Dict[str, Any]:
+
+        offset = params.pop('offset', 0)
+        limit = params.pop('limit', 20)
+
+        is_lookup = params.pop('is_lookup', 'no')
+        is_lookup = is_lookup in ('yes', 'y', 't', 'true', '1')
+
+        if result_query:
+
+            result_query = result_query.offset(offset)
+            result_query = result_query.limit(limit)
+
+            result = [entity.to_dict() for entity in result_query]
+
+        else:
+            result = []
+
+        return {
+            "offset": offset,
+            "limit": limit,
+            "count": len(result),
+            "result": result
+        }
+
     def save(self, session):
         session.add(self)
         session.commit()

@@ -1098,7 +1098,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
             number = data[3] if len(str(data[3])) == 10 else '0{}'.format(data[3]),
             date_of_birth = date_of_birth,
             type = member_type_value,
-            id_number = id_number,
+            id_number = id_check if len(id_check) == 13 else None,
             relation_to_main_member = member_relation_value,
             applicant_id = applicant.id,
             date_joined = date_joined,
