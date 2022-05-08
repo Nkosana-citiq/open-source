@@ -729,7 +729,7 @@ class MainMemberPostEndpoint:
                 ).first()
 
             if id_number:
-                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
+                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists on this plan.")
 
             try:
                 applicant = Applicant(
@@ -1081,8 +1081,25 @@ class MainMemberCheckAgeLimitEndpoint:
 
             plan = session.query(Plan).get(id)
 
+            parlour = plan.parlour
             if not plan:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
+ 
+            is_ID_number = session.query(MainMember).filter(
+                MainMember.id_number == id_number,
+                MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
+                MainMember.parlour_id == parlour.id
+            ).first()
+
+            if not is_ID_number:
+                applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+                applicant_ids = [applicant.id for applicant in applicants]
+                id_number = session.query(ExtendedMember).filter(
+                    ExtendedMember.id_number == id_number,
+                    ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
+                    ExtendedMember.applicant_id.in_(applicant_ids)
+                ).first()
+
 
             min_age_limit = plan.member_minimum_age
             max_age_limit = plan.member_maximum_age
@@ -1114,8 +1131,9 @@ class MainMemberCheckAgeLimitEndpoint:
                 elif int(years) < min_age_limit:
                     age_limit_exceeded = True
 
-            if age_limit_exceeded:
-                resp.body = json.dumps({'result': 'Age limit exceeded!'})
+            if age_limit_exceeded or is_ID_number:
+                id_exists = True if is_ID_number else False
+                resp.body = json.dumps({'age_limit_exceeded': age_limit_exceeded, 'id_number_exists': id_exists })
             else:
                 resp.body = json.dumps({'result': 'OK!'})
 
@@ -1189,7 +1207,7 @@ class MainMemberPutEndpoint:
             if not main_member:
                 raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-            applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+            applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
             applicant_ids = [applicant.id for applicant in applicants]
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == req.get("id_number"),
@@ -1206,7 +1224,7 @@ class MainMemberPutEndpoint:
                 ).first()
 
             if id_number:
-                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
+                raise falcon.HTTPBadRequest(title="Error", description="ID number already exists on this plan.")
 
             try:
                 main_member.first_name = req.get("first_name")
