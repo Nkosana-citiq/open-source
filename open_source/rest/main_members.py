@@ -1068,14 +1068,14 @@ class MainMemberCheckAgeLimitEndpoint:
 
         with db.no_transaction() as session:
             age_limit_exceeded = False
-            id_number = None
+            id_number_param = None
             date_of_birth = None
             plan = None
             max_age_limit = None
             min_age_limit = None
 
             try:
-                id_number = req.params.pop("id_number")
+                id_number_param = req.params.pop("id_number")
             except:
                 raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
 
@@ -1086,7 +1086,7 @@ class MainMemberCheckAgeLimitEndpoint:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
  
             is_ID_number = session.query(MainMember).filter(
-                MainMember.id_number == id_number,
+                MainMember.id_number == id_number_param,
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
                 MainMember.parlour_id == parlour.id
             ).first()
@@ -1095,7 +1095,7 @@ class MainMemberCheckAgeLimitEndpoint:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(
-                    ExtendedMember.id_number == id_number,
+                    ExtendedMember.id_number == id_number_param,
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
@@ -1104,13 +1104,13 @@ class MainMemberCheckAgeLimitEndpoint:
             min_age_limit = plan.member_minimum_age
             max_age_limit = plan.member_maximum_age
 
-            if int(id_number[0:2]) > 21:
-                number = '19{}'.format(id_number[0:2])
+            if int(id_number_param[0:2]) > 21:
+                number = '19{}'.format(id_number_param[0:2])
             else:
-                number = '20{}'.format(id_number[0:2])
+                number = '20{}'.format(id_number_param[0:2])
             try:
-                date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                dob = parse(self.get_date_of_birth(date_of_birth, id_number)).date()
+                date_of_birth = '{}-{}-{}'.format(number, id_number_param[2:4], id_number_param[4:6])
+                dob = parse(self.get_date_of_birth(date_of_birth, id_number_param)).date()
             except:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Encountered error while formating date. Make sure you've entered a valid date.")
             now = datetime.now().date()
