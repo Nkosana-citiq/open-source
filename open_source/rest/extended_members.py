@@ -294,7 +294,9 @@ class ExtendedMembersPostEndpoint:
                     if id_number:
                         raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
-                date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                date_of_birth = None
+                if req.get("date_of_birth"):
+                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
                 date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
 
                 extended_member = ExtendedMember(
@@ -358,12 +360,16 @@ class ExtendedMembersPostEndpoint:
                     max_age_limit = plan.additional_extended_maximum_age
 
                 if not date_of_birth:
+                    id_number = req.get("id_number")
                     if int(id_number[0:2]) > 21:
                         number = '19{}'.format(id_number[0:2])
                     else:
                         number = '20{}'.format(id_number[0:2])
                     date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                if req.get('id_number'):
+                    dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                else:
+                    dob = date_of_birth
                 now = datetime.now().date()
 
                 age = relativedelta(now, dob)
