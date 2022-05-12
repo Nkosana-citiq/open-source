@@ -339,7 +339,7 @@ class MainGetAllConsultantEndpoint:
                     if not main_members:
                         resp.body = json.dumps([])
                     else:
-                        result = MainMember._paginated_result(session, req.params, main_members)
+                        result = MainMember._paginated_result(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
 
         except:

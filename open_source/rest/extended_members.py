@@ -323,10 +323,10 @@ class ExtendedMembersPostEndpoint:
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                     elif extended_member.type == 1:
                         if not plan.beneficiaries:
-                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
 
                         if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
+                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependent members has been reached.")
                     elif extended_member.type == 2:
                         if not plan.extended_members:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
@@ -458,7 +458,7 @@ class ExtendedMemberCheckAgeLimitEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
             elif member_type == '1':
                 if not plan.beneficiaries:
-                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
             elif member_type == '2':
                 if not plan.extended_members:
                     raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
@@ -624,10 +624,10 @@ class ExtendedMemberPutEndpoint:
                         raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                 elif extended_member.type == 1 and extended_member.type != old_type:
                     if not plan.beneficiaries:
-                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
 
                     if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
+                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependent members has been reached.")
                 elif extended_member.type == 2 and extended_member.type != old_type:
                     if not plan.extended_members:
                         raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
@@ -1121,11 +1121,11 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
 
             elif extended_member.type == 1:
                 if not plan.beneficiaries:
-                    error_data.append({'data': data, 'error': "This plan does not have dependants."})
+                    error_data.append({'data': data, 'error': "This plan does not have dependents."})
                     continue
 
                 if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                    error_data.append({'data': data, 'error': "Limit for number of dependant members has been reached."})
+                    error_data.append({'data': data, 'error': "Limit for number of dependent members has been reached."})
                     continue
 
             elif extended_member.type == 2:

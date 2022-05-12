@@ -92,19 +92,20 @@ class MainMember(db.Base):
     
     @classmethod
     def rest_get_many(cls, session, params: Dict[str, Any], user, **kwargs) -> Dict[str, Any]:
-        return cls._paginated_result(session, params, user, cls.get_many_query)
+        return cls._paginated_result(params, user, cls.get_many_query)
 
     @classmethod
-    def _paginated_result(cls, session, params: Dict[str, Any],result_query) -> Dict[str, Any]:
+    def _paginated_result(cls, params: Dict[str, Any],result_query) -> Dict[str, Any]:
 
         offset = params.pop('offset', 0)
         limit = params.pop('limit', 20)
+        total = 0
 
         is_lookup = params.pop('is_lookup', 'no')
         is_lookup = is_lookup in ('yes', 'y', 't', 'true', '1')
 
         if result_query:
-
+            total = len([entity for entity in result_query])
             result_query = result_query.offset(offset)
             result_query = result_query.limit(limit)
 
@@ -117,6 +118,7 @@ class MainMember(db.Base):
             "offset": offset,
             "limit": limit,
             "count": len(result),
+            "total": total,
             "result": result
         }
 
