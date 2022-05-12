@@ -302,7 +302,7 @@ class ExtendedMembersPostEndpoint:
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
-                    number = req.get("number", None),
+                    number = req.get("number"),
                     date_of_birth = date_of_birth,
                     type = req.get("type"),
                     id_number = req.get("id_number"),
@@ -606,8 +606,12 @@ class ExtendedMemberPutEndpoint:
                 raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
 
             try:
-                date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
-                date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                try:
+                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                    date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                except:
+                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
+                    date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
@@ -670,7 +674,10 @@ class ExtendedMemberPutEndpoint:
                     else:
                         number = '20{}'.format(id_number[0:2])
                     date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                try:
+                    dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                except:
+                    dob = date_of_birth
                 now = datetime.now().date()
 
                 age = relativedelta(now, dob)
