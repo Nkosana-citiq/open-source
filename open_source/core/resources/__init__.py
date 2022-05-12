@@ -17,3 +17,7 @@ def get_template(filename, dir) -> str:
 
 USER_RESET_PASSWORD_EMAIL_TEMPLATE = get_email_template(
     'reset_password.html')
+
+
+DAILY_FINANCIAL_REPORT_PER_CONSULTANT_EMAIL_TEMPLATE = get_email_template(
+    'daily_financial_report_per_consultant.html')
