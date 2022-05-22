@@ -1104,14 +1104,14 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
         if not member_relation_value:
             error_data.append({'data': data, 'error': "Unrecognized member relation."})
             continue
-
+        contact = data[3]
         extended_member = ExtendedMember(
             first_name = data[0],
             last_name = data[1],
-            number = data[3] if len(str(data[3])) == 10 else '0{}'.format(data[3]),
+            number = "".join(["+27", contact[1:]]) if len(str(contact)) == 10 else contact,
             date_of_birth = date_of_birth,
             type = member_type_value,
-            id_number = id_number,
+            id_number = id_check if len(id_check) == 13 else None,
             relation_to_main_member = member_relation_value,
             applicant_id = applicant.id,
             date_joined = date_joined,
@@ -1134,11 +1134,11 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
 
             elif extended_member.type == 1:
                 if not plan.beneficiaries:
-                    error_data.append({'data': data, 'error': "This plan does not have dependants."})
+                    error_data.append({'data': data, 'error': "This plan does not have dependents."})
                     continue
 
                 if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                    error_data.append({'data': data, 'error': "Limit for number of dependant members has been reached."})
+                    error_data.append({'data': data, 'error': "Limit for number of dependent members has been reached."})
                     continue
 
             elif extended_member.type == 2:

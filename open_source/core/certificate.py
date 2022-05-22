@@ -97,7 +97,10 @@ class Certificate:
         if self.y_position > 820:
             self.showPage()
             self.y_position = 60
-        self.can.drawString(30, self.y_position, "DOB: {}".format(member.date_of_birth))
+        if member.id_number:
+            self.can.drawString(30, self.y_position, "ID Number: {}".format(member.id_number))
+        else:
+            self.can.drawString(30, self.y_position, "DOB: {}".format(member.date_of_birth))
         self.y_position = sum([self.y_position, 15])
 
         if self.y_position > 820:
