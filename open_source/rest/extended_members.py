@@ -606,7 +606,10 @@ class ExtendedMemberPutEndpoint:
                 raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
 
             try:
-                date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                try:
+                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                except:
+                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
                 date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
