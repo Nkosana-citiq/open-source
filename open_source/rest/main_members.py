@@ -139,7 +139,8 @@ class MainGetAllParlourEndpoint:
                     if not main_members:
                         resp.body = json.dumps([])
                     else:
-                        resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
+                        result = MainMember._paginated_search_results(req.params, main_members)
+                        resp.body = json.dumps(result, default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -188,7 +189,7 @@ class MainGetAllParlourEndpoint:
                     main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.applicant_id.in_(applicant_ids)
-                    )
+                    ).order_by(MainMember.id.desc())
 
                     if start_date:
                         main_members = main_members.filter(
@@ -202,7 +203,8 @@ class MainGetAllParlourEndpoint:
                     if not main_members.all():
                         resp.body = json.dumps([])
                     else:
-                        resp.body = json.dumps([main_member.to_dict() for main_member in main_members.all()], default=str)
+                        result = MainMember._paginated_results(req.params, main_members)
+                        resp.body = json.dumps(result, default=str)
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
@@ -277,7 +279,7 @@ class MainGetAllConsultantEndpoint:
 
                     if not main_members:
                         resp.body = json.dumps([])
-                    result = MainMember._paginated_result(session, req.params, main_members)
+                    result = MainMember._paginated_search_results(req.params, main_members)
                     resp.body = json.dumps(result, default=str)
                 else:
                     applicants = session.query(Applicant).filter(
@@ -328,18 +330,18 @@ class MainGetAllConsultantEndpoint:
                             MainMember.parlour_id == parlour.id,
                             MainMember.age_limit_exceeded == True,
                             MainMember.applicant_id.in_(applicant_ids)
-                        )
+                        ).order_by(MainMember.id.desc())
                     else:
                         main_members = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
                             MainMember.parlour_id == parlour.id,
                             MainMember.applicant_id.in_(applicant_ids)
-                        )
+                        ).order_by(MainMember.id.desc())
 
                     if not main_members:
                         resp.body = json.dumps([])
                     else:
-                        result = MainMember._paginated_result(req.params, main_members)
+                        result = MainMember._paginated_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
 
         except:
@@ -462,7 +464,6 @@ class MainGetAllArchivedConsultantEndpoint:
                 if search_field:
                     extended_members = session.query(ExtendedMember).filter(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED).all()
                     applicant_ids = [ext.applicant_id for ext in extended_members]
-                    print("EXTENDED: ", applicant_ids)
                     main_members = session.query(
                         MainMember,
                         Applicant
@@ -483,7 +484,10 @@ class MainGetAllArchivedConsultantEndpoint:
 
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
-                    extended_members = session.query(ExtendedMember).filter(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED).all()
+                    extended_members = session.query(ExtendedMember).filter(
+                        or_(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
+                        ExtendedMember.is_deceased == True)
+                    ).all()
                     applicant_ids = [ext.applicant_id for ext in extended_members]
                     applicants = session.query(Applicant).filter(
                         or_(Applicant.state == Applicant.STATE_ARCHIVED,
@@ -961,6 +965,8 @@ class MainMemberBulkPostEndpoint:
 
                 if id_number:
                     prev_applicant = None if is_main_member else prev_applicant
+                    if isinstance(id_number,MainMember):
+                        prev_applicant = id_number.applicant_id
                     error_data.append({'data': data, 'error': 'ID number already exists'})
                     continue
 
@@ -1068,24 +1074,25 @@ class MainMemberCheckAgeLimitEndpoint:
 
         with db.no_transaction() as session:
             age_limit_exceeded = False
-            id_number = None
+            id_number_param = None
             date_of_birth = None
             plan = None
             max_age_limit = None
             min_age_limit = None
 
             try:
-                id_number = req.params.pop("id_number")
+                id_number_param = req.params.pop("id_number")
             except:
                 raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
 
             plan = session.query(Plan).get(id)
+
             parlour = plan.parlour
             if not plan:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Plan does not exist.")
-
+ 
             is_ID_number = session.query(MainMember).filter(
-                MainMember.id_number == id_number,
+                MainMember.id_number == id_number_param,
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
                 MainMember.parlour_id == parlour.id
             ).first()
@@ -1094,21 +1101,22 @@ class MainMemberCheckAgeLimitEndpoint:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
                 id_number = session.query(ExtendedMember).filter(
-                    ExtendedMember.id_number == id_number,
+                    ExtendedMember.id_number == id_number_param,
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
 
+
             min_age_limit = plan.member_minimum_age
             max_age_limit = plan.member_maximum_age
 
-            if int(id_number[0:2]) > 21:
-                number = '19{}'.format(id_number[0:2])
+            if int(id_number_param[0:2]) > 21:
+                number = '19{}'.format(id_number_param[0:2])
             else:
-                number = '20{}'.format(id_number[0:2])
+                number = '20{}'.format(id_number_param[0:2])
             try:
-                date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                dob = parse(self.get_date_of_birth(date_of_birth, id_number)).date()
+                date_of_birth = '{}-{}-{}'.format(number, id_number_param[2:4], id_number_param[4:6])
+                dob = parse(self.get_date_of_birth(date_of_birth, id_number_param)).date()
             except:
                 raise falcon.HTTPBadRequest(title="Plan not found", description="Encountered error while formating date. Make sure you've entered a valid date.")
             now = datetime.now().date()
@@ -1133,8 +1141,7 @@ class MainMemberCheckAgeLimitEndpoint:
                 id_exists = True if is_ID_number else False
                 resp.body = json.dumps({'age_limit_exceeded': age_limit_exceeded, 'id_number_exists': id_exists })
             else:
-                resp.body = json.dumps({'result': 'OK!' })
-
+                resp.body = json.dumps({'result': 'OK!'})
 
 class MainMemberPutEndpoint:
 
@@ -1562,12 +1569,14 @@ class ApplicantExportToExcelEndpoint:
                     data = []
                     for res in results:
                         applicant = res.get('applicant')
+
                         plan = applicant.get('plan')
                         underwriter = float(plan.get('underwriter_premium')) if plan.get('underwriter_premium') else None
                         data.append({
                             'First Name': res.get('first_name'),
                             'Last Name': res.get('last_name'),
                             'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
+                            'Policy Number': applicant.get("policy_num"),
                             'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
                             'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
                             'Status': applicant.get('status') if res.get else None,

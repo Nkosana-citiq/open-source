@@ -22,6 +22,7 @@ ALLOWED_ORIGINS = [
     "https://staging.osource.co.za",
     "https://nkosana-citiq.github.io",
     'http://localhost:8009',
+    'http://localhost:5100',
     'http://127.0.0.1:8009',
     "http://osource.co.za",
     "https://osource.co.za"]
@@ -59,7 +60,7 @@ api.add_route('/open-source/parlours/{id}/delete', parlours.ParlourDeleteEndpoin
 api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
-
+api.add_route('/open-source/parlours/{id}/add_notifications', parlours.ParlourNotificationsPostEndpoint())
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
 api.add_route('/open-source/plans', plans.PlanPostEndpoint())

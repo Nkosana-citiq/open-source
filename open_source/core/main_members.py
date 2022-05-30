@@ -95,7 +95,7 @@ class MainMember(db.Base):
         return cls._paginated_result(params, user, cls.get_many_query)
 
     @classmethod
-    def _paginated_result(cls, params: Dict[str, Any],result_query) -> Dict[str, Any]:
+    def _paginated_results(cls, params: Dict[str, Any],result_query) -> Dict[str, Any]:
 
         offset = params.pop('offset', 0)
         limit = params.pop('limit', 20)
@@ -110,6 +110,34 @@ class MainMember(db.Base):
             result_query = result_query.limit(limit)
 
             result = [entity.to_dict() for entity in result_query]
+
+        else:
+            result = []
+
+        return {
+            "offset": offset,
+            "limit": limit,
+            "count": len(result),
+            "total": total,
+            "result": result
+        }
+
+    @classmethod
+    def _paginated_search_results(cls, params: Dict[str, Any],result_query) -> Dict[str, Any]:
+
+        offset = params.pop('offset', 0)
+        limit = params.pop('limit', 20)
+        total = 0
+
+        is_lookup = params.pop('is_lookup', 'no')
+        is_lookup = is_lookup in ('yes', 'y', 't', 'true', '1')
+
+        if result_query:
+            total = len([entity for entity in result_query])
+            result_query = result_query.offset(offset)
+            result_query = result_query.limit(limit)
+
+            result = [entity[0].to_dict() for entity in result_query if entity]
 
         else:
             result = []

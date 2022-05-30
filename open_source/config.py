@@ -30,10 +30,10 @@ class BaseConfig(object):
     SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD', 'BbJoQ~@4*$i)')
 
     MYSQL_HOST = os.environ.get('MYSQL_HOST', '127.0.0.1')
-    MYSQL_USER = os.environ.get('MYSQL_USER', 'osourcec')
+    MYSQL_USER = os.environ.get('MYSQL_USER', 'osource')
     MYSQL_PORT = os.environ.get('MYSQL_PORT', 3306)
-    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'opensource')
-    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'osourcec_opensource')
+    MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', 'admin')
+    MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'osource_opensource')
 
     db = {
         'url': "mysql://{user}:{passwd}@{host}:{port}/{db}".format(user=MYSQL_USER, passwd=MYSQL_PASSWORD, host=MYSQL_HOST, port=MYSQL_PORT, db=MYSQL_DATABASE),

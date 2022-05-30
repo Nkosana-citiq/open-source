@@ -7,7 +7,7 @@ from sqlalchemy.sql.sqltypes import Boolean
 
 from open_source import config
 from open_source import db
-from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, Text, Time
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
@@ -34,6 +34,46 @@ class PasswordReset(db.Base):
     expired = Column(DateTime)
     modified = Column(DateTime)
     created = Column(DateTime)
+
+    def save(self, session):
+        session.add(self)
+        session.commit()
+
+    def is_deleted(self) -> bool:
+        return self.state == self.STATE_DELETED
+
+    def make_deleted(self):
+        self.state = self.STATE_DELETED
+
+    def delete(self, session):
+        self.make_deleted()
+        session.commit()
+
+
+class Notification(db.Base):
+    STATE_DELETED = 0
+    STATE_ACTIVE = 1
+
+    __tablename__ = 'notifications'
+
+    id = Column(Integer, primary_key=True)
+
+    recipients = Column(Text)
+
+    @declared_attr
+    def parlour_id(cls):
+        return Column(Integer, ForeignKey('parlours.id'))
+
+    @declared_attr
+    def parlour(cls):
+        return relationship('Parlour')
+
+    consultants = Column(Text)
+    week_days = Column(String(length=200))
+    state = Column(Integer, default=1)
+    scheduled_time = Column(Time)
+    modified_at = Column(DateTime)
+    created_at = Column(DateTime)
 
     def save(self, session):
         session.add(self)
