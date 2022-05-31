@@ -604,18 +604,17 @@ class ExtendedMemberPutEndpoint:
 
             if not extended_member:
                 raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
-
+            date_of_birth = None
             try:
-                try:
-                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
-                except:
+                if req.get("date_of_birth"):
                     date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
+                    extended_member.date_of_birth = date_of_birth
                 date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
                 extended_member.number = req.get("number")
-                extended_member.date_of_birth = date_of_birth
+                
                 extended_member.type = req.get("type")
                 extended_member.id_number = req.get("id_number")
                 extended_member.waiting_period = req.get("waiting_period", 0)
@@ -671,12 +670,13 @@ class ExtendedMemberPutEndpoint:
                     max_age_limit = plan.additional_extended_maximum_age
 
                 if not date_of_birth:
-                    if int(id_number[0:2]) > 21:
-                        number = '19{}'.format(id_number[0:2])
+                    if int(extended_member.id_number[0:2]) > 21:
+                        number = '19{}'.format(extended_member.id_number[0:2])
                     else:
-                        number = '20{}'.format(id_number[0:2])
-                    date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                dob = date_of_birth.date()
+                        number = '20{}'.format(extended_member.id_number[0:2])
+                    birth = '{}-{}-{}'.format(number, extended_member.id_number[2:4], extended_member.id_number[4:6])
+                    date_of_birth = datetime.strptime(birth, "%Y-%m-%d")
+                dob = date_of_birth
                 now = datetime.now().date()
 
                 age = relativedelta(now, dob)
@@ -744,7 +744,6 @@ class ExtendedMemberRestorePutEndpoint:
                 "Error, experienced error while creating Applicant.")
             raise falcon.HTTPBadRequest(
                 "Processing Failed. experienced error while creating Applicant.")
-
 
 
 class ExtededMemberDeleteEndpoint:

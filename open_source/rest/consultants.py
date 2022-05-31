@@ -538,7 +538,7 @@ class ForgotPasswordEndpoint:
     def on_post(self, req, resp):
 
         with db.transaction() as session:
-            
+
             rest_dict = json.load(req.bounded_stream)
 
             email = None
@@ -567,7 +567,7 @@ class ForgotPasswordEndpoint:
             password = conf.SENDER_PASSWORD
 
             message = MIMEMultipart("alternative")
-            message["Subject"] = "multipart test"
+            message["Subject"] = "Forgot Password"
             message["From"] = sender_email
             message["To"] = receiver_email
 
@@ -582,9 +582,6 @@ class ForgotPasswordEndpoint:
                 USER_RESET_PASSWORD_EMAIL_TEMPLATE,
                 args
             )
-
-            subject = "Change of banking details"
-
 
             # Turn these into plain/html MIMEText objects
             # part1 = MIMEText(text, "plain")
@@ -629,101 +626,98 @@ class ContactUsEndpoint:
         return not self.secure
 
     def on_post(self, req, resp):
+        rest_dict = json.load(req.bounded_stream)
 
-        with db.transaction() as session:
-            
-            rest_dict = json.load(req.bounded_stream)
+        email = None
+        full_name = None
+        message = None
 
-            email = None
-            full_name = None
-            message = None
+        user = None
 
-            user = None
+        if 'email' in rest_dict:
+            email = rest_dict.get('email')
 
-            if 'email' in rest_dict:
-                email = rest_dict.get('email')
+        if not email:
+            raise falcon.HTTPBadRequest(title='Error', description='An email address is required')
 
-            if not email:
-                raise falcon.HTTPBadRequest(title='Error', description='An email address is required')
+        if 'full_name' in rest_dict:
+            full_name = rest_dict.get('full_name')
 
-            if 'full_name' in rest_dict:
-                full_name = rest_dict.get('full_name')
+        if not full_name:
+            raise falcon.HTTPBadRequest(title='Error', description='An full name is required')
 
-            if not full_name:
-                raise falcon.HTTPBadRequest(title='Error', description='An full name is required')
+        if 'message' in rest_dict:
+            message = rest_dict.get('message')
+        if not message:
+            raise falcon.HTTPBadRequest(title='Error', description='An message is required')
 
-            if 'message' in rest_dict:
-                message = rest_dict.get('message')
-            if not message:
-                raise falcon.HTTPBadRequest(title='Error', description='An message is required')
+        import smtplib, ssl
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
 
-            import smtplib, ssl
-            from email.mime.text import MIMEText
-            from email.mime.multipart import MIMEMultipart
+        port = 465  # For SSL
+        smtp_server = "smtp.gmail.com"
+        sender_email = "nkosananikani@gmail.com"  # Enter your address
+        receiver_email = email  # Enter receiver address
+        password = '3McsgoId1grf'
 
-            port = 465  # For SSL
-            smtp_server = "smtp.gmail.com"
-            sender_email = "nkosananikani@gmail.com"  # Enter your address
-            receiver_email = email  # Enter receiver address
-            password = '3McsgoId1grf'
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Contact Us"
+        message["From"] = sender_email
+        message["To"] = receiver_email
 
-            message = MIMEMultipart("alternative")
-            message["Subject"] = "multipart test"
-            message["From"] = sender_email
-            message["To"] = receiver_email
+        args = {
+            "user": user.pretty_name,
+            "domain": conf.url,
+            "email": email,
+            "year": datetime.now().year
+        }
 
-            args = {
-                "user": user.pretty_name,
-                "domain": conf.url,
-                "email": email,
-                "year": datetime.now().year
-            }
+        email_body = utils.render_template(
+        """
+        <html>
+        <body>
+            <p>Hi,<br>               
+            </p>
+            <table>
+                <thead class="">
+                    <tr>
+                        <th class="text-muted">Name</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{permission.name}}</td>
+                        <td class="td-actions">
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>
+        """.format(email=email),
+            args
+        )
 
-            email_body = utils.render_template(
-            """
-            <html>
-            <body>
-                <p>Hi,<br>               
-                </p>
-                <table>
-                    <thead class="">
-                        <tr>
-                            <th class="text-muted">Name</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>{{permission.name}}</td>
-                            <td class="td-actions">
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </body>
-            </html>
-            """.format(email=email),
-                args
-            )
-
-            subject = "Contact Us"
+        subject = "Contact Us"
 
 
-            # Turn these into plain/html MIMEText objects
-            # part1 = MIMEText(text, "plain")
-            part2 = MIMEText(email_body, "html")
+        # Turn these into plain/html MIMEText objects
+        # part1 = MIMEText(text, "plain")
+        part2 = MIMEText(email_body, "html")
 
-            # Add HTML/plain-text parts to MIMEMultipart message
-            # The email client will try to render the last part first
-            # message.attach(part1)
-            message.attach(part2)
-            context = ssl.create_default_context()
+        # Add HTML/plain-text parts to MIMEMultipart message
+        # The email client will try to render the last part first
+        # message.attach(part1)
+        message.attach(part2)
+        context = ssl.create_default_context()
 
-            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
-                server.login(sender_email, password)
-                server.sendmail(sender_email, receiver_email, message.as_string())
+        with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
 
-            resp.body = json.dumps({'status': 'success'})
+        resp.body = json.dumps({'status': 'success'})
 
     def get_user_by_email(self, session, email):
         try:
