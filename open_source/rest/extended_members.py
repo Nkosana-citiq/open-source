@@ -464,7 +464,7 @@ class ExtendedMemberCheckAgeLimitEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
             elif member_type == '1':
                 if not plan.beneficiaries:
-                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                    raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
             elif member_type == '2':
                 if not plan.extended_members:
                     raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
@@ -604,24 +604,25 @@ class ExtendedMemberPutEndpoint:
 
             if not extended_member:
                 raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
-
+            date_of_birth = None
             try:
-                try:
-                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
-                    date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
-                except:
+                if req.get("date_of_birth"):
                     date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
-                    date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
+                    extended_member.date_of_birth = date_of_birth
+                date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
                 extended_member.number = req.get("number")
-                extended_member.date_of_birth = date_of_birth
+                
                 extended_member.type = req.get("type")
                 extended_member.id_number = req.get("id_number")
                 extended_member.waiting_period = req.get("waiting_period", 0)
                 extended_member.relation_to_main_member = req.get("relation_to_main_member")
                 extended_member.applicant_id = applicant.id
+                if req.get("is_deceased"):
+                    extended_member.is_deceased = req.get("is_deceased")
+                    extended_member.state = ExtendedMember.STATE_ARCHIVED
                 extended_member.date_joined = date_joined
                 extended_member.modified_at = datetime.now()
 
@@ -634,10 +635,10 @@ class ExtendedMemberPutEndpoint:
                         raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                 elif extended_member.type == 1 and extended_member.type != old_type:
                     if not plan.beneficiaries:
-                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                        raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
 
                     if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
+                        raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependent members has been reached.")
                 elif extended_member.type == 2 and extended_member.type != old_type:
                     if not plan.extended_members:
                         raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
@@ -669,15 +670,13 @@ class ExtendedMemberPutEndpoint:
                     max_age_limit = plan.additional_extended_maximum_age
 
                 if not date_of_birth:
-                    if int(id_number[0:2]) > 21:
-                        number = '19{}'.format(id_number[0:2])
+                    if int(extended_member.id_number[0:2]) > 21:
+                        number = '19{}'.format(extended_member.id_number[0:2])
                     else:
-                        number = '20{}'.format(id_number[0:2])
-                    date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
-                try:
-                    dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
-                except:
-                    dob = date_of_birth
+                        number = '20{}'.format(extended_member.id_number[0:2])
+                    birth = '{}-{}-{}'.format(number, extended_member.id_number[2:4], extended_member.id_number[4:6])
+                    date_of_birth = datetime.strptime(birth, "%Y-%m-%d")
+                dob = date_of_birth
                 now = datetime.now().date()
 
                 age = relativedelta(now, dob)
@@ -745,7 +744,6 @@ class ExtendedMemberRestorePutEndpoint:
                 "Error, experienced error while creating Applicant.")
             raise falcon.HTTPBadRequest(
                 "Processing Failed. experienced error while creating Applicant.")
-
 
 
 class ExtededMemberDeleteEndpoint:
@@ -1076,9 +1074,6 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
 
-            if id_number:
-                error_data.append({'data': data, 'error': "ID number already exists for either main member or extended member."})
-                continue
 
         if len(id_check) != 13:
             try:
@@ -1105,21 +1100,32 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
             error_data.append({'data': data, 'error': "Unrecognized member relation."})
             continue
         contact = data[3]
-        extended_member = ExtendedMember(
-            first_name = data[0],
-            last_name = data[1],
-            number = "".join(["+27", contact[1:]]) if len(str(contact)) == 10 else contact,
-            date_of_birth = date_of_birth,
-            type = member_type_value,
-            id_number = id_check if len(id_check) == 13 else None,
-            relation_to_main_member = member_relation_value,
-            applicant_id = applicant.id,
-            date_joined = date_joined,
-            waiting_period=data[5] if data[5] else 0,
-            state=ExtendedMember.STATE_ACTIVE,
-            created_at = datetime.now(),
-            modified_at = datetime.now()
-        )
+        
+        member_exists = session.query(ExtendedMember).filter(
+            ExtendedMember.first_name == data[0].strip(),
+            ExtendedMember.last_name == data[1].strip(),
+            ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED))
+        ).first()
+
+        if member_exists:
+            extended_member = member_exists
+            extended_member.id_number = id_check if len(id_check) == 13 else None
+        else:
+            extended_member = ExtendedMember(
+                first_name = data[0],
+                last_name = data[1],
+                number = "".join(["+27", contact[1:]]) if len(str(contact)) == 10 else contact,
+                date_of_birth = date_of_birth,
+                type = member_type_value,
+                id_number = id_check if len(id_check) == 13 else None,
+                relation_to_main_member = member_relation_value,
+                applicant_id = applicant.id,
+                date_joined = date_joined,
+                waiting_period=data[5] if data[5] else 0,
+                state=ExtendedMember.STATE_ACTIVE,
+                created_at = datetime.now(),
+                modified_at = datetime.now()
+            )
         plan = applicant.plan
 
         if extended_member:
@@ -1158,6 +1164,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                 if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
                     error_data.append({'data': data, 'error': "Limit for number of additional-extended-member members has been reached."})
                     continue
+
 
         member_type = extended_member.type
         min_age_limit = 0
