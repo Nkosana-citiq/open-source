@@ -325,10 +325,10 @@ class ExtendedMembersPostEndpoint:
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                     elif extended_member.type == 1:
                         if not plan.beneficiaries:
-                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependants.")
+                            raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
 
                         if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
-                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependant members has been reached.")
+                            raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependent members has been reached.")
                     elif extended_member.type == 2:
                         if not plan.extended_members:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
@@ -370,6 +370,8 @@ class ExtendedMembersPostEndpoint:
                     dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
                 else:
                     dob = date_of_birth
+
+                extended_member.date_of_birth = dob
                 now = datetime.now().date()
 
                 age = relativedelta(now, dob)
@@ -744,6 +746,7 @@ class ExtendedMemberRestorePutEndpoint:
                 "Error, experienced error while creating Applicant.")
             raise falcon.HTTPBadRequest(
                 "Processing Failed. experienced error while creating Applicant.")
+
 
 
 class ExtededMemberDeleteEndpoint:

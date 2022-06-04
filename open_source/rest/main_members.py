@@ -1193,7 +1193,6 @@ class MainMemberPutEndpoint:
 
             applicant = session.query(Applicant).filter(
                 Applicant.id == applicant_req.get("id"),
-                Applicant.plan_id == plan.id,
                 Applicant.state == Applicant.STATE_ACTIVE).first()
 
             if not applicant:
