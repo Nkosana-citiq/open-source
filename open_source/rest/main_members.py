@@ -531,14 +531,14 @@ class MemberCertificateGetEndpoint:
 
                 main_meber = session.query(MainMember).filter(
                     MainMember.id == id,
-                    MainMember.state == MainMember.STATE_ACTIVE
+                    MainMember.state != MainMember.STATE_DELETED
                 ).first()
                 if main_meber is None:
                     raise falcon.HTTPNotFound(title="Error", description="Main member not found")
 
                 applicant = session.query(Applicant).filter(
                     Applicant.id == main_meber.applicant_id,
-                    Applicant.state == Applicant.STATE_ACTIVE
+                    Applicant.state != Applicant.STATE_DELETED
                 ).first()
 
                 if applicant is None:
