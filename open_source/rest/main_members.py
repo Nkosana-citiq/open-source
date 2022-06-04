@@ -127,14 +127,14 @@ class MainGetAllParlourEndpoint:
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
-                        Applicant.parlour_id == parlour.id,
+                        MainMember.parlour_id == parlour.id,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field))
                         )
-                    ).all()
+                    )
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -279,8 +279,9 @@ class MainGetAllConsultantEndpoint:
 
                     if not main_members:
                         resp.body = json.dumps([])
-                    result = MainMember._paginated_search_results(req.params, main_members)
-                    resp.body = json.dumps(result, default=str)
+                    else:
+                        result = MainMember._paginated_search_results(req.params, main_members)
+                        resp.body = json.dumps(result, default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
