@@ -270,10 +270,10 @@ class MainGetAllConsultantEndpoint:
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.parlour_id == parlour.id,
                         or_(
-                            MainMember.first_name.ilike('{}%'.format(search_field)),
-                            MainMember.last_name.ilike('{}%'.format(search_field)),
-                            MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field)) 
+                            MainMember.first_name.ilike('%{}%'.format(search_field)),
+                            MainMember.last_name.ilike('%{}%'.format(search_field)),
+                            MainMember.id_number.ilike('%{}%'.format(search_field)),
+                            Applicant.policy_num.ilike('%{}%'.format(search_field))
                         )
                     )
 
