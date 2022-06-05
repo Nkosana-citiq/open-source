@@ -162,7 +162,7 @@ class ExtendedMembersGetAllArchivedEndpoint:
 
                 if applicant.state != Applicant.STATE_ACTIVE:
                     extended_members = session.query(ExtendedMember).filter(
-                        ExtendedMember.state != ExtendedMember.STATE_DELETD,
+                        ExtendedMember.state != ExtendedMember.STATE_DELETED,
                         ExtendedMember.applicant_id == applicant.id
                     ).all()
                 else:
