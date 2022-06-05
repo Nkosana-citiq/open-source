@@ -1101,12 +1101,11 @@ class MainMemberCheckAgeLimitEndpoint:
             if not is_ID_number:
                 applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
                 applicant_ids = [applicant.id for applicant in applicants]
-                id_number = session.query(ExtendedMember).filter(
+                is_ID_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == id_number_param,
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
                     ExtendedMember.applicant_id.in_(applicant_ids)
                 ).first()
-
 
             min_age_limit = plan.member_minimum_age
             max_age_limit = plan.member_maximum_age
