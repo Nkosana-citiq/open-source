@@ -731,8 +731,7 @@ class InvoiceExportToExcelEndpoint:
                     d = main_member.to_dict()
                     d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.created, 'number_of_months': invoice.number_of_months})
                     results.append(d)
-                # print(d)
-                # if results:
+
                 data = []
                 for res in results:
                     applicant = res.get('applicant')
