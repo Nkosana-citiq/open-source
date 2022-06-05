@@ -160,14 +160,14 @@ class ExtendedMembersGetAllArchivedEndpoint:
                 if not applicant:
                     raise falcon.HTTPBadRequest()
 
-                extended_members = session.query(ExtendedMember).filter(
-                    ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
-                    ExtendedMember.applicant_id == applicant.id
-                ).all()
-
-                if not extended_members:
+                if applicant.state != Applicant.STATE_ACTIVE:
                     extended_members = session.query(ExtendedMember).filter(
-                        ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
+                        ExtendedMember.state != ExtendedMember.STATE_DELETD,
+                        ExtendedMember.applicant_id == applicant.id
+                    ).all()
+                else:
+                    extended_members = session.query(ExtendedMember).filter(
+                        ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
                         ExtendedMember.applicant_id == applicant.id
                     ).all()
 
