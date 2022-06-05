@@ -1212,7 +1212,7 @@ class MainMemberPutEndpoint:
             if not main_member:
                 raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
 
-            applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
+            applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
             applicant_ids = [applicant.id for applicant in applicants]
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == req.get("id_number"),
