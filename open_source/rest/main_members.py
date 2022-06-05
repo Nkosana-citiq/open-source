@@ -137,7 +137,7 @@ class MainGetAllParlourEndpoint:
                     )
 
                     if not main_members:
-                        resp.body = json.dumps([])
+                        resp.body = json.dumps({"total": 0, "count": 0, "offset": 0, "limit":0, "result": []})
                     else:
                         result = MainMember._paginated_search_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
@@ -201,7 +201,7 @@ class MainGetAllParlourEndpoint:
                             MainMember.created_at <= end_date
                         )
                     if not main_members.all():
-                        resp.body = json.dumps([])
+                        resp.body = json.dumps({"total": 0, "count": 0, "offset": 0, "limit":0, "result": []})
                     else:
                         result = MainMember._paginated_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
@@ -278,7 +278,7 @@ class MainGetAllConsultantEndpoint:
                     )
 
                     if not main_members:
-                        resp.body = json.dumps([])
+                        resp.body = json.dumps({"total": 0, "count": 0, "offset": 0, "limit":0, "result": []})
                     else:
                         result = MainMember._paginated_search_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
@@ -340,7 +340,7 @@ class MainGetAllConsultantEndpoint:
                         ).order_by(MainMember.id.desc())
 
                     if not main_members:
-                        resp.body = json.dumps([])
+                        resp.body = json.dumps({"total": 0, "count": 0, "offset": 0, "limit":0, "result": []})
                     else:
                         result = MainMember._paginated_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
