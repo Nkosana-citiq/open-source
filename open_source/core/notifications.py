@@ -72,8 +72,7 @@ class Notification(db.Base):
             return sum([invoice.amount for invoice in invoices])
         return 0
 
-    @staticmethod
-    def send_email(cls, session, notice, parlour):
+    def send_email(self, session, notice, parlour):
         port = 465  # For SSL
         smtp_server = "mail.osource.co.za"
         sender_email = conf.SENDER_EMAIL
@@ -89,7 +88,7 @@ class Notification(db.Base):
 
         for id in notice.consultants.split(", "):
             consultant = session.query(Consultant).filter(Consultant.id == int(id), Consultant.state == Consultant.STATE_ACTIVE).first()
-            amount = cls.get_money_collected(session, consultant)
+            amount = self.get_money_collected(session, consultant)
 
             entry = """
             <tr>
