@@ -3,7 +3,8 @@ from datetime import datetime
 
 from open_source import db
 
-from open_source.core.parlours import Parlour, Notification
+from open_source.core.parlours import Parlour
+from open_source.core.notifications import Notification
 
 
 def get_parlour(session, notice):

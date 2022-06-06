@@ -8,11 +8,12 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
 from open_source import db, utils
-from open_source.core import parlours
+
 from open_source.core.consultants import Consultant
-from open_source.core.parlours import Notification, Parlour
+from open_source.core.parlours import Parlour
+from open_source.core.notifications import Notification
 from open_source import webtokens
-from sqlalchemy import Date, cast, func
+
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from falcon_cors import CORS
 
