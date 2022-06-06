@@ -6,7 +6,7 @@ from open_source import config
 
 logging.basicConfig(level=logging.INFO)
 
-from open_source.rest import middleware, notifications
+from open_source.rest import middleware
 from open_source.rest import (
     applicants, consultants, parlours, plans,
     main_members, extended_members, payments,
@@ -60,7 +60,7 @@ api.add_route('/open-source/parlours/{id}/delete', parlours.ParlourDeleteEndpoin
 api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
-api.add_route('/open-source/parlours/{id}/add_notifications', parlours.ParlourNotificationsPostEndpoint())
+api.add_route('/open-source/parlours/{id}/add_notifications', notifications.ParlourNotificationsPostEndpoint())
 api.add_route('/open-source/parlours/{id}/send_notification', notifications.ParlourNotificationsSendEmailEndpoint())
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
