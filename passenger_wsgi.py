@@ -6,11 +6,11 @@ from open_source import config
 
 logging.basicConfig(level=logging.INFO)
 
-from open_source.rest import middleware
+from open_source.rest import middleware, notifications
 from open_source.rest import (
     applicants, consultants, parlours, plans,
     main_members, extended_members, payments,
-    additional_extended_members, dependants, admins
+    additional_extended_members, dependants, admins, notifications
 )
 
 from falcon_multipart.middleware import MultipartMiddleware
@@ -61,7 +61,7 @@ api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
 api.add_route('/open-source/parlours/{id}/add_notifications', parlours.ParlourNotificationsPostEndpoint())
-api.add_route('/open-source/parlours/{id}/send_notification', parlours.ParlourNotificationsSendEmailEndpoint())
+api.add_route('/open-source/parlours/{id}/send_notification', notifications.ParlourNotificationsSendEmailEndpoint())
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
 api.add_route('/open-source/plans', plans.PlanPostEndpoint())
