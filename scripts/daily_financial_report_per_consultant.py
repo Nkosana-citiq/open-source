@@ -38,11 +38,12 @@ def send_email(session, notice, parlour):
     smtp_server = "mail.osource.co.za"
     sender_email = conf.SENDER_EMAIL
     password = conf.SENDER_PASSWORD
+    to_list = [x.strip() for x in notice.recipients.split(",")]
 
     message = MIMEMultipart("alternative")
     message["Subject"] = "Daily Financial Report"
     message["From"] = sender_email
-    message["To"] = ", ".join([ x.strip() for x in notice.recipients.split(",")])
+
     consultants = []
     sum = 0
 
@@ -65,8 +66,8 @@ def send_email(session, notice, parlour):
             <td></td>
         </tr>
         <tr>
-            <td>{}</td>
-            <td>R{}</td>
+            <td><strong>{}</strong></td>
+            <td><strong>R{}</strong></td>
         </tr>
         """.format(''.join(consultants), parlour.parlourname, sum)}
 
@@ -87,7 +88,8 @@ def send_email(session, notice, parlour):
 
     with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
         server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message.as_string())
+        server.sendmail(sender_email, to_list, message.as_string())
+
 
 
 def get_parlour(session, notice):
