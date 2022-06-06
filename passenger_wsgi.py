@@ -61,6 +61,7 @@ api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
 api.add_route('/open-source/parlours/{id}/add_notifications', parlours.ParlourNotificationsPostEndpoint())
+api.add_route('/open-source/parlours/{id}/send_notification', parlours.ParlourNotificationsSendEmailEndpoint())
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
 api.add_route('/open-source/plans', plans.PlanPostEndpoint())
