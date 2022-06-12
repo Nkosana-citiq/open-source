@@ -43,6 +43,7 @@ class Notification(db.Base):
     state = Column(Integer, default=1)
     scheduled_time = Column(Time)
     modified_at = Column(DateTime)
+    last_run_date = Column(DateTime)
     created_at = Column(DateTime)
 
     def save(self, session):
@@ -60,11 +61,11 @@ class Notification(db.Base):
         session.commit()
     
     @staticmethod
-    def get_money_collected(cls, session, consultant):
+    def get_money_collected(session, consultant):
         applicants = session.query(Applicant).filter(Applicant.consultant_id == consultant.id, Applicant.state == Applicant.STATE_ACTIVE).all()
         applicant_ids = [applicant.id for applicant in applicants]
 
-        payments =  session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.date >= datetime.today().date()).all()
+        payments =  session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.date >= datetime.datetime.today().date()).all()
 
         if len(payments) > 0:
             payment_ids = [payment.id for payment in payments]
@@ -72,12 +73,12 @@ class Notification(db.Base):
             return sum([invoice.amount for invoice in invoices])
         return 0
 
-    def send_email(self, session, notice, parlour):
+    def send_email(self, session, parlour):
         port = 465  # For SSL
         smtp_server = "mail.osource.co.za"
         sender_email = conf.SENDER_EMAIL
         password = conf.SENDER_PASSWORD
-        to_list = [x.strip() for x in notice.recipients.split(",")]
+        to_list = [x.strip() for x in self.recipients.split(",")]
 
         message = MIMEMultipart("alternative")
         message["Subject"] = "Daily Financial Report"
@@ -86,7 +87,7 @@ class Notification(db.Base):
         consultants = []
         sum = 0
 
-        for id in notice.consultants.split(", "):
+        for id in self.consultants.split(", "):
             consultant = session.query(Consultant).filter(Consultant.id == int(id), Consultant.state == Consultant.STATE_ACTIVE).first()
             amount = self.get_money_collected(session, consultant)
 

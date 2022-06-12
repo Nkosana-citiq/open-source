@@ -15,14 +15,22 @@ def get_parlour(session, notice):
 def cli():
     with db.no_transaction() as session:
         notifications = session.query(Notification).filter(Notification.state == Notification.STATE_ACTIVE).order_by(Notification.parlour_id).all()
-
-        for notice in notifications:
+        errors = []
+        for notification in notifications:
             try:
-                parlour = get_parlour(session, notice)
-                if str(datetime.now().weekday()) in  notice.week_days.split(", "):
-                    if datetime.now().time() > notice.scheduled_time:
-                        Notification.send_email(session, notice, parlour)
-            except:
+                parlour = get_parlour(session, notification)
+                if str(datetime.now().weekday()) in  notification.week_days.split(", "):
+                    if not notification.last_run_date:
+                        notification.send_email(session, parlour)
+                        notification.modified_at = datetime.now()
+                        notification.last_run_date = datetime.now()
+                    elif datetime.now().time() > notification.scheduled_time and datetime.now().date() > notification.last_run_date.date():
+                        notification.send_email(session, parlour)
+                        notification.modified_at = datetime.now()
+                        notification.last_run_date = datetime.now()
+                notification.save(session)
+            except Exception as e:
+                errors.append({"notification_id": notification.id, "error": str(e)})
                 continue
 
 

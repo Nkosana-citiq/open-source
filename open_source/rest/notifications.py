@@ -46,24 +46,30 @@ class ParlourNotificationsPostEndpoint:
 
             days = ', '.join(set(rest_dict.get('days')))
             recipients = ', '.join(set(rest_dict.get('recepients')))
+            print("=============================================================================")
+            print(rest_dict.get('consultants'))
             consultants = ', '.join(set(rest_dict.get('consultants')))
 
             if "all" in consultants:
-                consultants = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                consultants = ', '.join(str(v) for v in set(cons))
 
             notify_times = rest_dict.get('time').split(":")
             notify_time = time(int(notify_times[0]), int(notify_times[1]))
 
-            notification = Notification(
-                recipients = recipients,
-                week_days = days,
-                scheduled_time = notify_time,
-                parlour_id = parlour.id,
-                consultants = consultants,
-                state = Notification.STATE_ACTIVE,
-                modified_at = datetime.now(),
-                created_at = datetime.now()
-            )
+            try: 
+                notification = Notification(
+                    recipients = recipients,
+                    week_days = days,
+                    scheduled_time = notify_time,
+                    parlour_id = parlour.id,
+                    consultants = consultants,
+                    state = Notification.STATE_ACTIVE,
+                    modified_at = datetime.now(),
+                    created_at = datetime.now()
+                )
+            except:
+                raise HTTPBadRequest(title="Error", description="Error creating notification instance.")
 
             notification.save(session)
 
@@ -104,7 +110,8 @@ class ParlourNotificationsSendEmailEndpoint:
             consultants = ', '.join(set(rest_dict.get('consultants')))
 
             if "all" in consultants:
-                consultants = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                consultants = ', '.join(str(v) for v in set(cons))
 
             notification = Notification(
                 recipients = recipients,
@@ -115,5 +122,5 @@ class ParlourNotificationsSendEmailEndpoint:
                 created_at = datetime.now()
             )
 
-            Notification.send_email(session, notification, parlour)
+            notification.send_email(session, parlour)
             resp.body = json.dumps({"status": "Success"}, default=str)
