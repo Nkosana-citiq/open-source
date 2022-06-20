@@ -767,11 +767,15 @@ class ExtededMemberDeleteEndpoint:
                 extended_member = session.query(ExtendedMember).get(id)
 
                 if extended_member is None:
-                    raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant Not Found")
+                    raise falcon.HTTPNotFound(title="404 Not Found", description="Extended member Not Found")
                 if extended_member.is_deleted:
-                    falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
+                    falcon.HTTPNotFound(title="404 Not Found", description="Extended member does not exist.")
 
-                extended_member.delete(session)
+                if extended_member is None:
+                    raise falcon.HTTPNotFound(title="404 Not Found", description="Extended member Not Found")
+                if extended_member.is_deleted:
+                    falcon.HTTPNotFound(title="404 Not Found", description="Extended member does not exist.")
+
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
@@ -800,7 +804,18 @@ class ExtededMemberArchiveEndpoint:
                 if extended_member.is_deleted:
                     falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
 
-                extended_member.archive(session)
+                extended_member.make_archived()
+                extended_member.save(session)
+
+                applicant_id = extended_member.applicant_id
+                applicant = session.query(Applicant).get(applicant_id)
+
+                old_file = applicant.document
+                update_certificate(applicant)
+
+                if old_file and os.path.exists(old_file):
+                    os.remove(old_file)
+
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
             logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))

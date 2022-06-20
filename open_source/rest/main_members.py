@@ -390,13 +390,13 @@ class MainGetAllArchivedParlourEndpoint:
                         Applicant
                     ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ARCHIVED,
+                        MainMember.parlour_id == parlour.id,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field))
-                        ),
-                        Parlour.id == parlour.id
+                        )
                     ).all()
 
                     if not main_members:
