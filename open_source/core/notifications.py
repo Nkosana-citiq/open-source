@@ -59,13 +59,23 @@ class Notification(db.Base):
     def delete(self, session):
         self.make_deleted()
         session.commit()
-    
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "week_days": self.week_days,
+            "scheduled_time": self.scheduled_time,
+            "consultants": self.consultants,
+            "recipients": self.recipients,
+            "parlour": self.parlour.to_dict()
+        }
+
     @staticmethod
     def get_money_collected(session, consultant):
         applicants = session.query(Applicant).filter(Applicant.consultant_id == consultant.id, Applicant.state == Applicant.STATE_ACTIVE).all()
         applicant_ids = [applicant.id for applicant in applicants]
 
-        payments =  session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.date >= datetime.datetime.today().date()).all()
+        payments =  session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.created >= datetime.datetime.today().date()).all()
 
         if len(payments) > 0:
             payment_ids = [payment.id for payment in payments]

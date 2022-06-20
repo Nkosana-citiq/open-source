@@ -60,7 +60,10 @@ api.add_route('/open-source/parlours/{id}/delete', parlours.ParlourDeleteEndpoin
 api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
+api.add_route('/open-source/parlours/{id}/notifications', notifications.NotificationGetEndpoint())
 api.add_route('/open-source/parlours/{id}/add_notifications', notifications.ParlourNotificationsPostEndpoint())
+api.add_route('/open-source/notifications/{id}/edit_notifications', notifications.ParlourNotificationsPutEndpoint())
+api.add_route('/open-source/notifications/{id}/delete_notifications', notifications.ParlourNotificationsDeleteEndpoint())
 api.add_route('/open-source/parlours/{id}/send_notification', notifications.ParlourNotificationsSendEmailEndpoint())
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())

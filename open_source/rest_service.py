@@ -6,11 +6,11 @@ from open_source import config
 
 logging.basicConfig(level=logging.INFO)
 
-from open_source.rest import middleware
+from open_source.rest import middleware, users
 from open_source.rest import (
     applicants, consultants, parlours, plans,
     main_members, extended_members, payments,
-    additional_extended_members, dependants, admins
+    additional_extended_members, dependants, notifications
 )
 
 from falcon_multipart.middleware import MultipartMiddleware
@@ -59,7 +59,11 @@ api.add_route('/open-source/parlours/{id}/delete', parlours.ParlourDeleteEndpoin
 api.add_route('/open-source/parlours/signin', parlours.ParlourAuthEndpoint())
 api.add_route('/open-source/parlours/signup', parlours.ParlourSignupEndpoint())
 api.add_route('/open-source/actions/reset_password', parlours.ResetPasswordPostEndpoint())
-
+api.add_route('/open-source/parlours/{id}/notifications', notifications.NotificationGetEndpoint())
+api.add_route('/open-source/parlours/{id}/add_notifications', notifications.ParlourNotificationsPostEndpoint())
+api.add_route('/open-source/notifications/{id}/edit_notifications', notifications.ParlourNotificationsPutEndpoint())
+api.add_route('/open-source/notifications/{id}/delete_notifications', notifications.ParlourNotificationsDeleteEndpoint())
+api.add_route('/open-source/parlours/{id}/send_notification', notifications.ParlourNotificationsSendEmailEndpoint())
 
 api.add_route('/open-source/parlours/{id}/plans/all', plans.PlanGetParlourAllEndpoint())
 api.add_route('/open-source/plans', plans.PlanPostEndpoint())
@@ -104,9 +108,9 @@ api.add_route('/open-source/main-members/{id}/upload', main_members.MainMemberPo
 api.add_route('/open-source/parlours/{id}/main-members/file', main_members.MainMemberDownloadCSVGetEndpoint())
 api.add_route('/open-source/main-members/{id}/get', main_members.MainMemberGetEndpoint())
 api.add_route('/open-source/main-members/{id}/update', main_members.MainMemberPutEndpoint())
+api.add_route('/open-source/plans/{id}/check-age-limit', main_members.MainMemberCheckAgeLimitEndpoint())
 api.add_route('/open-source/main-members/{id}/exception', main_members.MainMemberPutAgeLimitExceptionEndpoint())
 api.add_route('/open-source/main-members/{id}/restore', main_members.MainMemberRestorePutEndpoint())
-api.add_route('/open-source/plans/{id}/check-age-limit', main_members.MainMemberCheckAgeLimitEndpoint())
 api.add_route('/open-source/main-members/{id}/delete', main_members.MainMemberDeleteEndpoint())
 api.add_route('/open-source/main-members/{id}/archive', main_members.MainMemberArchiveEndpoint())
 api.add_route('/open-source/main-members/send-sms', main_members.SMSService())
