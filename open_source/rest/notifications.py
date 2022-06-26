@@ -4,7 +4,6 @@ import json
 from datetime import datetime, time
 
 from open_source import db
-from open_source.core.consultants import Consultant
 from open_source.core.notifications import Notification
 from open_source.core.parlours import Parlour
 from falcon_cors import CORS

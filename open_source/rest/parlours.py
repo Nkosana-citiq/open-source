@@ -8,13 +8,13 @@ import logging
 
 from open_source import db, utils
 
-from open_source.core.consultants import Consultant
 from open_source.core.parlours import Parlour
 
 from open_source import webtokens
 
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from falcon_cors import CORS
+from open_source.core.users import User
 
 logger = logging.getLogger(__name__)
 public_cors = CORS(allow_all_origins=True)
@@ -439,7 +439,7 @@ class ParlourAuthEndpoint:
                     if isinstance(user, Parlour):
                         permission = "Parlour"
                     else:
-                        permission =  "Consultant" if isinstance(user, Consultant) else "admin"
+                        permission =  "Consultant" if isinstance(user, User) else "admin"
 
                     resp.body = json.dumps(
                         {
@@ -557,7 +557,7 @@ class ResetPasswordPostEndpoint:
 
             if not reset:
                 try:
-                    reset = session.query(Consultant).filter(Consultant.email == email, Consultant.state == Consultant.STATE_ACTIVE).one_or_none()
+                    reset = session.query(User).filter(User.email == email, User.state == User.STATE_ACTIVE).one_or_none()
                 except MultipleResultsFound:
                     raise falcon.HTTPBadRequest(title='Error', description='The email for this account is not unique')
                 if not reset:

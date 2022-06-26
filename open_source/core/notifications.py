@@ -10,12 +10,13 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Time
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
-from open_source.core.applicants import Applicant
-from open_source.core.consultants import Consultant
+from open_source.core.main_members import MainMember
 from open_source.core.payments import Payment
 from open_source.core.invoices import Invoice
 
 from open_source.core.resources import DAILY_FINANCIAL_REPORT_PER_CONSULTANT_EMAIL_TEMPLATE
+from open_source.core.roles import Role
+from open_source.core.users import User
 
 conf = config.get_config()
 
@@ -71,11 +72,11 @@ class Notification(db.Base):
         }
 
     @staticmethod
-    def get_money_collected(session, consultant):
-        applicants = session.query(Applicant).filter(Applicant.consultant_id == consultant.id, Applicant.state == Applicant.STATE_ACTIVE).all()
-        applicant_ids = [applicant.id for applicant in applicants]
+    def get_money_collected(session, user):
+        main_members = session.query(MainMember).filter(MainMember.user_id == user.id, MainMember.state == MainMember.STATE_ACTIVE).all()
+        main_member_ids = [main_member.id for main_member in main_members]
 
-        payments =  session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.created >= datetime.datetime.today().date()).all()
+        payments =  session.query(Payment).filter(Payment.main_member_id.in_(main_member_ids), Payment.created >= datetime.datetime.today().date()).all()
 
         if len(payments) > 0:
             payment_ids = [payment.id for payment in payments]
@@ -98,14 +99,14 @@ class Notification(db.Base):
         sum = 0
 
         for id in self.consultants.split(", "):
-            consultant = session.query(Consultant).filter(Consultant.id == int(id), Consultant.state == Consultant.STATE_ACTIVE).first()
-            amount = self.get_money_collected(session, consultant)
+            user = session.query(User).filter(User.id == int(id), User.state == User.STATE_ACTIVE, User.role_id == Role.IS_CONSULTANT).first()
+            amount = self.get_money_collected(session, user)
 
             entry = """
             <tr>
                 <td>{} {}</td>
                 <td>R{}</td>
-            </tr>""".format(consultant.first_name, consultant.last_name, amount)
+            </tr>""".format(user.first_name, user.last_name, amount)
 
             consultants.append(entry)
             sum += amount

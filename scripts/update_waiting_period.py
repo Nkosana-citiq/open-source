@@ -1,5 +1,4 @@
 from open_source import db
-from open_source.core.applicants import Applicant
 from open_source.core.main_members import MainMember
 from open_source.core.extended_members import ExtendedMember
 from open_source.rest.extended_members import update_certificate
@@ -9,9 +8,9 @@ def get_all_members(session):
     return members
 
 
-def update_extended_members_waiting_period(session, applicant_id):
+def update_extended_members_waiting_period(session, main_member_id):
     extended_members = session.query(ExtendedMember).filter(
-        ExtendedMember.applicant_id == applicant_id,
+        ExtendedMember.main_member_id == main_member_id,
         ExtendedMember.state != ExtendedMember.STATE_DELETED,
         ExtendedMember.waiting_period > 0).all()
 
@@ -21,10 +20,9 @@ def update_extended_members_waiting_period(session, applicant_id):
 
 def update_main_members_waiting_period(session, main_member):
     main_member.waiting_period -= 1
-    applicant_id = main_member.applicant_id
-    applicant = session.query(Applicant).get(applicant_id)
-    update_extended_members_waiting_period(session, applicant_id)
-    applicant = update_certificate(applicant)
+    main_member_id = main_member.id
+    update_extended_members_waiting_period(session, main_member_id)
+    main_member = update_certificate(main_member)
 
 
 def update_waiting_period():

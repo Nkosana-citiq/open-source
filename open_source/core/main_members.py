@@ -13,17 +13,38 @@ class MainMember(db.Base):
     STATE_ACTIVE = 1
     STATE_DELETED = 0
 
+    STATUS_LAPSED = 4
+    STATUS_SKIPPED = 3
+    STATUS_UNPAID= 2
+    STATUS_PAID = 1
+
+    status_to_text = {
+        STATUS_LAPSED: 'Lapsed',
+        STATUS_SKIPPED: 'Skipped',
+        STATUS_UNPAID: 'Unpaid',
+        STATUS_PAID: 'Paid'
+    }
+
     id = Column(Integer, primary_key=True)
     id_number = Column(String(length=15))
     date_of_birth = Column(Date())
     age_limit_exceeded = Column(Boolean(), default=False)
     age_limit_exception = Column(Boolean(), default=False)
     state = Column(Integer, default=1)
+    address = Column(String(length=100))
     first_name = Column(String(length=50))
     last_name = Column(String(length=50))
     contact = Column(String(length=12))
     is_deceased = Column(Boolean, default=False)
     waiting_period = Column(Integer, default=0)
+    policy_num = Column(String(length=15))
+    certificate = Column(String(length=250))
+    document = Column(Text)
+    old_url = Column(Boolean)
+    personal_docs = Column(Text)
+    status = Column(String(length=15), default="unpaid")
+    canceled = Column(Integer, default=0)
+    date = Column(DateTime)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
     date_joined = Column(DateTime, server_default=func.now())
@@ -37,13 +58,25 @@ class MainMember(db.Base):
         return relationship('Parlour')
 
     @declared_attr
-    def applicant_id(cls):
-        return Column(Integer, ForeignKey('applicants.id'))
+    def user_id(cls):
+        return Column(Integer, ForeignKey('users.id'))
 
     @declared_attr
-    def applicant(cls):
-        return relationship('Applicant')
-    
+    def user(cls):
+        return relationship('User')
+
+    @declared_attr
+    def plan_id(cls):
+        return Column(Integer, ForeignKey('plans.id'))
+
+    @declared_attr
+    def plan(cls):
+        return relationship('Plan')
+
+    @declared_attr
+    def extended_members(cls):
+        return relationship('ExtendedMember', back_populates='main_member')
+
     def localize_contact(self):
         if len(self.contact) == 10:
             return ''.join(['+27', self.contact[1:]])
@@ -64,12 +97,22 @@ class MainMember(db.Base):
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
             'is_deceased': self.is_deceased,
+            'policy_num': self.policy_num,
+            'document': self.document,
+            'old_url': self.old_url,
+            'personal_docs':self.personal_docs,
+            'address': self.address,
+            'certificate': self.certificate,
+            'date': self.date,
+            'status': self.status.capitalize(),
+            'canceled': self.canceled,
             'waiting_period': self.waiting_period,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
             'extended_member_limit': self.extended_member_limit(),
-            'parlour': self.parlour.to_dict()  if self.parlour else {} ,
-            'applicant': self.applicant.to_short_dict() if self.applicant else {} 
+            "plan": self.plan.to_dict(),
+            "consultant": self.user.to_dict() if self.user else{},
+            'parlour': self.parlour.to_dict()
         }
 
     def to_short_dict(self):
@@ -86,8 +129,18 @@ class MainMember(db.Base):
             'extended_member_limit': self.extended_member_limit(),
             'date_joined': self.date_joined,
             'is_deceased': self.is_deceased,
+            'policy_num': self.policy_num,
+            'document': self.document,
+            'old_url': self.old_url,
+            'personal_docs':self.personal_docs,
+            'address': self.address,
+            'certificate': self.certificate,
+            'date': self.date,
+            'status': self.status.capitalize(),
             'created_at': self.created_at,
-            'applicant': self.applicant.to_short_dict() if self.applicant else {}
+            "plan": self.plan.to_dict(),
+            "consultant": self.user.to_dict(),
+            'parlour': self.parlour.to_dict()
         }
     
     @classmethod
@@ -178,10 +231,6 @@ class MainMember(db.Base):
 
     def extended_member_limit(self):
         with db.no_transaction() as session:
-            sql = "select * from extended_members where applicant_id={} and age_limit_exceeded=1 AND age_limit_exception=0 AND state=1".format(self.applicant_id)
-            result = session.execute(sql)
-            return result.rowcount
-
-
-    def on_delete_clean_up(self):
-        self.applicant.state = self.applicant.STATE_ARCHIVED
+            # sql = "select * from extended_members where applicant_id={} and age_limit_exceeded=1 AND age_limit_exception=0 AND state=1".format(self.id)
+            # result = session.execute(sql)
+            return 4

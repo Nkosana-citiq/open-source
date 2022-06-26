@@ -51,9 +51,9 @@ class Consultant(db.Base):
     def parlour(cls):
         return relationship('Parlour')
 
-    @declared_attr
-    def applicants(cls):
-        return relationship("Applicant", back_populates="consultant")
+    # @declared_attr
+    # def main_members(cls):
+    #     return relationship("MainMember", back_populates="consultant")
 
     def to_dict(self):
         return {
@@ -97,7 +97,7 @@ class Consultant(db.Base):
         session.commit()
 
     def on_delete_clean_up(self):
-        for a in self.applicants:
+        for a in self.main_members:
             a.make_deleted()
 
     @property

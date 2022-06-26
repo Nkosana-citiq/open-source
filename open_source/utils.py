@@ -5,7 +5,7 @@ import calendar
 import re
 import falcon
 from jinja2 import Template
-from open_source.core import parlours, consultants, admins
+from open_source.core import parlours, users
 
 from typing import Any, Iterable, Dict
 
@@ -232,17 +232,11 @@ def humanize_snake_case(s: str) -> str:
     return ' '.join(x.title() for x in re.split(r'[,\._]', s.lower()))
 
 def is_email_unique(session, email):
-    parlour = parlours.Parlour.is_email_unique(session, email)
-    consultant = consultants.Consultant.is_email_unique(session, email)
-    admin = admins.Admin.is_email_unique(session, email)
-    return all([parlour, consultant, admin])
+    return users.User.is_email_unique(session, email)
 
 
 def is_username_unique(session, email):
-    parlour = parlours.Parlour.is_username_unique(session, email)
-    consultant = consultants.Consultant.is_username_unique(session, email)
-    admin = admins.Admin.is_username_unique(session, email)
-    return all([parlour, consultant, admin])
+    return users.User.is_username_unique(session, email)
 
 def authenticate_user_by_email(cls, session, email, password):
     entity = session.query(cls)\
@@ -268,37 +262,11 @@ def authenticate_user_by_username(cls, session, username, password):
     return entity, False
 
 
-def authenticate_parlour(session, username, password):
-    user, success = authenticate_user_by_username(parlours.Parlour, session, username, password)
-    if success:
-        return user, success
-    return authenticate_user_by_email(parlours.Parlour, session, username, password)
-
-
-def authenticate_admin(session, username, password):
-    user, success = authenticate_user_by_username(admins.Admin, session, username, password)
-    if success:
-        return user, success
-    return authenticate_user_by_email(admins.Admin, session, username, password)
-
-
-def authenticate_consultant(session, username, password):
-    user, success = authenticate_user_by_username(consultants.Consultant, session, username, password)
-    if success:
-        return user, success
-    return authenticate_user_by_email(consultants.Consultant, session, username, password)
-
-
 def authenticate(session, username, password):
-
-    user, success = authenticate_parlour(session, username, password)
+    user, success = authenticate_user_by_username(users.User, session, username, password)
     if success:
         return user, success
-    user, success = authenticate_consultant(session, username, password)
-
-    if success:
-        return user, success
-    return authenticate_admin(session, username, password)
+    return authenticate_user_by_email(users.User, session, username, password)
 
 
 def render_template(template: str, args: dict):

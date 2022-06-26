@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from dateutil.parser import parse
 from dateutil import tz
 from dateutil.relativedelta import relativedelta
@@ -6,7 +6,7 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from open_source.core.main_members import MainMember
 
 from open_source.core.extended_members import ExtendedMember
-from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
 from open_source.core.certificate import Certificate
 from open_source.core.parlours import Parlour
 from open_source.core.plans import Plan
@@ -20,7 +20,7 @@ import uuid
 
 from open_source import db
 
-from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
 
 from za_id_number.za_id_number import SouthAfricanIdentityValidate
 
@@ -77,9 +77,9 @@ class ExtendedMemberGetEndpoint:
             ).first()
 
             if extended_member is None:
-                raise falcon.HTTPNotFound(title="Not Found", description="Member Not Found")
-
-            resp.body = json.dumps(extended_member.to_dict(), default=str)
+                resp.body = json.dumps({}, default=str)
+            else:
+                resp.body = json.dumps(extended_member.to_dict(), default=str)
 
 
 class ExtendedMembersGetAllEndpoint:
@@ -102,29 +102,29 @@ class ExtendedMembersGetAllEndpoint:
                 if "notice" in req.params:
                         notice = req.params.pop("notice")
 
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == id
+                main_member = session.query(MainMember).filter(
+                    MainMember.id == id
                 ).one_or_none()
 
-                if not applicant:
+                if not main_member:
                     raise falcon.HTTPBadRequest()
 
-                plan = applicant.plan
+                plan = main_member.plan
                 extended_members = session.query(ExtendedMember).filter(
                     ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                    ExtendedMember.applicant_id == applicant.id
+                    ExtendedMember.main_member_id == main_member.id
                 ).all()
 
                 if notice:
                      extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
                         ExtendedMember.age_limit_exceeded == True,
-                        ExtendedMember.applicant_id == applicant.id
+                        ExtendedMember.main_member_id == main_member.id
                     ).all()
                 if not extended_members:
                     extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                        ExtendedMember.applicant_id == applicant.id
+                        ExtendedMember.main_member_id == main_member.id
                     ).all()
 
                 if not extended_members:
@@ -133,7 +133,7 @@ class ExtendedMembersGetAllEndpoint:
                     resp.body = json.dumps([extended_member.to_dict() for extended_member in extended_members], default=str)
 
         except:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get Main Members for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Extended Members for user with ID {}.".format(id))
 
 
@@ -153,22 +153,22 @@ class ExtendedMembersGetAllArchivedEndpoint:
         try:
             with db.transaction() as session:
 
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == id
+                main_member = session.query(MainMember).filter(
+                    MainMember.id == id
                 ).one_or_none()
 
-                if not applicant:
+                if not main_member:
                     raise falcon.HTTPBadRequest()
 
-                if applicant.state != Applicant.STATE_ACTIVE:
+                if main_member.state != MainMember.STATE_ACTIVE:
                     extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state != ExtendedMember.STATE_DELETED,
-                        ExtendedMember.applicant_id == applicant.id
+                        ExtendedMember.main_member_id == main_member.id
                     ).all()
                 else:
                     extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
-                        ExtendedMember.applicant_id == applicant.id
+                        ExtendedMember.main_member_id == main_member.id
                     ).all()
 
                 if not extended_members:
@@ -177,7 +177,7 @@ class ExtendedMembersGetAllArchivedEndpoint:
                     resp.body = json.dumps([extended_member.to_dict() for extended_member in extended_members], default=str)
 
         except:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get Main Members for user with ID {}.".format(id))
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Extended Members for user with ID {}.".format(id))
 
 
@@ -204,7 +204,7 @@ class ExtendedMemberPutAgeLimitExceptionEndpoint:
                     ExtendedMember.state == ExtendedMember.STATE_ACTIVE).first()
 
                 if not extended_member:
-                    raise falcon.HTTPNotFound(title="Extended member not found", description="Could not find Applicant with given ID.")
+                    raise falcon.HTTPNotFound(title="Extended member not found", description="Could not find MainMember with given ID.")
 
                 extended_member.age_limit_exception = req.get("age_limit_exception")
 
@@ -213,9 +213,9 @@ class ExtendedMemberPutAgeLimitExceptionEndpoint:
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Applicant.")
+                "Error, experienced error while creating MainMember.")
             raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Applicant.")
+                "Processing Failed. experienced error while creating MainMember.")
 
 
 class ExtendedMembersPostEndpoint:
@@ -249,14 +249,14 @@ class ExtendedMembersPostEndpoint:
 
         try:
             with db.transaction() as session:
-                applicant_id = req.get("applicant_id")
+                main_member_id = req.get("main_member_id")
 
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == applicant_id,
-                    Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
+                main_member = session.query(MainMember).filter(
+                    MainMember.id == main_member_id,
+                    MainMember.state == MainMember.STATE_ACTIVE).one_or_none()
 
-                if not applicant:
-                    raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant not found.")
+                if not main_member:
+                    raise falcon.HTTPNotFound(title="404 Not Found", description="MainMember not found.")
 
                 if not req.get("first_name"):
                     raise falcon.HTTPNotFound(title="Error", description="First name is a required field.")
@@ -274,21 +274,21 @@ class ExtendedMembersPostEndpoint:
                     raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
 
                 if req.get("id_number"):
-                    applicants = session.query(Applicant).filter(Applicant.plan_id == applicant.plan_id).all()
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    main_members = session.query(MainMember).filter(MainMember.plan_id == main_member.plan_id).all()
+                    main_member_ids = [main_member.id for main_member in main_members]
                     id_number = session.query(MainMember).filter(
                         MainMember.id_number == req.get("id_number"),
-                        MainMember.applicant_id.in_(applicant_ids),
+                        MainMember.id.in_(main_member_ids),
                         MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
                     ).first()
 
                     if not id_number:
-                        applicants = session.query(Applicant).filter(Applicant.plan_id == applicant.plan_id).all()
-                        applicant_ids = [applicant.id for applicant in applicants]
+                        main_members = session.query(MainMember).filter(MainMember.plan_id == main_member.plan_id).all()
+                        main_member_ids = [main_member.id for main_member in main_members]
                         id_number = session.query(ExtendedMember).filter(
                             ExtendedMember.id_number == req.get("id_number"),
                             ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                            ExtendedMember.applicant_id.in_(applicant_ids)
+                            ExtendedMember.main_member_id.in_(main_member_ids)
                         ).first()
 
                     if id_number:
@@ -307,39 +307,39 @@ class ExtendedMembersPostEndpoint:
                     type = req.get("type"),
                     id_number = req.get("id_number"),
                     relation_to_main_member = req.get("relation_to_main_member"),
-                    applicant_id = applicant.id,
+                    main_member_id = main_member.id,
                     date_joined = date_joined,
                     waiting_period = req.get("waiting_period", 0),
                     state=ExtendedMember.STATE_ACTIVE,
                     created_at = datetime.now(),
                     modified_at = datetime.now()
                 )
-                plan = applicant.plan
+                plan = main_member.plan
 
                 if extended_member:
                     if extended_member.type == 4:
                         if not plan.spouse:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
 
-                        if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
+                        if plan.spouse <= len([member for member in main_member.extended_members if member.type == 4 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                     elif extended_member.type == 1:
                         if not plan.beneficiaries:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
 
-                        if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
+                        if plan.beneficiaries <= len([member for member in main_member.extended_members if member.type == 1 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependent members has been reached.")
                     elif extended_member.type == 2:
                         if not plan.extended_members:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
 
-                        if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
+                        if plan.extended_members <= len([member for member in main_member.extended_members if member.type == 2 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of extended-member members has been reached.")
                     elif extended_member.type == 3:
                         if not plan.additional_extended_members:
                             raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
 
-                        if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
+                        if plan.additional_extended_members <= len([member for member in main_member.extended_members if member.type == 3 and member.state == 1]):
                             raise falcon.HTTPBadRequest(title="Error", description="Limit for number of additional-extended-member members has been reached.")
 
                 member_type = extended_member.type
@@ -390,10 +390,10 @@ class ExtendedMembersPostEndpoint:
                     elif int(years) < int(min_age_limit):
                         extended_member.age_limit_exceeded = True
 
-                applicant.extended_members.append(extended_member)
+                main_member.extended_members.append(extended_member)
                 extended_member.save(session)
-                old_file = applicant.document
-                update_certificate(applicant)
+                old_file = main_member.document
+                update_certificate(main_member)
 
                 if old_file and os.path.exists(old_file):
                     os.remove(old_file)
@@ -402,7 +402,7 @@ class ExtendedMembersPostEndpoint:
 
         except Exception as e:
             logger.exception(
-                "Error, experienced error while creating Applicant.")
+                "Error, experienced error while creating MainMember.")
             raise e
 
 
@@ -451,12 +451,12 @@ class ExtendedMemberCheckAgeLimitEndpoint:
             if not member_type:
                 raise falcon.HTTPBadRequest(title="Error", description="extended member type is required.")
 
-            applicant = session.query(Applicant).get(id)
+            main_member = session.query(MainMember).get(id)
 
-            if not applicant:
-                raise falcon.HTTPBadRequest(title="Applicant not found", description="Applicant does not exist.")
+            if not main_member:
+                raise falcon.HTTPBadRequest(title="MainMember not found", description="MainMember does not exist.")
 
-            plan = applicant.plan
+            plan = main_member.plan
 
             if not id_number and not date_of_birth:
                 raise falcon.HTTPBadRequest(title="Error", description="ID number or date of birth field must be entered.")
@@ -548,14 +548,14 @@ class ExtendedMemberPutEndpoint:
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
-            applicant_id = req.get("applicant_id")
+            main_member_id = req.get("main_member_id")
             id_number = None
 
-            applicant = session.query(Applicant).filter(
-                Applicant.id == applicant_id).one_or_none()
+            main_member = session.query(MainMember).filter(
+                MainMember.id == main_member_id).one_or_none()
 
-            if not applicant:
-                raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not foumd.")
+            if not main_member:
+                raise falcon.HTTPNotFound(title="404 Not Found", description="MainMember does not foumd.")
 
             if not req.get("first_name"):
                 raise falcon.HTTPNotFound(title="Error", description="First name is a required field.")
@@ -573,85 +573,84 @@ class ExtendedMemberPutEndpoint:
                 raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
 
             if req.get("id_number"):
-                id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == applicant.parlour_id).first()
+                id_number = session.query(MainMember).filter(MainMember.id_number == req.get("id_number"), MainMember.parlour_id == main_member.parlour_id).first()
 
             if req.get("id_number") and not id_number:
-                applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
-                applicant_ids = [applicant.id for applicant in applicants]
+                main_members = session.query(MainMember).filter(MainMember.parlour_id == main_member.parlour_id).all()
+                main_member_ids = [main_member.id for main_member in main_members]
 
                 id_number = session.query(MainMember).filter(
                     MainMember.id_number == req.get("id_number"),
-                    MainMember.applicant_id.in_(applicant_ids),
+                    MainMember.id.in_(main_member_ids),
                     MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
                 ).first()
 
                 if not id_number:
-                    applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    main_members = session.query(MainMember).filter(MainMember.parlour_id == main_member.parlour_id).all()
+                    main_member_ids = [main_member.id for main_member in main_members]
                     id_number = session.query(ExtendedMember).filter(
                         ExtendedMember.id_number == req.get("id_number"),
                         ExtendedMember.id != id,
                         ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                        ExtendedMember.applicant_id.in_(applicant_ids)
+                        ExtendedMember.main_member_id.in_(main_member_ids)
                     ).first()
 
             if id_number:
                 raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
-            plan = applicant.plan
+            plan = main_member.plan
             extended_member = session.query(ExtendedMember).filter(
                 ExtendedMember.id == id,
-                ExtendedMember.applicant_id == applicant.id,
+                ExtendedMember.main_member_id == main_member.id,
                 ExtendedMember.state == ExtendedMember.STATE_ACTIVE).first()
 
             if not extended_member:
-                raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find Applicant with given ID.")
+                raise falcon.HTTPNotFound(title="ExtenedMember not found", description="Could not find member with given ID.")
             date_of_birth = None
             try:
                 if req.get("date_of_birth"):
-                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
-                    extended_member.date_of_birth = date_of_birth
+                    # date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
+                    extended_member.date_of_birth = req.get("date_of_birth")
                 date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
                 extended_member.number = req.get("number")
-                
                 extended_member.type = req.get("type")
                 extended_member.id_number = req.get("id_number")
                 extended_member.waiting_period = req.get("waiting_period", 0)
                 extended_member.relation_to_main_member = req.get("relation_to_main_member")
-                extended_member.applicant_id = applicant.id
+                extended_member.main_member_id = main_member.id
                 if req.get("is_deceased"):
                     extended_member.is_deceased = req.get("is_deceased")
                     extended_member.state = ExtendedMember.STATE_ARCHIVED
                 extended_member.date_joined = date_joined
                 extended_member.modified_at = datetime.now()
 
-                plan = applicant.plan
+                plan = main_member.plan
                 if extended_member.type == 4 and extended_member.type != old_type:
                     if not plan.spouse:
                         raise falcon.HTTPBadRequest(title="Error", description="This plan does not have a spouse.")
 
-                    if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
+                    if plan.spouse <= len([member for member in main_member.extended_members if member.type == 4 and member.state == 1]):
                         raise falcon.HTTPBadRequest(title="Error", description="Limit for number of spouse members has been reached.")
                 elif extended_member.type == 1 and extended_member.type != old_type:
                     if not plan.beneficiaries:
                         raise falcon.HTTPBadRequest(title="Error", description="This plan does not have dependents.")
 
-                    if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
+                    if plan.beneficiaries <= len([member for member in main_member.extended_members if member.type == 1 and member.state == 1]):
                         raise falcon.HTTPBadRequest(title="Error", description="Limit for number of dependent members has been reached.")
                 elif extended_member.type == 2 and extended_member.type != old_type:
                     if not plan.extended_members:
                         raise falcon.HTTPBadRequest(title="Error", description="This plan does not have extended-members.")
 
-                    if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
+                    if plan.extended_members <= len([member for member in main_member.extended_members if member.type == 2 and member.state == 1]):
                         raise falcon.HTTPBadRequest(title="Error", description="Limit for number of extended-member members has been reached.")
                 elif extended_member.type == 3 and extended_member.type != old_type:
                     if not plan.additional_extended_members:
                         raise falcon.HTTPBadRequest(title="Error", description="This plan does not have additional-extended-members.")
 
-                    if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
+                    if plan.additional_extended_members <= len([member for member in main_member.extended_members if member.type == 3 and member.state == 1]):
                         raise falcon.HTTPBadRequest(title="Error", description="Limit for number of additional-extended-member members has been reached.")
 
                 member_type = extended_member.type
@@ -698,16 +697,16 @@ class ExtendedMemberPutEndpoint:
                         extended_member.age_limit_exceeded = True
 
                 extended_member.save(session)
-                old_file = applicant.document
-                update_certificate(applicant)
+                old_file = main_member.document
+                update_certificate(main_member)
 
                 if old_file and os.path.exists(old_file):
                     os.remove(old_file)
 
-                resp.body = json.dumps(applicant.to_dict(), default=str)
+                resp.body = json.dumps(main_member.to_dict(), default=str)
             except Exception as e:
                 logger.exception(
-                    "Error, experienced error while creating Applicant.")
+                    "Error, experienced error while creating MainMember.")
                 raise e
 
 
@@ -736,16 +735,16 @@ class ExtendedMemberRestorePutEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="failing getting extended member by id.")
 
                 extended_member.state = ExtendedMember.STATE_ACTIVE
-                applicant = session.query(Applicant).get(extended_member.applicant_id)
+                main_member = session.query(MainMember).get(extended_member.main_member_id)
 
                 extended_member.save(session)
-                applicant = update_certificate(applicant)
+                main_member = update_certificate(main_member)
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Applicant.")
+                "Error, experienced error while creating MainMember.")
             raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Applicant.")
+                "Processing Failed. experienced error while creating MainMember.")
 
 
 
@@ -778,8 +777,8 @@ class ExtededMemberDeleteEndpoint:
 
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
-            logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
-            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))
+            logger.exception("Error, Failed to delete MainMember with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete MainMember with ID {}.".format(id))
 
 
 class ExtededMemberArchiveEndpoint:
@@ -800,26 +799,26 @@ class ExtededMemberArchiveEndpoint:
                 extended_member = session.query(ExtendedMember).get(id)
 
                 if extended_member is None:
-                    raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant Not Found")
+                    raise falcon.HTTPNotFound(title="404 Not Found", description="MainMember Not Found")
                 if extended_member.is_deleted:
-                    falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
+                    falcon.HTTPNotFound(title="404 Not Found", description="MainMember does not exist.")
 
                 extended_member.make_archived()
                 extended_member.save(session)
 
-                applicant_id = extended_member.applicant_id
-                applicant = session.query(Applicant).get(applicant_id)
+                main_member_id = extended_member.main_member_id
+                main_member = session.query(MainMember).get(main_member_id)
 
-                old_file = applicant.document
-                update_certificate(applicant)
+                old_file = main_member.document
+                update_certificate(main_member)
 
                 if old_file and os.path.exists(old_file):
                     os.remove(old_file)
 
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
-            logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
-            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Applicant with ID {}.".format(id))
+            logger.exception("Error, Failed to delete MainMember with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Error", description="Failed to delete MainMember with ID {}.".format(id))
 
 
 class MainMemberPromoteEndpoint:
@@ -844,11 +843,11 @@ class MainMemberPromoteEndpoint:
         with db.transaction() as session:
             extended_member = session.query(ExtendedMember).filter(ExtendedMember.id == id).one()
 
-            applicant = session.query(Applicant).filter(
-                Applicant.id == extended_member.applicant_id).one_or_none()
+            main_member = session.query(MainMember).filter(
+                MainMember.id == extended_member.main_member_id).one_or_none()
 
-            if not applicant:
-                raise falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
+            if not main_member:
+                raise falcon.HTTPNotFound(title="404 Not Found", description="MainMember does not exist.")
 
             if not req.get("first_name"):
                 raise falcon.HTTPNotFound(title="Error", description="First name is a required field.")
@@ -872,15 +871,15 @@ class MainMemberPromoteEndpoint:
                 raise falcon.HTTPNotFound(title="Error", description="Contact number required when promoting to main member.")
 
             plan = session.query(Plan).filter(
-                Plan.id == applicant.plan_id,
+                Plan.id == main_member.plan_id,
                 Plan.state == Plan.STATE_ACTIVE).one_or_none()
 
             if not plan:
                 raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
 
             try:
-                # main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).one_or_none()
-                main_member = update_deceased_member(session, applicant, extended_member)
+                # main_member = session.query(MainMember).filter(MainMember.main_member_id == main_member.id).one_or_none()
+                main_member = update_deceased_member(session, main_member, extended_member)
 
                 min_age_limit = plan.member_minimum_age
                 max_age_limit = plan.member_maximum_age
@@ -915,73 +914,64 @@ class MainMemberPromoteEndpoint:
                     pass
                 main_member.save(session)
 
-                applicant = update_certificate(applicant)
+                main_member = update_certificate(main_member)
 
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except MultipleResultsFound as e:
-                raise falcon.HTTPBadRequest(title="Error", description="More than one member exists for this applicant")
+                raise falcon.HTTPBadRequest(title="Error", description="More than one member exists for this main_member")
             except NoResultFound as e:
-                raise falcon.HTTPBadRequest(title="Error", description="No member exists for this applicant")
+                raise falcon.HTTPBadRequest(title="Error", description="No member exists for this main_member")
             except Exception as e:
                 logger.exception(
-                    "Error, experienced error while creating Applicant.")
+                    "Error, experienced error while creating MainMember.")
                 raise e
 
 
-def update_deceased_member(session, applicant, extended_member):
-    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == applicant.id).all()
+def update_deceased_member(session, main_member, extended_member):
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.main_member_id == main_member.id).all()
 
-    new_applicant = Applicant(
-        policy_num=applicant.policy_num,
-        address=applicant.address,
+    date_joined = extended_member.date_joined
+    new_main_member = MainMember(
+        policy_num=main_member.policy_num,
+        address=main_member.address,
         status='unpaid',
-        plan_id=applicant.plan_id,
-        consultant_id=applicant.consultant_id,
-        parlour_id=applicant.parlour_id,
+        plan_id=main_member.plan_id,
         old_url=False,
         date=datetime.now(),
-        state=Applicant.STATE_ACTIVE,
-        modified_at=datetime.now(),
-        created_at=datetime.now()
-    )
-
-    new_applicant.save(session)
-    date_joined = extended_member.date_joined
-    main_member = MainMember(
         first_name=extended_member.first_name,
         last_name=extended_member.last_name,
         id_number=extended_member.id_number,
         contact=extended_member.number,
         date_of_birth=extended_member.date_of_birth,
-        parlour_id=applicant.parlour_id,
+        parlour_id=main_member.parlour_id,
+        user_id=main_member.user_id,
         date_joined=date_joined,
         state=MainMember.STATE_ACTIVE,
-        applicant_id=new_applicant.id,
         modified_at=datetime.now(),
         created_at=datetime.now()
     )
 
-    main_member.save(session)
+    new_main_member.save(session)
     for x in extended_members:
         if x.id == extended_member.id:
             x.make_deleted()
         else:
-            x.applicant_id = new_applicant.id
+            x.main_member_id = new_main_member.id
             x.is_main_member_deceased = False
     session.commit()
-    update_certificate(new_applicant)
+    update_certificate(new_main_member)
     return main_member
 
 
-def update_certificate(applicant):
+def update_certificate(main_member):
     with db.transaction() as session:
-        parlour = session.query(Parlour).filter(Parlour.id == applicant.parlour.id).one_or_none()
-        plan = session.query(Plan).filter(Plan.id == applicant.plan.id).one_or_none()
-        main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id, MainMember.state == MainMember.STATE_ACTIVE).first()
+        parlour = session.query(Parlour).filter(Parlour.id == main_member.parlour_id).one_or_none()
+        plan = session.query(Plan).filter(Plan.id == main_member.plan_id).one_or_none()
+        main_member = session.query(MainMember).filter(MainMember.id == main_member.id, MainMember.state == MainMember.STATE_ACTIVE).first()
 
         if main_member:
             extended_members = session.query(ExtendedMember).filter(
-                ExtendedMember.applicant_id == applicant.id,
+                ExtendedMember.main_member_id == main_member.id,
                 ExtendedMember.state == ExtendedMember.STATE_ACTIVE).all()
 
             try:
@@ -1000,7 +990,7 @@ def update_certificate(applicant):
                 canvas.set_member_contact(main_member.contact)
                 canvas.set_current_plan(plan.plan)
                 canvas.set_current_premium(plan.premium)
-                canvas.set_physical_address(applicant.address if applicant.address else '')
+                canvas.set_physical_address(main_member.address if main_member.address else '')
 
                 for extended_member in extended_members:
                     canvas.add_other_members(extended_member)
@@ -1008,13 +998,11 @@ def update_certificate(applicant):
                 if plan.benefits:
                     canvas.set_benefits(plan.benefits)
                 canvas.save()
-                applicant.document = canvas.get_file_path()
+                main_member.document = canvas.get_file_path()
 
             except Exception as e:
                 logger.exception("Error, experienced an error while creating certificate.")
                 print(e)
-
-    return applicant
 
 
 def get_date_of_birth(id_number=None):
@@ -1026,17 +1014,17 @@ def get_date_of_birth(id_number=None):
     return '{}{}/{}/{}'.format(century,id_number[:2], id_number[2:4], id_number[4:6])
 
 
-def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
+def bulk_insert_extended_members(csv_data, error_data, main_member_id, session):
     ext_data = []
     ext_data.append(csv_data)
 
     for data in ext_data:
-        applicant = session.query(Applicant).filter(
-            Applicant.id == applicant_id,
-            Applicant.state == Applicant.STATE_ACTIVE).one_or_none()
+        main_member = session.query(MainMember).filter(
+            MainMember.id == main_member_id,
+            MainMember.state == MainMember.STATE_ACTIVE).one_or_none()
 
-        if not applicant:
-            error_data.append({'data': data, 'error': "Applicant not found."})
+        if not main_member:
+            error_data.append({'data': data, 'error': "MainMember not found."})
             continue
 
         if not data[0]:
@@ -1075,21 +1063,21 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                 error_data.append({'data': data, 'error': "Incorrect id_number entered."})
                 continue
         if id_check and len(id_check) == 13:
-            applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
-            applicant_ids = [applicant.id for applicant in applicants]
+            main_members = session.query(MainMember).filter(MainMember.parlour_id == main_member.parlour_id).all()
+            main_member_ids = [main_member.id for main_member in main_members]
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == id_check,
-                MainMember.applicant_id.in_(applicant_ids),
+                MainMember.id.in_(main_member_ids),
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
             ).first()
 
             if not id_number:
-                applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
-                applicant_ids = [applicant.id for applicant in applicants]
+                main_members = session.query(MainMember).filter(MainMember.parlour_id == main_member.parlour_id).all()
+                main_member_ids = [main_member.id for main_member in main_members]
                 id_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == id_check,
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                    ExtendedMember.applicant_id.in_(applicant_ids)
+                    ExtendedMember.main_member_id.in_(main_member_ids)
                 ).first()
 
 
@@ -1137,14 +1125,14 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                 type = member_type_value,
                 id_number = id_check if len(id_check) == 13 else None,
                 relation_to_main_member = member_relation_value,
-                applicant_id = applicant.id,
+                main_member_id = main_member.id,
                 date_joined = date_joined,
                 waiting_period=data[5] if data[5] else 0,
                 state=ExtendedMember.STATE_ACTIVE,
                 created_at = datetime.now(),
                 modified_at = datetime.now()
             )
-        plan = applicant.plan
+        plan = main_member.plan
 
         if extended_member:
             if extended_member.type == 4:
@@ -1152,7 +1140,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     error_data.append({'data': data, 'error': "This plan does not have a spouse."})
                     continue
 
-                if plan.spouse <= len([member for member in applicant.extended_members if member.type == 4 and member.state == 1]):
+                if plan.spouse <= len([member for member in main_member.extended_members if member.type == 4 and member.state == 1]):
                     error_data.append({'data': data, 'error': "Limit for number of spouse members has been reached."})
                     continue
 
@@ -1161,7 +1149,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     error_data.append({'data': data, 'error': "This plan does not have dependents."})
                     continue
 
-                if plan.beneficiaries <= len([member for member in applicant.extended_members if member.type == 1 and member.state == 1]):
+                if plan.beneficiaries <= len([member for member in main_member.extended_members if member.type == 1 and member.state == 1]):
                     error_data.append({'data': data, 'error': "Limit for number of dependent members has been reached."})
                     continue
 
@@ -1170,7 +1158,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     error_data.append({'data': data, 'error': "This plan does not have extended-members."})
                     continue
 
-                if plan.extended_members <= len([member for member in applicant.extended_members if member.type == 2 and member.state == 1]):
+                if plan.extended_members <= len([member for member in main_member.extended_members if member.type == 2 and member.state == 1]):
                     error_data.append({'data': data, 'error': "Limit for number of extended-member members has been reached."})
                     continue
 
@@ -1179,7 +1167,7 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
                     error_data.append({'data': data, 'error': "This plan does not have additional-extended-members."})
                     continue
 
-                if plan.additional_extended_members <= len([member for member in applicant.extended_members if member.type == 3 and member.state == 1]):
+                if plan.additional_extended_members <= len([member for member in main_member.extended_members if member.type == 3 and member.state == 1]):
                     error_data.append({'data': data, 'error': "Limit for number of additional-extended-member members has been reached."})
                     continue
 
@@ -1218,10 +1206,10 @@ def bulk_insert_extended_members(csv_data, error_data, applicant_id, session):
             elif int(years) < int(min_age_limit):
                 extended_member.age_limit_exceeded = True
 
-        applicant.extended_members.append(extended_member)
+        main_member.extended_members.append(extended_member)
         extended_member.save(session)
-        old_file = applicant.document
-        update_certificate(applicant)
+        old_file = main_member.document
+        update_certificate(main_member)
 
         if old_file and os.path.exists(old_file):
             os.remove(old_file)

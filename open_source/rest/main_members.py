@@ -12,14 +12,13 @@ from dateutil.relativedelta import relativedelta
 
 from open_source import config, db
 
-from open_source.core.applicants import Applicant
-from open_source.core.consultants import Consultant
 from open_source.core.plans import Plan
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy import or_
 from open_source.core.main_members import MainMember
 from open_source.core.extended_members import ExtendedMember
-from open_source.rest import extended_members
+from open_source.core.roles import Role
+from open_source.core.users import User
 from open_source.rest.extended_members import update_certificate, bulk_insert_extended_members
 from open_source.core.parlours import Parlour
 from open_source.utils import localize_contact
@@ -51,12 +50,12 @@ class MainMemberGetEndpoint:
             ).first()
 
             if main_member is None:
-                raise falcon.HTTPNotFound(title="Not Found", description="Applicant Not Found")
+                resp.body = json.dumps({}, default=str)
+            else:
+                resp.body = json.dumps(main_member.to_dict(), default=str)
 
-            resp.body = json.dumps(main_member.to_dict(), default=str)
 
-
-class MainGetAllParlourEndpoint:
+class MainGetAllUsersEndpoint:
     cors = public_cors
 
     def __init__(self, secure=False, basic_secure=False):
@@ -76,8 +75,8 @@ class MainGetAllParlourEndpoint:
                     status = None
                     search_field = None
                     search_date = None
-                    consultant = None
-                    consultants = None
+                    user = None
+                    users = None
                     start_date = None
                     end_date = None
 
@@ -97,20 +96,26 @@ class MainGetAllParlourEndpoint:
                         end_date = req.params.pop("end_date")
 
                     if "consultant" in req.params:
-                        consultant_id = req.params.pop("consultant")
-                        consultant = session.query(Consultant).get(consultant_id)
+                        user_id = req.params.pop("consultant")
+                        user = session.query(User).get(user_id)
 
                     if "branch" in req.params:
                         parlour_branch = req.params.pop("branch")
-                        consultants = session.query(Consultant).filter(Consultant.branch == parlour_branch.strip()).all()
+                        users = session.query(User).filter(User.branch == parlour_branch.strip(), User.role_id == Role.IS_CONSULTANT).all()
 
+                    print("===================================  USER   ======================================")
+                    user = session.query(User).filter(
+                        User.state == User.STATE_ACTIVE,
+                        User.id == id
+                    ).one_or_none()
+                    print(user.to_dict())
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
-                        Parlour.id == id
+                        Parlour.id == user.parlour.id
                     ).one_or_none()
-
+                    print(parlour.to_dict())
                 except MultipleResultsFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
                 if search_date:
                     search = parse(search_date)
@@ -122,17 +127,14 @@ class MainGetAllParlourEndpoint:
 
                     resp.body = json.dumps({"original": main_count, "month": month_count, "period": '-'.join([str(search.date().year), str(search.date().month)])}, default=str)
                 elif search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.parlour_id == parlour.id,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field))
+                            MainMember.policy_num.ilike('{}%'.format(search_field))
                         )
                     )
 
@@ -142,31 +144,32 @@ class MainGetAllParlourEndpoint:
                         result = MainMember._paginated_search_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
                 else:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.parlour_id == parlour.id
-                    ).order_by(Applicant.id.desc())
+                    main_members = session.query(MainMember).filter(
+                        MainMember.state == MainMember.STATE_ACTIVE,
+                        MainMember.parlour_id == parlour.id
+                    ).order_by(MainMember.id.desc())
 
-                    if consultant:
-                        applicants = applicants.filter(Applicant.consultant_id == consultant.id)
+                    if user.IS_CONSULTANT:
+                        main_members = main_members.filter(MainMember.user_id == user.id)
 
-                    if consultants:
-                        consultant_ids = [consultant.id for consultant in consultants]
-                        applicants = applicants.filter(Applicant.consultant_id.in_(consultant_ids))
+                    elif users:
+                        user_ids = [user.id for user in users]
+                        main_members = main_members.filter(MainMember.user_id.in_(user_ids))
 
                     if status:
-                        applicants = applicants.filter(Applicant.status == status.lower())
+                        main_members = main_members.filter(MainMember.status == status.lower())
 
-                    applicant_res = [(applicant, applicant.plan) for applicant in applicants.all()]
-                    if applicant_res:
-                        for applicant in applicant_res:
-                            if applicant[0].plan.id == applicant[1].id:
-                                max_age_limit = applicant[1].member_maximum_age
-                                min_age_limit = applicant[1].member_minimum_age
+                    main_member_res = [(main_member, main_member.plan) for main_member in main_members.all()]
+                    if main_member_res:
+                        for main_member in main_member_res:
+                            if main_member[0].plan.id == main_member[1].id:
+                                max_age_limit = main_member[1].member_maximum_age
+                                min_age_limit = main_member[1].member_minimum_age
                                 main_member = session.query(MainMember).filter(
                                     MainMember.state == MainMember.STATE_ACTIVE,
-                                    MainMember.applicant_id == applicant[0].id
+                                    MainMember.id == main_member[0].id
                                 ).first()
+
                                 if main_member:
                                     id_number = main_member.id_number
                                     number = int(id_number[0:2])
@@ -185,10 +188,10 @@ class MainGetAllParlourEndpoint:
                                     if min_age_limit and int(years) < min_age_limit:
                                         main_member.age_limit_exceeded = True
                                     session.commit()
-                    applicant_ids = [applicant.id for applicant in applicants.all()]
+                    main_member_ids = [main_member.id for main_member in main_members.all()]
                     main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
-                        MainMember.applicant_id.in_(applicant_ids)
+                        MainMember.id.in_(main_member_ids)
                     ).order_by(MainMember.id.desc())
 
                     if start_date:
@@ -207,11 +210,11 @@ class MainGetAllParlourEndpoint:
                         resp.body = json.dumps(result, default=str)
 
         except:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get main_members for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get main_members for user with ID {}.".format(id))
 
 
-class MainGetAllConsultantEndpoint:
+class MainGetAllEndpoint:
     cors = public_cors
 
     def __init__(self, secure=False, basic_secure=False):
@@ -231,7 +234,7 @@ class MainGetAllConsultantEndpoint:
                     status = None
                     search_field = None
                     notice = None
-                    consultant_id = None
+                    user_id = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
@@ -243,37 +246,34 @@ class MainGetAllConsultantEndpoint:
                         notice = req.params.pop("notice")
 
                     if "consultant_id" in req.params:
-                        consultant_id = req.params.pop("consultant_id")
-                        consultant = session.query(Consultant).filter(Consultant.id == consultant_id, Consultant.state == Consultant.STATE_ACTIVE).first()
+                        user_id = req.params.pop("consultant_id")
+                        user = session.query(User).filter(User.id == user_id, User.state == User.STATE_ACTIVE).first()
 
-                    if not consultant_id:
-                        consultant = session.query(Consultant).filter(
-                            Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.id == id
+                    if not user_id:
+                        user = session.query(User).filter(
+                            User.state == User.STATE_ACTIVE,
+                            User.id == id
                         ).one()
 
                     parlour = session.query(Parlour).filter(
-                        Parlour.id == consultant.parlour_id,
+                        Parlour.id == User.parlour_id,
                         Parlour.state == Parlour.STATE_ACTIVE
                     ).one()
 
                 except MultipleResultsFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
                 except NoResultFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="No results found.")
 
                 if search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.parlour_id == parlour.id,
                         or_(
                             MainMember.first_name.ilike('%{}%'.format(search_field)),
                             MainMember.last_name.ilike('%{}%'.format(search_field)),
                             MainMember.id_number.ilike('%{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('%{}%'.format(search_field))
+                            MainMember.policy_num.ilike('%{}%'.format(search_field))
                         )
                     )
 
@@ -283,23 +283,23 @@ class MainGetAllConsultantEndpoint:
                         result = MainMember._paginated_search_results(req.params, main_members)
                         resp.body = json.dumps(result, default=str)
                 else:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.consultant_id == consultant.id
+                    main_members = session.query(MainMember).filter(
+                        MainMember.state == MainMember.STATE_ACTIVE,
+                        MainMember.user_id == user.id
                     )
 
                     if status :
-                        applicants = [] if status.lower() == 'lapsed' else applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
+                        main_members = [] if status.lower() == 'lapsed' else main_members.filter(MainMember.user_id == user.id, MainMember.status == status.lower()).all()
 
-                    applicant_res = [(applicant, applicant.plan) for applicant in applicants]
-                    if applicant_res:
-                        for applicant in applicant_res:
-                            if applicant[0].plan.id == applicant[1].id:
-                                max_age_limit = applicant[1].member_maximum_age if applicant[1].member_maximum_age else 0
-                                min_age_limit = applicant[1].member_minimum_age if applicant[1].member_minimum_age else 0
+                    main_member_res = [(main_member, main_member.plan) for main_member in main_members]
+                    if main_member_res:
+                        for main_member in main_member_res:
+                            if main_member[0].plan.id == main_member[1].id:
+                                max_age_limit = main_member[1].member_maximum_age if main_member[1].member_maximum_age else 0
+                                min_age_limit = main_member[1].member_minimum_age if main_member[1].member_minimum_age else 0
                                 main_member = session.query(MainMember).filter(
                                     MainMember.state == MainMember.STATE_ACTIVE,
-                                    MainMember.applicant_id == applicant[0].id
+                                    MainMember.id == main_member[0].id
                                 ).first()
                                 if main_member:
                                     id_number = main_member.id_number
@@ -324,19 +324,19 @@ class MainGetAllConsultantEndpoint:
                                     elif min_age_limit and int(years) < min_age_limit:
                                         main_member.age_limit_exceeded = True
                                     session.commit()
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    main_member_ids = [main_member.id for main_member in main_members]
                     if notice:
                         main_members = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
                             MainMember.parlour_id == parlour.id,
                             MainMember.age_limit_exceeded == True,
-                            MainMember.applicant_id.in_(applicant_ids)
+                            MainMember.main_member_id.in_(main_member_ids)
                         ).order_by(MainMember.id.desc())
                     else:
                         main_members = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
                             MainMember.parlour_id == parlour.id,
-                            MainMember.applicant_id.in_(applicant_ids)
+                            MainMember.main_member_id.in_(main_member_ids)
                         ).order_by(MainMember.id.desc())
 
                     if not main_members:
@@ -346,8 +346,8 @@ class MainGetAllConsultantEndpoint:
                         resp.body = json.dumps(result, default=str)
 
         except:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get main_members for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get main_members for user with ID {}.".format(id))
 
 
 class MainGetAllArchivedParlourEndpoint:
@@ -380,22 +380,19 @@ class MainGetAllArchivedParlourEndpoint:
                         Parlour.id == id
                     ).one()
                 except MultipleResultsFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
                 except NoResultFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
                 if search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ARCHIVED,
                         MainMember.parlour_id == parlour.id,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field))
+                            MainMember.policy_num.ilike('{}%'.format(search_field))
                         )
                     ).all()
 
@@ -404,18 +401,18 @@ class MainGetAllArchivedParlourEndpoint:
 
                     resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ARCHIVED,
-                        Applicant.parlour_id == parlour.id
-                    ).order_by(Applicant.id.desc())
+                    main_members = session.query(MainMember).filter(
+                        MainMember.state == MainMember.STATE_ARCHIVED,
+                        MainMember.parlour_id == parlour.id
+                    ).order_by(MainMember.id.desc())
 
                     if status:
-                        applicants = applicants.filter(Applicant.status == status.lower()).all()
+                        main_members = main_members.filter(MainMember.status == status.lower()).all()
 
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    main_member_ids = [main_member.id for main_member in main_members]
                     main_members = session.query(MainMember).filter(
-                        or_(MainMember.state == Applicant.STATE_ARCHIVED,
-                            MainMember.applicant_id.in_(applicant_ids)),
+                        or_(MainMember.state == MainMember.STATE_ARCHIVED,
+                            MainMember.id.in_(main_member_ids)),
                             MainMember.parlour_id == parlour.id
                     ).all()
 
@@ -425,11 +422,11 @@ class MainGetAllArchivedParlourEndpoint:
                         resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
 
         except:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get main_members for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get main_members for user with ID {}.".format(id))
 
 
-class MainGetAllArchivedConsultantEndpoint:
+class MainGetAllArchivedEndpoint:
     cors = public_cors
 
     def __init__(self, secure=False, basic_secure=False):
@@ -455,29 +452,26 @@ class MainGetAllArchivedConsultantEndpoint:
                     if "search_string" in req.params:
                         search_field = req.params.pop("search_string")
 
-                    consultant = session.query(Consultant).filter(
-                        Consultant.state == Consultant.STATE_ACTIVE,
-                        Consultant.id == id
+                    user = session.query(User).filter(
+                        User.state == User.STATE_ACTIVE,
+                        User.id == id
                     ).one_or_none()
                 except MultipleResultsFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
                 if search_field:
                     extended_members = session.query(ExtendedMember).filter(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED).all()
-                    applicant_ids = [ext.applicant_id for ext in extended_members]
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_member_ids = [ext.main_member_id for ext in extended_members]
+                    main_members = session.query(MainMember).filter(
                         or_(MainMember.state == MainMember.STATE_ARCHIVED,
-                        MainMember.applicant_id.in_(applicant_ids)),
+                        MainMember.main_member_id.in_(main_member_ids)),
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
                             MainMember.last_name.ilike('{}%'.format(search_field)),
                             MainMember.id_number.ilike('{}%'.format(search_field)),
-                            Applicant.policy_num.ilike('{}%'.format(search_field))
+                            MainMember.policy_num.ilike('{}%'.format(search_field))
                         ),
-                        Applicant.consultant_id == consultant.id
+                        MainMember.user_id == user.id
                     ).all()
 
                     if not main_members:
@@ -489,19 +483,19 @@ class MainGetAllArchivedConsultantEndpoint:
                         or_(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
                         ExtendedMember.is_deceased == True)
                     ).all()
-                    applicant_ids = [ext.applicant_id for ext in extended_members]
-                    applicants = session.query(Applicant).filter(
-                        or_(Applicant.state == Applicant.STATE_ARCHIVED,
-                        Applicant.id.in_(applicant_ids)),
-                        Applicant.consultant_id == consultant.id
-                    ).order_by(Applicant.id.desc())
+                    main_member_ids = [ext.main_member_id for ext in extended_members]
+                    main_members = session.query(MainMember).filter(
+                        or_(MainMember.state == MainMember.STATE_ARCHIVED,
+                        MainMember.id.in_(main_member_ids)),
+                        MainMember.user_id == user.id
+                    ).order_by(MainMember.id.desc())
 
                     if status:
-                        applicants = applicants.filter(Applicant.status == status.lower()).all()
+                        main_members = main_members.filter(MainMember.status == status.lower()).all()
 
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    main_member_ids = [main_member.id for main_member in main_members]
                     main_members = session.query(MainMember).filter(
-                        MainMember.applicant_id.in_(applicant_ids)
+                        MainMember.main_member_id.in_(main_member_ids)
                     ).all()
 
                     if not main_members:
@@ -510,8 +504,8 @@ class MainGetAllArchivedConsultantEndpoint:
                         resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
 
         except:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
-            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get main_members for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get main_members for user with ID {}.".format(id))
 
 
 class MemberCertificateGetEndpoint:
@@ -530,23 +524,18 @@ class MemberCertificateGetEndpoint:
             with db.transaction() as session:
                 # req = json.loads(req.stream.read().decode('utf-8'))
 
-                main_meber = session.query(MainMember).filter(
+                main_member = session.query(MainMember).filter(
                     MainMember.id == id,
                     MainMember.state != MainMember.STATE_DELETED
                 ).first()
-                if main_meber is None:
+                if main_member is None:
                     raise falcon.HTTPNotFound(title="Error", description="Main member not found")
 
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == main_meber.applicant_id,
-                    Applicant.state != Applicant.STATE_DELETED
-                ).first()
+                if main_member is None:
+                    raise falcon.HTTPNotFound(title="Error", description="main_member not found")
 
-                if applicant is None:
-                    raise falcon.HTTPNotFound(title="Error", description="Applicant not found")
-
-                with open(applicant.document, 'rb') as f:
-                    resp.downloadable_as = applicant.document
+                with open(main_member.document, 'rb') as f:
+                    resp.downloadable_as = main_member.document
                     resp.content_type = 'application/pdf'
                     resp.stream = [f.read()]
                     resp.status = falcon.HTTP_200
@@ -571,23 +560,18 @@ class MemberPersonalDocsGetEndpoint:
         try:
             with db.transaction() as session:
 
-                main_meber = session.query(MainMember).filter(
+                main_member = session.query(MainMember).filter(
                     MainMember.id == id,
                     MainMember.state == MainMember.STATE_ACTIVE
                 ).first()
-                if main_meber is None:
+                if main_member is None:
                     raise falcon.HTTPNotFound(title="Error", description="Main member not found")
 
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == main_meber.applicant_id,
-                    Applicant.state == Applicant.STATE_ACTIVE
-                ).first()
+                if main_member is None:
+                    raise falcon.HTTPNotFound(title="Error", description="main_member not found")
 
-                if applicant is None:
-                    raise falcon.HTTPNotFound(title="Error", description="Applicant not found")
-
-                with open(applicant.personal_docs, 'rb') as f:
-                    resp.downloadable_as = applicant.personal_docs
+                with open(main_member.personal_docs, 'rb') as f:
+                    resp.downloadable_as = main_member.personal_docs
                     resp.content_type = 'application/pdf'
                     resp.stream = [f.read()]
                     resp.status = falcon.HTTP_200
@@ -624,29 +608,22 @@ class MainMemberPostFileEndpoint:
                     main_member = session.query(MainMember).filter(
                         MainMember.id == id,
                         MainMember.state == MainMember.STATE_ACTIVE
-                    ).one_or_none()
+                    ).one()
 
                 except NoResultFound:
                     raise falcon.HTTPBadRequest(title="Error", description="No results found.")
                 except MultipleResultsFound:
                     raise falcon.HTTPBadRequest(title="Error", description="Multiple results found.")
 
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == main_member.applicant_id,
-                    Applicant.state == Applicant.STATE_ACTIVE).first()
-
-                if not applicant:
-                    raise falcon.HTTPBadRequest(title="Error", description="No results found.")
-
                 filename = "{uuid}.{ext}".format(uuid=uuid.uuid4(), ext='pdf')
 
-                os.chdir('./assets/uploads/personal_docs')
+                os.chdir('./assets/uploads/certificates')
                 pdf_path = os.path.join(os.getcwd(), filename)
                 with open(pdf_path, "wb") as pdf_file:
                     bytes = b64decode(pdf)
                     pdf_file.write(bytes)
 
-                applicant.personal_docs = '{}/{}'.format(os.getcwd(), filename)
+                main_member.document = '{}/{}'.format(os.getcwd(), filename)
                 os.chdir('../../..')
                 resp.status = falcon.HTTP_200
                 resp.location = filename
@@ -655,7 +632,7 @@ class MainMemberPostFileEndpoint:
 
             except Exception as e:
                 logger.exception(
-                    "Error, experienced error while creating Applicant.")
+                    "Error, experienced error while creating main_member.")
                 raise e
 
 
@@ -678,32 +655,35 @@ class MainMemberPostEndpoint:
 
     def on_post(self, req, resp, id):
         
-        req = json.load(req.bounded_stream)
-
+        req_dict = json.load(req.bounded_stream)
+        print(req)
         with db.transaction() as session:
+            if not req_dict.get("id_number"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
+            if not req_dict.get("first_name"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
+            if not req_dict.get("last_name"):
+                raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
+            if not req_dict.get("date_joined"):
+                    raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
+            if not req_dict.get("contact"):
+                    raise falcon.HTTPNotFound(title="Error", description="Contact number is a required field.")
+
             parlour = session.query(Parlour).filter(
-                Parlour.id == req["parlour_id"],
+                Parlour.id == req_dict["parlour_id"],
                 Parlour.state == Parlour.STATE_ACTIVE).first()
 
             if not parlour:
                 raise falcon.HTTPBadRequest("Parlour does not exist.")
-            if not req.get("id_number"):
-                raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
-            if not req.get("first_name"):
-                raise falcon.HTTPBadRequest(title="Error", description="Missing first name field.")
-            if not req.get("last_name"):
-                raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
-            if not req.get("date_joined"):
-                    raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
-            if not req.get("contact"):
-                    raise falcon.HTTPNotFound(title="Error", description="Contact number is a required field.")
 
-            consultant = session.query(Consultant).get(id)
+            user = session.query(User).filter(
+                User.id == id,
+                User.state == User.STATE_ACTIVE).one_or_none()
 
-            if not consultant:
-                raise falcon.HTTPBadRequest(title="Error", description="Consultant does not exist.")
+            if not user:
+                raise falcon.HTTPBadRequest("Parlour does not exist.")
 
-            plan_id = req.get("plan_id")
+            plan_id = req_dict.get("plan_id")
 
             plan = session.query(Plan).filter(
                 Plan.id == plan_id,
@@ -712,59 +692,48 @@ class MainMemberPostEndpoint:
             if not plan:
                 raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
 
-            applicant_req = req.get("applicant")
-
-            if not applicant_req.get("policy_num"):
+            if not req_dict.get("policy_num"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
 
-            applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
-            applicant_ids = [applicant.id for applicant in applicants]
+            main_members = session.query(MainMember).filter(MainMember.plan_id == plan.id).all()
+            main_member_ids = [main_member.id for main_member in main_members]
 
             id_number = session.query(MainMember).filter(
-                MainMember.id_number == req.get("id_number"),
+                MainMember.id_number == req_dict.get("id_number"),
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
-                MainMember.applicant_id.in_(applicant_ids)
+                MainMember.id.in_(main_member_ids)
             ).first()
 
             if not id_number:
                 id_number = session.query(ExtendedMember).filter(
-                    ExtendedMember.id_number == req.get("id_number"),
+                    ExtendedMember.id_number == req_dict.get("id_number"),
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                    ExtendedMember.applicant_id.in_(applicant_ids)
+                    ExtendedMember.main_member_id.in_(main_member_ids)
                 ).first()
 
             if id_number:
                 raise falcon.HTTPBadRequest(title="Error", description="ID number already exists for either main member or extended member.")
 
             try:
-                applicant = Applicant(
-                    policy_num=applicant_req.get("policy_num"),
-                    address=applicant_req.get("address"),
-                    status='unpaid',
-                    plan_id=plan.id,
-                    consultant_id=consultant.id,
-                    parlour_id=parlour.id,
-                    old_url=False,
-                    date=datetime.now(),
-                    state=Applicant.STATE_ACTIVE,
-                    modified_at=datetime.now(),
-                    created_at=datetime.now()
-                )
-
-                applicant.save(session)
-                date_joined = self.get_date(req.get("date_joined"))
-                date_of_birth = self.get_date(req.get("date_of_birth"))
+                date_joined = self.get_date(req_dict.get("date_joined"))
+                date_of_birth = self.get_date(req_dict.get("date_of_birth"))
                 main_member = MainMember(
-                    first_name = req.get("first_name"),
-                    last_name = req.get("last_name"),
-                    id_number = req.get("id_number"),
-                    contact = req.get("contact"),
+                    first_name = req_dict.get("first_name"),
+                    last_name = req_dict.get("last_name"),
+                    id_number = req_dict.get("id_number"),
+                    contact = req_dict.get("contact"),
                     date_of_birth = date_of_birth,
                     parlour_id = parlour.id,
-                    waiting_period = req.get("waiting_period", 0),
+                    user_id = user.id,
+                    waiting_period = req_dict.get("waiting_period", 0),
+                    policy_num=req_dict.get("policy_num"),
+                    address=req_dict.get("address"),
+                    status='unpaid',
+                    plan_id=plan.id,
+                    old_url=False,
+                    date=datetime.now(),
                     date_joined = date_joined,
                     state=MainMember.STATE_ACTIVE,
-                    applicant_id = applicant.id,
                     modified_at = datetime.now(),
                     created_at = datetime.now()
                 )
@@ -801,12 +770,12 @@ class MainMemberPostEndpoint:
                     pass
                 main_member.save(session)
 
-                applicant = update_certificate(applicant)
+                update_certificate(main_member)
 
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except Exception as e:
                 logger.exception(
-                    "Error, experienced error while creating Applicant.")
+                    "Error, experienced error while creating main_member.")
                 raise e
 
 
@@ -846,7 +815,7 @@ class MainMemberBulkPostEndpoint:
         import openpyxl
         rest_dict = json.load(req.bounded_stream)
         error_data = []
-        prev_applicant = None
+        prev_main_member = None
         is_main_member = False
         plan_id = rest_dict.pop('plan')
         csv_data = rest_dict.pop('csv')
@@ -883,55 +852,55 @@ class MainMemberBulkPostEndpoint:
                         if not all([data[8], data[9]]):
                             error_data.append({'data': data, 'error': "Extended member type and relation to main member are requires fieds."})
                             continue
-                        if not prev_applicant:
+                        if not prev_main_member:
                             error_data.append({'data': data, 'error': "Main member to extended member has an issue."})
                             continue
-                        error_data = bulk_insert_extended_members(data, error_data, prev_applicant, session)
+                        error_data = bulk_insert_extended_members(data, error_data, prev_main_member, session)
                         continue
                     else:
                         is_main_member = True
                 except IndexError:
                     pass
                 if not id_check:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Missing id_number field."})
                     continue
 
                 za_validation = SouthAfricanIdentityValidate(id_check)
                 valid = za_validation.validate()
                 if not valid:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Incorrect id_number entered."})
                     continue
 
                 if not data[0]:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Missing first name field."})
                     continue
                 if not data[1]:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Missing last name field."})
                     continue
                 if not data[4]:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Date joined is a required field."})
                     continue
                 if not data[3]:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Contact number is a required field."})
                     continue
 
-                consultant = session.query(Consultant).get(id)
+                user = session.query(User).get(id)
 
-                if not consultant:
-                    prev_applicant = None if is_main_member else prev_applicant
-                    error_data.append({'data': data, 'error': "Consultant does not exist."})
+                if not user:
+                    prev_main_member = None if is_main_member else prev_main_member
+                    error_data.append({'data': data, 'error': "User does not exist."})
                     continue
 
                 plan = session.query(Plan).get(plan_id)
 
                 if not plan:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Plan not found."})
                     continue
 
@@ -940,12 +909,12 @@ class MainMemberBulkPostEndpoint:
                     Parlour.state == Parlour.STATE_ACTIVE).first()
 
                 if not parlour:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': "Parlour does not exist."})
                     continue
 
                 if not data[7]:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': 'Missing policy number'})
                     continue
 
@@ -956,37 +925,37 @@ class MainMemberBulkPostEndpoint:
                 ).first()
 
                 if not id_number:
-                    applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
-                    applicant_ids = [applicant.id for applicant in applicants]
+                    main_members = session.query(MainMember).filter(MainMember.plan_id == plan.id).all()
+                    main_member_ids = [main_member.id for main_member in main_members]
                     id_number = session.query(ExtendedMember).filter(
                         ExtendedMember.id_number == id_check,
                         ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                        ExtendedMember.applicant_id.in_(applicant_ids)
+                        ExtendedMember.main_member_id.in_(main_member_ids)
                     ).first()
 
                 if id_number:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     if isinstance(id_number,MainMember):
-                        prev_applicant = id_number.applicant_id
+                        prev_main_member = id_number.main_member_id
                     error_data.append({'data': data, 'error': 'ID number already exists'})
                     continue
 
-                applicant = Applicant(
+                main_member = main_member(
                     policy_num=data[7],
                     address=data[6],
                     status='unpaid',
                     plan_id=plan.id,
-                    consultant_id=consultant.id,
+                    user_id=user.id,
                     parlour_id=parlour.id,
                     old_url=False,
                     date=datetime.now(),
-                    state=Applicant.STATE_ACTIVE,
+                    state=main_member.STATE_ACTIVE,
                     modified_at=datetime.now(),
                     created_at=datetime.now()
                 )
 
-                applicant.save(session)
-                prev_applicant = applicant.id
+                main_member.save(session)
+                prev_main_member = main_member.id
 
                 date_joined = data[4]
                 main_member = MainMember(
@@ -998,7 +967,7 @@ class MainMemberBulkPostEndpoint:
                     date_joined = date_joined,
                     waiting_period = data[5] if data[5] else 0,
                     state=MainMember.STATE_ACTIVE,
-                    applicant_id = applicant.id,
+                    main_member_id = main_member.id,
                     modified_at = datetime.now(),
                     created_at = datetime.now()
                 )
@@ -1016,7 +985,7 @@ class MainMemberBulkPostEndpoint:
                 try:
                     dob = parse('{}/{}/{}'.format(number, id_number[2:4], id_number[4:6]))
                 except ValueError:
-                    prev_applicant = None if is_main_member else prev_applicant
+                    prev_main_member = None if is_main_member else prev_main_member
                     error_data.append({'data': data, 'error': 'Incorrect date formt on date of birth'})
                     continue
 
@@ -1042,7 +1011,7 @@ class MainMemberBulkPostEndpoint:
                     pass
                 main_member.save(session)
 
-                applicant = update_certificate(applicant)
+                main_member = update_certificate(main_member)
 
         resp.body = json.dumps(error_data, default=str)
 
@@ -1099,12 +1068,12 @@ class MainMemberCheckAgeLimitEndpoint:
             ).first()
 
             if not is_ID_number:
-                applicants = session.query(Applicant).filter(Applicant.parlour_id == parlour.id).all()
-                applicant_ids = [applicant.id for applicant in applicants]
+                main_members = session.query(MainMember).filter(MainMember.parlour_id == parlour.id).all()
+                main_member_ids = [main_member.id for main_member in main_members]
                 is_ID_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == id_number_param,
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                    ExtendedMember.applicant_id.in_(applicant_ids)
+                    ExtendedMember.main_member_id.in_(main_member_ids)
                 ).first()
 
             min_age_limit = plan.member_minimum_age
@@ -1183,7 +1152,7 @@ class MainMemberPutEndpoint:
                 raise falcon.HTTPBadRequest(title="Error", description="Missing last name field.")
 
 
-            applicant_req = req.get("applicant")
+            main_member_req = req.get("main_member")
 
             plan_id = req.get("plan_id")
 
@@ -1191,31 +1160,21 @@ class MainMemberPutEndpoint:
                 Plan.id == plan_id,
                 Plan.state == Plan.STATE_ACTIVE).one_or_none()
 
-            applicant = session.query(Applicant).filter(
-                Applicant.id == applicant_req.get("id"),
-                Applicant.state == Applicant.STATE_ACTIVE).first()
-
-            if not applicant:
-                raise falcon.HTTPNotFound(title="Applicant not found", description="Could not find Applicant with given ID.")
-
-            if plan:
-                applicant.plan_id = plan.id
-            applicant.policy_num = applicant_req.get("policy_num")
-            applicant.address = applicant_req.get("address")
-
             main_member = session.query(MainMember).filter(
                 MainMember.id == id,
                 MainMember.parlour_id == parlour.id,
                 MainMember.state == MainMember.STATE_ACTIVE).first()
+            if plan:
+                main_member.plan_id = plan.id
 
             if not main_member:
-                raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
+                raise falcon.HTTPNotFound(title="Main member not found", description="Could not find main_member with given ID.")
 
-            applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
-            applicant_ids = [applicant.id for applicant in applicants]
+            main_members = session.query(MainMember).filter(MainMember.plan_id == plan.id).all()
+            main_member_ids = [main_member.id for main_member in main_members]
             id_number = session.query(MainMember).filter(
                 MainMember.id_number == req.get("id_number"),
-                MainMember.applicant_id.in_(applicant_ids),
+                MainMember.id.in_(main_member_ids),
                 MainMember.id != main_member.id,
                 MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))
             ).first()
@@ -1224,7 +1183,7 @@ class MainMemberPutEndpoint:
                 id_number = session.query(ExtendedMember).filter(
                     ExtendedMember.id_number == req.get("id_number"),
                     ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
-                    ExtendedMember.applicant_id.in_(applicant_ids)
+                    ExtendedMember.main_member_id.in_(main_member_ids)
                 ).first()
 
             if id_number:
@@ -1237,22 +1196,23 @@ class MainMemberPutEndpoint:
                 main_member.contact = req.get("contact")
                 main_member.date_of_birth = req.get("date_of_birth")
                 main_member.waiting_period = req.get("waiting_period", 0)
+                main_member.policy_num = req.get("policy_num")
+                main_member.address = req.get("address")
                 main_member.parlour_id = parlour.id
-                main_member.applicant_id = applicant.id
                 if req.get("is_deceased"):
                     main_member.is_deceased = req.get("is_deceased")
                     main_member.state = MainMember.STATE_ARCHIVED
-                    applicant.state = MainMember.STATE_ARCHIVED
+                    main_member.state = MainMember.STATE_ARCHIVED
                     update_deceased_extended_members(session, main_member)
 
                 main_member.save(session)
-                applicant = update_certificate(applicant)
+                update_certificate(main_member)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
             except:
                 logger.exception(
-                    "Error, experienced error while creating Applicant.")
+                    "Error, experienced error while creating main_member.")
                 raise falcon.HTTPBadRequest(
-                    "Processing Failed. experienced error while creating Applicant.")
+                    "Processing Failed. experienced error while creating main_member.")
 
 
 class MainMemberPutAgeLimitExceptionEndpoint:
@@ -1277,7 +1237,7 @@ class MainMemberPutAgeLimitExceptionEndpoint:
                     MainMember.state == MainMember.STATE_ACTIVE).first()
 
                 if not main_member:
-                    raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
+                    raise falcon.HTTPNotFound(title="Main member not found", description="Could not find main_member with given ID.")
 
                 main_member.age_limit_exception = req.get("age_limit_exception")
 
@@ -1286,9 +1246,9 @@ class MainMemberPutAgeLimitExceptionEndpoint:
                 resp.body = json.dumps(main_member.to_dict(), default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Applicant.")
+                "Error, experienced error while creating main_member.")
             raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Applicant.")
+                "Processing Failed. experienced error while creating main_member.")
 
 
 class MainMemberRestorePutEndpoint:
@@ -1322,21 +1282,21 @@ class MainMemberRestorePutEndpoint:
                     MainMember.parlour_id == parlour.id).first()
 
                 if not main_member:
-                    raise falcon.HTTPNotFound(title="Main member not found", description="Could not find Applicant with given ID.")
+                    raise falcon.HTTPNotFound(title="Main member not found", description="Could not find main_member with given ID.")
 
                 main_member.state = MainMember.STATE_ACTIVE
                 main_member.waiting_period = req.get('waiting_period')
-                applicant = session.query(Applicant).get(main_member.applicant_id)
-                applicant.state = Applicant.STATE_ACTIVE
+                main_member = session.query(MainMember).get(MainMember.main_member_id)
+                main_member.state = main_member.STATE_ACTIVE
 
                 main_member.save(session)
-                applicant = update_certificate(applicant)
+                main_member = update_certificate(main_member)
                 resp.body = json.dumps(main_member.to_dict(), default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Applicant.")
+                "Error, experienced error while creating main_member.")
             raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Applicant.")
+                "Processing Failed. experienced error while creating main_member.")
 
 
 class MainMemberDeleteEndpoint:
@@ -1356,7 +1316,7 @@ class MainMemberDeleteEndpoint:
             with db.transaction() as session:
                 try:
                     main_member = session.query(MainMember).get(id)
-                    applicant = main_member.applicant
+                    main_member = main_member.main_member
                 except MultipleResultsFound:
                     raise falcon.HTTPBadRequest(title="Error", description="Bad Request")
                 except NoResultFound:
@@ -1366,11 +1326,11 @@ class MainMemberDeleteEndpoint:
                     falcon.HTTPNotFound(title="Not Found", description="Member does not exist.")
 
                 main_member.delete(session)
-                applicant.delete(session)
+                main_member.delete(session)
                 resp.body = json.dumps({})
         except:
-            logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
-            raise falcon.HTTPBadRequest(title="Bad Request", description="Failed to delete Applicant with ID {}.".format(id))
+            logger.exception("Error, Failed to delete main_member with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Bad Request", description="Failed to delete main_member with ID {}.".format(id))
 
 
 class MainMemberArchiveEndpoint:
@@ -1401,8 +1361,8 @@ class MainMemberArchiveEndpoint:
                 main_member.archive(session)
                 resp.body = json.dumps({})
         except:
-            logger.exception("Error, Failed to delete Applicant with ID {}.".format(id))
-            raise falcon.HTTPBadRequest(title="Bad Request", description="Failed to delete Applicant with ID {}.".format(id))
+            logger.exception("Error, Failed to delete main_member with ID {}.".format(id))
+            raise falcon.HTTPBadRequest(title="Bad Request", description="Failed to delete main_member with ID {}.".format(id))
 
 
 class MainMemberDownloadCSVGetEndpoint:
@@ -1428,9 +1388,7 @@ class MainMemberDownloadCSVGetEndpoint:
                 if not parlour:
                     raise falcon.HTTPBadRequest("Parlour does not exist.")
 
-                main_members = session.query(MainMember).join(
-                    Applicant, (MainMember.applicant_id==Applicant.id)
-                ).join(Plan, (Applicant.plan_id==Plan.id)).filter(MainMember.parlour_id==parlour.id).all()
+                main_members = session.query(MainMember).filter(MainMember.parlour_id == parlour.id).all()
 
                 if not main_members:
                     resp.body = json.dumps([])
@@ -1438,9 +1396,9 @@ class MainMemberDownloadCSVGetEndpoint:
                     resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
         except:
             logger.exception(
-                "Error, experienced error while creating Applicant.")
+                "Error, experienced error while creating main_member.")
             raise falcon.HTTPBadRequest(
-                "Processing Failed. experienced error while creating Applicant.")
+                "Processing Failed. experienced error while creating main_member.")
 
 
     def csv_dump(self, session, parlour_id):
@@ -1450,7 +1408,7 @@ class MainMemberDownloadCSVGetEndpoint:
         today = datetime.today()
 
         logger.info('Create CSV file...')
-        filename = os.path.join(folder, 'applicants_{}.xlsx'.format(today))
+        filename = os.path.join(folder, 'main_members_{}.xlsx'.format(today))
 
         with open(filename, 'w') as f:
             writer = csv.writer(f)
@@ -1467,8 +1425,8 @@ class MainMemberDownloadCSVGetEndpoint:
             ])
 
             main_members = session.query(MainMember).join(
-                Applicant, (MainMember.applicant_id==Applicant.id)
-            ).join(Plan, (Applicant.plan_id==Plan.id)).filter(MainMember.parlour_id==parlour_id).all()
+                main_member, (MainMember.main_member_id==main_member.id)
+            ).join(Plan, (main_member.plan_id==Plan.id)).filter(MainMember.parlour_id==parlour_id).all()
 
             for main_member in main_members:
                 member_dict = main_member.to_dict()
@@ -1477,11 +1435,11 @@ class MainMemberDownloadCSVGetEndpoint:
                     member_dict.get("last_name"),
                     member_dict.get("id_number"),
                     member_dict.get("contact"),
-                    member_dict.get("applicant").get("policy_num"),
+                    member_dict.get("main_member").get("policy_num"),
                     member_dict.get("date_joined"),
-                    member_dict.get("applicant").get("status"),
-                    member_dict.get("applicant").get("cover"),
-                    member_dict.get("applicant").get("premium")
+                    member_dict.get("main_member").get("status"),
+                    member_dict.get("main_member").get("cover"),
+                    member_dict.get("main_member").get("premium")
                 ])
 
 
@@ -1504,7 +1462,7 @@ class ApplicantExportToExcelEndpoint:
                     status = None
                     permission = None
                     parlour = None
-                    consultant = None
+                    user = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
@@ -1512,10 +1470,10 @@ class ApplicantExportToExcelEndpoint:
                     if "permission" in req.params:
                         permission = req.params.pop("permission")
 
-                    if permission.lower() == 'consultant':
-                        consultant = session.query(Consultant).filter(
-                            Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.id == id
+                    if permission.lower() == 'user':
+                        user = session.query(User).filter(
+                            User.state == User.STATE_ACTIVE,
+                            User.id == id
                         ).one_or_none()
 
                     if permission.lower() == 'parlour':
@@ -1524,31 +1482,31 @@ class ApplicantExportToExcelEndpoint:
                             Parlour.id == id
                         ).one_or_none()
                 except MultipleResultsFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
-                if consultant:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.consultant_id == consultant.id
-                    ).order_by(Applicant.id.desc())
+                if user:
+                    main_members = session.query(MainMember).filter(
+                        MainMember.state == main_member.STATE_ACTIVE,
+                        MainMember.user_id == user.id
+                    ).order_by(MainMember.id.desc())
 
                 if parlour:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ACTIVE,
-                        Applicant.parlour_id == parlour.id
-                    ).order_by(Applicant.id.desc())
+                    main_members = session.query(MainMember).filter(
+                        MainMember.state == main_member.STATE_ACTIVE,
+                        MainMember.parlour_id == parlour.id
+                    ).order_by(MainMember.id.desc())
 
                 if status:
-                    applicants = applicants.filter(Applicant.status == status.lower()).all()
+                    main_members = main_members.filter(MainMember.status == status.lower()).all()
 
-                applicant_ids = [applicant.id for applicant in applicants]
+                main_member_ids = [main_member.id for main_member in main_members]
 
-                if not applicant_ids:
-                    raise falcon.HTTPBadRequest(title="Error", description="No Applicants available")
+                if not main_member_ids:
+                    raise falcon.HTTPBadRequest(title="Error", description="No main_members available")
 
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
-                    MainMember.applicant_id.in_(applicant_ids)
+                    MainMember.main_member_id.in_(main_member_ids)
                 ).all()
                 results = []
 
@@ -1558,7 +1516,7 @@ class ApplicantExportToExcelEndpoint:
 
                     extended_members = session.query(ExtendedMember).filter(
                         ExtendedMember.state == ExtendedMember.STATE_ACTIVE,
-                        ExtendedMember.applicant_id == main.applicant.id
+                        ExtendedMember.main_member_id == main.id
                     ).all()
                     for ex in extended_members:
                        e = ex.to_short_dict()
@@ -1567,25 +1525,25 @@ class ApplicantExportToExcelEndpoint:
                 if results:
                     data = []
                     for res in results:
-                        applicant = res.get('applicant')
+                        main_member = res.get('main_member')
 
-                        plan = applicant.get('plan')
+                        plan = main_member.get('plan')
                         underwriter = float(plan.get('underwriter_premium')) if plan.get('underwriter_premium') else None
                         data.append({
                             'First Name': res.get('first_name'),
                             'Last Name': res.get('last_name'),
                             'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
-                            'Policy Number': applicant.get("policy_num"),
+                            'Policy Number': main_member.get("policy_num"),
                             'Contact Number': res.get('contact') if res.get('contact') else res.get('number'),
                             'Date Joined': res.get('date_joined') if res.get('date_joined') else None,
-                            'Status': applicant.get('status') if res.get else None,
+                            'Status': main_member.get('status') if res.get else None,
                             'Premium': None if res.get('relation_to_main_member') else float(plan.get('premium')),
                             'Underwriter': None if res.get('relation_to_main_member') else underwriter,
                             'Relation to Main Member': ExtendedMember.relation_to_text.get(res.get('relation_to_main_member')) if res.get('relation_to_main_member') else None,
                             })
 
                     df = pd.DataFrame(data)
-                    filename = '{}_{}'.format(consultant.first_name, consultant.last_name) if consultant else parlour.parlourname
+                    filename = '{}_{}'.format(user.first_name, user.last_name) if user else parlour.parlourname
                     writer = pd.ExcelWriter('{}.xlsx'.format(filename), engine='xlsxwriter')
                     df.to_excel(writer, sheet_name='Sheet1', index=False)
                     os.chdir('./assets/uploads/spreadsheets')
@@ -1600,7 +1558,7 @@ class ApplicantExportToExcelEndpoint:
                         resp.status = falcon.HTTP_200
 
         except Exception as e:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get main_members for user with ID {}.".format(id))
             raise e
 
 
@@ -1688,7 +1646,7 @@ class SMSService:
             status = None
             search_field = None
             contacts = []
-            consultant = None
+            user = None
 
             message = rest_dict.get("message")
 
@@ -1711,55 +1669,52 @@ class SMSService:
                 Parlour.state == Parlour.STATE_ACTIVE).first()
 
             if not parlour:
-                raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
             if rest_dict.get('consultant_id'):
-                consultant = session.query(Consultant).filter(
-                    Consultant.id == rest_dict.get('consultant_id'),
-                    Consultant.state == Consultant.STATE_ACTIVE
+                user = session.query(User).filter(
+                    User.id == rest_dict.get('consultant_id'),
+                    User.state == User.STATE_ACTIVE
                 ).first()
 
             if search_field:
-                main_members = session.query(
-                    MainMember,
-                    Applicant
-                ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
-                    Applicant.parlour_id == parlour.id,
+                    MainMember.parlour_id == parlour.id,
                     or_(
                         MainMember.first_name.ilike('{}%'.format(search_field)),
                         MainMember.first_name.ilike('{}%'.format(search_field)),
                         MainMember.id_number.ilike('{}%'.format(search_field)),
-                        Applicant.policy_num.ilike('{}%'.format(search_field))
+                        MainMember.policy_num.ilike('{}%'.format(search_field))
                     )
                 )
-                if consultant:
-                    main_members = main_members.filter(Applicant.consultant_id == consultant.id)
+                if user:
+                    main_members = main_members.filter(MainMember.user_id == user.id)
 
             if status:
-                applicants = session.query(Applicant).filter(
-                    Applicant.status == status,
-                    Applicant.parlour_id== parlour.id
+                main_members = session.query(MainMember).filter(
+                    MainMember.status == status,
+                    MainMember.parlour_id== parlour.id
                 )
-                if consultant:
-                    applicants = applicants.filter(Applicant.consultant_id == consultant.id)
-                applicant_ids = [applicant.id for applicant in applicants.all()]
+                if user:
+                    main_members = main_members.filter(MainMember.user_id == user.id)
+                main_member_ids = [main_member.id for main_member in main_members.all()]
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
-                    MainMember.applicant_id.in_(applicant_ids)
+                    MainMember.main_member_id.in_(main_member_ids)
                 )
 
             if not status and not search_field:
-                applicants = session.query(Applicant).filter(
-                    Applicant.state == Applicant.STATE_ACTIVE,
-                    Applicant.parlour_id== parlour.id
-                )
-                if consultant:
-                    applicants = applicants.filter(Applicant.consultant_id == consultant.id)
-                applicant_ids = [applicant.id for applicant in applicants.all()]
                 main_members = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
-                    MainMember.applicant_id.in_(applicant_ids)
+                    MainMember.parlour_id== parlour.id
+                )
+                if user:
+                    main_members = main_members.filter(MainMember.user_id == user.id)
+                main_member_ids = [main_member.id for main_member in main_members.all()]
+                main_members = session.query(MainMember).filter(
+                    MainMember.state == MainMember.STATE_ACTIVE,
+                    MainMember.main_member_id.in_(main_member_ids)
                 )
 
             if rest_dict['start_date']:
@@ -1789,7 +1744,7 @@ class SMSService:
 
 
 def update_deceased_extended_members(session, main_member):
-    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == main_member.applicant_id).all()
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.main_member_id == main_member.main_member_id).all()
     main_member.save(session)
     for x in extended_members:
         x.is_main_member_deceased = True
@@ -1797,41 +1752,48 @@ def update_deceased_extended_members(session, main_member):
 
 
 def update_deceased_member(session, member):
-    applicant = member.applicant
-    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == member.applicant_id).all()
+    main_member = member.main_member
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.main_member_id == member.main_member_id).all()
     spouse = extended_members.pop()
 
-    new_applicant = Applicant(
-        policy_num=applicant.policy_num,
-        address=applicant.address,
+    new_main_member = main_member(
+        policy_num=main_member.policy_num,
+        address=main_member.address,
         status='unpaid',
-        plan_id=applicant.plan_id,
-        consultant_id=applicant.consultant_id,
-        parlour_id=applicant.parlour_id,
+        plan_id=main_member.plan_id,
+        user_id=main_member.user_id,
+        parlour_id=main_member.parlour_id,
         old_url=False,
         date=datetime.now(),
-        state=Applicant.STATE_ACTIVE,
+        state=main_member.STATE_ACTIVE,
         modified_at=datetime.now(),
         created_at=datetime.now()
     )
 
-    new_applicant.save(session)
+    new_main_member.save(session)
     date_joined = member.date_joined
     main_member = MainMember(
         first_name=spouse.first_name,
         last_name=spouse.last_name,
         id_number=spouse.id_number,
+        policy_num=main_member.policy_num,
+        address=main_member.address,
+        status='unpaid',
+        plan_id=main_member.plan_id,
+        old_url=False,
+        date=datetime.now(),
         contact='0796579128',
         date_of_birth=spouse.date_of_birth,
         parlour_id=member.parlour_id,
+        user_id=main_member.user_id,
         date_joined=date_joined,
         state=MainMember.STATE_ACTIVE,
-        applicant_id=new_applicant.id,
+        main_member_id=new_main_member.id,
         modified_at=datetime.now(),
         created_at=datetime.now()
     )
 
     main_member.save(session)
     for x in extended_members:
-        x.applicant_id = new_applicant.id
+        x.main_member_id = new_main_member.id
     session.commit()

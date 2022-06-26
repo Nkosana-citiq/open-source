@@ -1,22 +1,22 @@
 from open_source import db
-from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
 from open_source.rest import extended_members
 
 
-def get_all_applicants(session):
-    applicants = session.query(Applicant).filter(Applicant.state != Applicant.STATE_DELETED).all()
-    return applicants
+def get_all_main_members(session):
+    main_members = session.query(MainMember).filter(MainMember.state != MainMember.STATE_DELETED).all()
+    return main_members
 
 
-def update_payments(applicant=None):
-    extended_members.update_certificate(applicant)
+def update_payments(main_member=None):
+    extended_members.update_certificate(main_member)
 
 
 def create_certificate():
     with db.transaction() as session:
-        applicants = get_all_applicants(session)
-        for applicant in applicants:
-            update_payments(applicant)
+        main_members = get_all_main_members(session)
+        for main_member in main_members:
+            update_payments(main_member)
 
 
 def cli():

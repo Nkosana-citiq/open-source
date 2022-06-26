@@ -1,16 +1,19 @@
 from random import choice, randint
 import base64
 import hashlib
+from xmlrpc.client import boolean
 
 from open_source import config
 from open_source import db
-from sqlalchemy import Column, Integer, String, DateTime, func, Text
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
-class Admin(db.Base):
-    __tablename__ = 'admin'
+from open_source.core.roles import Role
+
+class User(db.Base):
+    __tablename__ = 'users'
 
     STATE_ACTIVE = 1
     STATE_DELETED = 0
@@ -26,6 +29,26 @@ class Admin(db.Base):
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
 
+    @declared_attr
+    def main_members(cls):
+        return relationship("MainMember", back_populates="user")
+
+    @declared_attr
+    def role_id(cls):
+        return Column(Integer, ForeignKey('roles.id'))
+
+    @declared_attr
+    def role(cls):
+        return relationship('Role')
+
+    @declared_attr
+    def parlour_id(cls):
+        return Column(Integer, ForeignKey('parlours.id'))
+
+    @declared_attr
+    def parlour(cls):
+        return relationship('Parlour')
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -36,7 +59,8 @@ class Admin(db.Base):
             'state': self.state,
             'username': self.username,
             "modified": self.modified_at,
-            'created': self.created_at
+            'created': self.created_at,
+            "parlour": self.parlour.to_dict()
         }
 
     def save(self, session):
@@ -52,6 +76,18 @@ class Admin(db.Base):
     def delete(self, session):
         self.make_deleted()
         session.commit()
+    
+    @property
+    def is_consultant(self):
+        return self.role_id == Role.IS_CONSULTANT
+
+    @property
+    def is_admin(self):
+        return self.role_id == Role.IS_ADMIN
+
+    @property
+    def is_parlour(self):
+        return self.role_id == Role.IS_PARLOUR
 
     @staticmethod
     def to_password_hash(plaintext):
@@ -79,11 +115,11 @@ class Admin(db.Base):
         return {'id': self.id}
 
     @classmethod
-    def is_username_unique(cls, session, username):
+    def is_username_unique(cls, session, username) -> boolean:
         try:
-            admin = session.query(Admin).filter(func.trim(Admin.username) ==
-                                       username.strip(), Admin.state == Admin.STATE_ACTIVE).one()
-            if admin:
+            user = session.query(User).filter(func.trim(User.username) ==
+                                       username.strip(), User.state == User.STATE_ACTIVE).one()
+            if user:
                 return False
         except MultipleResultsFound:
             return False
@@ -92,13 +128,13 @@ class Admin(db.Base):
         return False
 
     @classmethod
-    def is_email_unique(cls, session, email):
+    def is_email_unique(cls, session, email) -> boolean:
         try:
-            admin = session.query(Admin).filter(
-                func.trim(Admin.email) == email.strip(),
-                Admin.state == Admin.STATE_ACTIVE
+            user = session.query(User).filter(
+                func.trim(User.email) == email.strip(),
+                User.state == User.STATE_ACTIVE
             ).one()
-            if admin:
+            if user:
                 return False
         except MultipleResultsFound:
             return False

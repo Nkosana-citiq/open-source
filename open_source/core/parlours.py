@@ -78,8 +78,8 @@ class Parlour(db.Base):
         return relationship("Plan", back_populates="parlour")
 
     @declared_attr
-    def consultants(cls):
-        return relationship("Consultant", back_populates="parlour")
+    def users(cls):
+        return relationship("User", back_populates="parlour")
 
     @declared_attr
     def main_members(cls):

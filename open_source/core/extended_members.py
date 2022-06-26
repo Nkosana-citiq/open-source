@@ -100,13 +100,13 @@ class ExtendedMember(db.Base):
     date_joined = Column(DateTime, server_default=func.now())
 
     @declared_attr
-    def applicant_id(cls):
-        return Column(Integer, ForeignKey('applicants.id'))
+    def main_member_id(cls):
+        return Column(Integer, ForeignKey('main_members.id'))
 
     @declared_attr
-    def applicant(cls):
-        return relationship('Applicant', back_populates='extended_members')
-
+    def main_member(cls):
+        return relationship('MainMember', back_populates='extended_members')
+    
     @property
     def state_text(self):
         return self.state_to_text.get(self.state, 'Undefined')
@@ -146,7 +146,7 @@ class ExtendedMember(db.Base):
             'waiting_period': self.waiting_period,
             'is_deceased': self.is_deceased,
             'is_main_member_deceased': self.is_main_member_deceased,
-            'applicant': self.applicant.to_short_dict()
+            'main_member': self.main_member.to_short_dict()
         }
 
     def to_short_dict(self):
@@ -165,7 +165,7 @@ class ExtendedMember(db.Base):
             'waiting_period': self.waiting_period,
             'is_deceased': self.is_deceased,
             'is_main_member_deceased': self.is_main_member_deceased,
-            'applicant': self.applicant.to_short_dict()
+            'main_member': self.main_member.to_short_dict()
         }
 
     def save(self, session):

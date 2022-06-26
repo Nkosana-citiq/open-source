@@ -1,8 +1,5 @@
-from open_source.core.applicants import Applicant
-from open_source.core.certificate import Certificate
 from open_source.core.extended_members import ExtendedMember
 from open_source.core.main_members import MainMember
-from open_source.core.parlours import Parlour
 from open_source.core.plans import Plan
 from open_source import db
 
@@ -40,8 +37,8 @@ def age_limit_per_extended_member_type(extended_member, plan):
         return plan.additional_extended_minimum_age, plan.additional_extended_maximum_age
 
 
-def update_extended_members_age_limit(session, plan, applicant):
-    extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == applicant.id).all()
+def update_extended_members_age_limit(session, plan, main_member):
+    extended_members = session.query(ExtendedMember).filter(ExtendedMember.main_member_id == main_member.id).all()
 
     if extended_members:
         for extended_member in extended_members:
@@ -86,9 +83,9 @@ def update_extended_members_age_limit(session, plan, applicant):
             session.commit()
 
 
-def update_age_limit(session, applicant):
-    plan = session.query(Plan).filter(Plan.id == applicant.plan.id).one_or_none()
-    main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).one_or_none()
+def update_age_limit(session, main_member):
+    plan = session.query(Plan).filter(Plan.id == main_member.plan.id).one_or_none()
+    main_member = session.query(MainMember).filter(MainMember.main_member_id == main_member.id).one_or_none()
 
     if main_member:
         age_limit_exceeded = False
@@ -133,15 +130,15 @@ def update_age_limit(session, applicant):
                 main_member.age_limit_exceeded = True
             else:
                 main_member.age_limit_exceeded = False
-            update_extended_members_age_limit(session, plan, applicant)
+            update_extended_members_age_limit(session, plan, main_member)
 
 
 def cli():
     with db.transaction() as session:
-        applicants = session.query(Applicant).filter(Applicant.state.in_((Applicant.STATE_ACTIVE, Applicant.STATE_ARCHIVED))).all()
-        for applicant in applicants:
+        main_members = session.query(MainMember).filter(MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))).all()
+        for main_member in main_members:
             try:
-                update_age_limit(session, applicant)
+                update_age_limit(session, main_member)
             except:
                 continue
 

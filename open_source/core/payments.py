@@ -2,7 +2,6 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 from open_source import db
-from open_source.core.applicants import Applicant
 from open_source.core.main_members import MainMember
 
 from sqlalchemy import Column, Integer, DateTime, ForeignKey, func, String
@@ -39,12 +38,12 @@ class Payment(db.Base):
         return relationship('Plan')
 
     @declared_attr
-    def applicant_id(cls):
-        return Column(Integer, ForeignKey('applicants.id'))
+    def main_member_id(cls):
+        return Column(Integer, ForeignKey('main_members.id'))
 
     @declared_attr
-    def applicant(cls):
-        return relationship('Applicant')
+    def main_member(cls):
+        return relationship('MainMember')
 
     def to_dict(self):
         return {
@@ -52,7 +51,7 @@ class Payment(db.Base):
             'created': self.date,
             'state': self.state,
             'payment_type': self.payment_type,
-            'applicant': self.applicant.to_short_dict(),
+            'main_member': self.main_member.to_short_dict(),
             'plan': self.plan.to_short_dict(),
             'parlour': self.parlour.to_dict()
         }
@@ -72,45 +71,45 @@ class Payment(db.Base):
         session.commit()
 
     @staticmethod
-    def get_last_payment(session, applicant_id):
-        payment = session.query(Payment).filter(Payment.applicant_id == applicant_id).order_by(Payment.id.desc()).first()
+    def get_last_payment(session, main_member_id):
+        payment = session.query(Payment).filter(Payment.main_member_id == main_member_id).order_by(Payment.id.desc()).first()
         return payment
 
     @staticmethod
-    def set_status(session, status, applicant_id):
+    def set_status(session, status, main_member_id):
         result = session.execute("""
-            Update applicants set status=:status where id=:applicant_id
-        """, {'status': status, 'applicant_id': applicant_id})
+            Update main_members set status=:status where id=:main_member_id
+        """, {'status': status, 'main_member_id': main_member_id})
         return result.rowcount
 
     @staticmethod
-    def update_payment_status(session, applicant=None):
-        last_payment = Payment.get_last_payment(session, applicant.id)
-        applicant_date = applicant.date.date() or None
+    def update_payment_status(session, main_member=None):
+        last_payment = Payment.get_last_payment(session, main_member.id)
+        main_member_date = main_member.date.date() or None
         NOW = datetime.now()
 
         if last_payment:
             last_payment_date = last_payment.date.date() or None
             if relativedelta(NOW, last_payment_date.replace(day=1)).months > 3 and NOW.date() > last_payment.date.date():
-                Payment.set_status(session, 'lapsed', applicant.id)
-                applicant.state = Applicant.STATE_ARCHIVED
-                main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).order_by(MainMember.id.desc()).first()
+                Payment.set_status(session, 'lapsed', main_member.id)
+                main_member.state = main_member.STATE_ARCHIVED
+                main_member = session.query(MainMember).filter(MainMember.id == main_member.id).order_by(MainMember.id.desc()).first()
                 if main_member:
                     main_member.state = MainMember.STATE_ARCHIVED
             elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 1 and NOW.date() > last_payment.date.date():
-                Payment.set_status(session, 'skipped', applicant.id)
+                Payment.set_status(session, 'skipped', main_member.id)
             elif relativedelta(NOW, last_payment_date.replace(day=1)).months > 0 and NOW.date() > last_payment.date.date():
-                Payment.set_status(session, 'unpaid', applicant.id)
+                Payment.set_status(session, 'unpaid', main_member.id)
             elif relativedelta(NOW, last_payment_date.replace(day=1)).months == 0 or relativedelta(NOW, last_payment.date).months < 0:
-                Payment.set_status(session, 'paid', applicant.id)
+                Payment.set_status(session, 'paid', main_member.id)
         else:
-            if relativedelta(NOW, applicant_date.replace(day=1)).months > 3:
-                Payment.set_status(session, 'lapsed', applicant.id)
-                applicant.state = Applicant.STATE_ARCHIVED
-                main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).order_by(MainMember.id.desc()).first()
+            if relativedelta(NOW, main_member_date.replace(day=1)).months > 3:
+                Payment.set_status(session, 'lapsed', main_member.id)
+                main_member.state = MainMember.STATE_ARCHIVED
+                main_member = session.query(MainMember).filter(MainMember.id == main_member.id).order_by(MainMember.id.desc()).first()
                 if main_member:
                     main_member.state = MainMember.STATE_ARCHIVED
-            elif relativedelta(NOW, applicant_date.replace(day=1)).months > 0:
-                Payment.set_status(session, 'skipped', applicant.id)
+            elif relativedelta(NOW, main_member_date.replace(day=1)).months > 0:
+                Payment.set_status(session, 'skipped', main_member.id)
             else:
-                Payment.set_status(session, 'unpaid', applicant.id)
+                Payment.set_status(session, 'unpaid', main_member.id)

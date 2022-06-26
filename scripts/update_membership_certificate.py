@@ -1,4 +1,4 @@
-from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
 from open_source.core.certificate import Certificate
 from open_source.core.extended_members import ExtendedMember
 from open_source.core.main_members import MainMember
@@ -12,15 +12,15 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-def update_certificate(session, applicant):
+def update_certificate(session, main_member):
     with db.transaction() as session:
-        parlour = session.query(Parlour).filter(Parlour.id == applicant.parlour.id).one_or_none()
-        plan = session.query(Plan).filter(Plan.id == applicant.plan.id).one_or_none()
-        main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id, MainMember.state == MainMember.STATE_ACTIVE).first()
+        parlour = session.query(Parlour).filter(Parlour.id == main_member.parlour.id).one_or_none()
+        plan = session.query(Plan).filter(Plan.id == main_member.plan.id).one_or_none()
+        main_member = session.query(MainMember).filter(MainMember.main_member_id == main_member.id, MainMember.state == MainMember.STATE_ACTIVE).first()
 
         if main_member:
             extended_members = session.query(ExtendedMember).filter(
-                ExtendedMember.applicant_id == applicant.id,
+                ExtendedMember.main_member_id == main_member.id,
                 ExtendedMember.state == ExtendedMember.STATE_ACTIVE).all()
 
             try:
@@ -39,7 +39,7 @@ def update_certificate(session, applicant):
                 canvas.set_member_contact(main_member.contact)
                 canvas.set_current_plan(plan.plan)
                 canvas.set_current_premium(plan.premium)
-                canvas.set_physical_address(applicant.address if applicant.address else '')
+                canvas.set_physical_address(main_member.address if main_member.address else '')
 
                 for extended_member in extended_members:
                     canvas.add_other_members(extended_member)
@@ -47,8 +47,8 @@ def update_certificate(session, applicant):
                 if plan.benefits:
                     canvas.set_benefits(plan.benefits)
                 canvas.save()
-                old_document = applicant.document
-                applicant.document = canvas.get_file_path()
+                old_document = main_member.document
+                main_member.document = canvas.get_file_path()
                 if old_document and os.path.exists(old_document):
                     os.remove(old_document)
 
@@ -56,15 +56,15 @@ def update_certificate(session, applicant):
                 logger.exception("Error, experienced an error while creating certificate.")
                 print(e)
 
-    return applicant
+    return main_member
 
 
 def cli():
     with db.transaction() as session:
-        applicants = session.query(Applicant).filter(Applicant.state.in_((Applicant.STATE_ACTIVE, Applicant.STATE_ARCHIVED))).all()
+        main_members = session.query(MainMember).filter(MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED))).all()
 
-        for applicant in applicants:
-            update_certificate(session, applicant)
+        for main_member in main_members:
+            update_certificate(session, main_member)
         session.commit()
 
 

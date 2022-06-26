@@ -10,11 +10,10 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from open_source import db
 
-from open_source.core.applicants import Applicant
+from open_source.core.main_members import MainMember
 from open_source.core.main_members import MainMember
 from open_source.core.invoices import Invoice
 from open_source.core.parlours import Parlour
-from open_source.core.consultants import Consultant
 from open_source.core.plans import Plan
 from open_source.core.payments import Payment
 from falcon_cors import CORS
@@ -33,6 +32,7 @@ import PyPDF2
 import pandas as pd
 
 from open_source.config import get_config
+from open_source.core.users import User
 
 
 conf = get_config()
@@ -95,10 +95,10 @@ class PaymentGetLastEndpoint:
         try:
             with db.transaction() as session:
 
-                applicant = session.query(Applicant).filter(Applicant.id == id).first()
+                main_member = session.query(MainMember).filter(MainMember.id == id).first()
 
                 payment = session.query(Payment).filter(
-                    Payment.applicant_id == applicant.id,
+                    Payment.main_member_id == main_member.id,
                     Payment.state == Payment.STATE_ACTIVE
                 ).order_by(Payment.id.desc()).first()
 
@@ -126,17 +126,17 @@ class PaymentsGetAllEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.transaction() as session:
-                applicant = session.query(Applicant).filter(
-                    Applicant.state == Applicant.STATE_ACTIVE,
-                    Applicant.id == id
+                main_member = session.query(MainMember).filter(
+                    MainMember.state == MainMember.STATE_ACTIVE,
+                    MainMember.id == id
                 ).one_or_none()
 
-                if not applicant:
+                if not main_member:
                     raise falcon.HTTPBadRequest()
 
                 payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
-                    Payment.applicant_id == applicant.id
+                    Payment.main_member_id == main_member.id
                 ).all()
 
                 if not payments:
@@ -174,24 +174,24 @@ class PaymentPostEndpoint:
                 if not parlour:
                     raise falcon.HTTPNotFound(title="Not Found", description="Parlour does not exist.")
 
-                applicant_id = rest_dict.get("applicant_id")
-
-                applicant = session.query(Applicant).filter(
-                    Applicant.id == applicant_id,
-                ).one_or_none()
-
-                if not applicant:
-                    raise falcon.HTTPNotFound(title="Not Found", description="Applicant does not exist.")
+                main_member_id = rest_dict.get("main_member_id")
 
                 main_member = session.query(MainMember).filter(
-                    MainMember.applicant_id == applicant.id,
+                    MainMember.id == main_member_id,
+                ).one_or_none()
+
+                if not main_member:
+                    raise falcon.HTTPNotFound(title="Not Found", description="MainMember does not exist.")
+
+                main_member = session.query(MainMember).filter(
+                    MainMember.main_member_id == main_member.id,
                 ).one_or_none()
 
                 if not main_member:
                     raise falcon.HTTPNotFound(title="Not Found", description="Main member does not exist.")
 
                 plan = session.query(Plan).filter(
-                    Plan.id == applicant.plan_id,
+                    Plan.id == main_member.plan_id,
                     Plan.state == Plan.STATE_ACTIVE
                 ).one_or_none()
 
@@ -210,7 +210,7 @@ class PaymentPostEndpoint:
 
                 amount = plan.premium * len(dates)
                 payment = Payment(
-                    applicant=applicant,
+                    main_member=main_member,
                     parlour=parlour,
                     plan=plan,
                     state=Payment.STATE_ACTIVE,
@@ -220,9 +220,9 @@ class PaymentPostEndpoint:
                 )
 
                 payment.save(session)
-                Payment.update_payment_status(session, applicant)
+                Payment.update_payment_status(session, main_member)
                 user = rest_dict.get("user")
-                invoice = print_invoice(session, payment, applicant, user, amount, dates)
+                invoice = print_invoice(session, payment, main_member, user, amount, dates)
 
                 resp.body = json.dumps(invoice.to_dict(), default=str)
         except:
@@ -315,10 +315,10 @@ class PaymentPutEndpoint:
             description="Processing Failed. experienced error while creating Payment.")
 
 
-def print_invoice(session, payment, applicant, user, amount, dates):
+def print_invoice(session, payment, main_member, user, amount, dates):
 
-    main_member = session.query(MainMember).filter(MainMember.applicant_id == applicant.id).first()
-    last_invoice = session.query(Invoice).filter(Invoice.parlour_id == applicant.parlour.id).order_by(Invoice.id.desc()).first()
+    main_member = session.query(MainMember).filter(MainMember.main_member_id == main_member.id).first()
+    last_invoice = session.query(Invoice).filter(Invoice.parlour_id == main_member.parlour.id).order_by(Invoice.id.desc()).first()
     invoice_number = str(int(last_invoice.number) + 1) if last_invoice else "1" 
 
     if main_member:
@@ -337,13 +337,13 @@ def print_invoice(session, payment, applicant, user, amount, dates):
             payment_id = payment.id,
             number = invoice_number,
             amount = amount,
-            email = applicant.parlour.email,
-            premium = applicant.plan.premium,
-            parlour = applicant.parlour,
-            address = applicant.parlour.address,
+            email = main_member.parlour.email,
+            premium = main_member.plan.premium,
+            parlour = main_member.parlour,
+            address = main_member.parlour.address,
             branch = user.get("branch", ''),
-            contact = applicant.parlour.number,
-            policy_number = applicant.policy_num,
+            contact = main_member.parlour.number,
+            policy_number = main_member.policy_num,
             id_number = main_member.id_number,
             customer = customer,
             assisted_by = assisted_by,
@@ -549,17 +549,17 @@ class InvoicesGetAllEndpoint:
         try:
             with db.transaction() as session:
                 try:
-                    applicant = session.query(Applicant).filter(
-                        Applicant.id == id
+                    main_member = session.query(MainMember).filter(
+                        MainMember.id == id
                     ).one()
                 except MultipleResultsFound:
-                    raise falcon.HTTPBadRequest(title="Error", description="More than one applicant with this ID.")
+                    raise falcon.HTTPBadRequest(title="Error", description="More than one main_member with this ID.")
                 except NoResultFound:
-                    raise falcon.HTTPBadRequest(title="Error", description="No applicant fount with this ID.")
+                    raise falcon.HTTPBadRequest(title="Error", description="No main_member fount with this ID.")
 
                 payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
-                    Payment.applicant_id == applicant.id
+                    Payment.main_member_id == main_member.id
                 ).all()
 
                 invoices = None
@@ -659,20 +659,20 @@ class InvoiceExportToExcelEndpoint:
         try:
             with db.transaction() as session:
                 try:
-                    consultant_id = None
+                    user_id = None
                     parlour = None
-                    consultant = None
+                    user = None
 
                     if "status" in req.params:
                         status = req.params.pop("status")
 
                     if "consultant_id" in req.params:
-                        consultant_id = req.params.pop("consultant_id")
+                        user_id = req.params.pop("consultant_id")
 
-                    if consultant_id:
-                        consultant = session.query(Consultant).filter(
-                            Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.id == consultant_id
+                    if user_id:
+                        user = session.query(User).filter(
+                            User.state == User.STATE_ACTIVE,
+                            User.id == user_id
                         ).one()
 
                     parlour = session.query(Parlour).filter(
@@ -680,32 +680,32 @@ class InvoiceExportToExcelEndpoint:
                         Parlour.id == id
                     ).one()
                 except MultipleResultsFound as e:
-                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
                 if not parlour:
-                    parlour = consultant.parlour
+                    parlour = user.parlour
 
                 month_start = datetime.now().replace(day=1)
 
-                applicants_query = session.query(Applicant).filter(
-                    Applicant.state == Applicant.STATE_ACTIVE,
+                main_members_query = session.query(MainMember).filter(
+                    MainMember.state == MainMember.STATE_ACTIVE,
                 )
 
-                if consultant:
-                    applicants = applicants_query.filter(
-                        Applicant.consultant_id == consultant.id
+                if user:
+                    main_members = main_members_query.filter(
+                        MainMember.user_id == user.id
                     ).all()
                 else:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.parlour_id == parlour.id
+                    main_members = session.query(MainMember).filter(
+                        MainMember.parlour_id == parlour.id
                     ).all()
 
-                applicant_ids = [applicant.id for applicant in applicants]
+                main_member_ids = [main_member.id for main_member in main_members]
 
                 payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
                     Payment.created > month_start,
-                    Payment.applicant_id.in_(applicant_ids)
+                    Payment.main_member_id.in_(main_member_ids)
                 ).all()
 
                 payment_ids = [payment.id for payment in payments]
@@ -718,12 +718,12 @@ class InvoiceExportToExcelEndpoint:
 
                 results = []
                 for invoice in invoices:
-                    applicant = invoice.payment.applicant
+                    main_member = invoice.payment.main_member
 
                     try:
                         main_member = session.query(MainMember).filter(
                             MainMember.state == MainMember.STATE_ACTIVE,
-                            MainMember.applicant_id == applicant.id
+                            MainMember.main_member_id == main_member.id
                         ).one()
 
                     except NoResultFound:
@@ -734,14 +734,14 @@ class InvoiceExportToExcelEndpoint:
 
                 data = []
                 for res in results:
-                    applicant = res.get('applicant')
-                    plan = applicant.get('plan')
+                    main_member = res.get('main_member')
+                    plan = main_member.get('plan')
                     amount = float(plan.get('premium')) * int(res.get('number_of_months'))
                     data.append({
                         'First Name': res.get('first_name'),
                         'Last Name': res.get('last_name'),
                         'ID Number': res.get('id_number') if res.get('id_number') else res.get('date_of_birth'),
-                        "Policy Number": applicant.get("policy_num"),
+                        "Policy Number": main_member.get("policy_num"),
                         'Premium': float(plan.get('premium')),
                         'Amount Paid': amount,
                         'Number of Months': int(res.get('number_of_months')),
@@ -769,5 +769,5 @@ class InvoiceExportToExcelEndpoint:
                     resp.status = falcon.HTTP_200
 
         except Exception as e:
-            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            logger.exception("Error, Failed to get main_members for user with ID {}.".format(id))
             raise e

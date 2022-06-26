@@ -1,8 +1,8 @@
 from .open_source import db, utils
-from .open_source.core.consultants import Consultant
+from .open_source.core.users import User
 
-def get_all_consultants(session, parlour_id):
-    sql = "select id, temp_password, password from consultants where parlour_id=:parlour_id;"
+def get_all_users_with_role_consultants(session, parlour_id):
+    sql = "select id, temp_password, password from users where parlour_id=:parlour_id and role_id=3;"
     result =  session.execute(sql, {'parlour_id': parlour_id})
     return {row['id']: dict(row) for row in result}
 
@@ -14,11 +14,11 @@ def get_all_parlours(session):
 
 
 def update_consultants(session, parlour):
-    consultants = get_all_consultants(session, parlour['id'])
-    for consultant in consultants.values():
-        update_consultant = session.query(Consultant).get(consultant['id'])
+    users = get_all_users_with_role_consultants(session, parlour['id'])
+    for user in users.values():
+        update_consultant = session.query(User).get(user['id'])
         print("set new password")
-        update_consultant.set_password(consultant['temp_password'])
+        update_consultant.set_password(user['temp_password'])
 
 
 def update_consultant_passwords():

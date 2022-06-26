@@ -1,27 +1,28 @@
 from open_source import db
-from open_source.core.applicants import Applicant
+from open_source.core import main_members
+from open_source.core.main_members import MainMember
 
 
-def get_all_applicants(session):
+def get_all_main_members(session):
     search = "https://osource.co.za/assets/uploads/"
-    applicants = session.query(Applicant).filter(Applicant.state != Applicant.STATE_DELETED, Applicant.personal_docs.ilike('{}%'.format(search))).all()
-    return applicants
+    main_members = session.query(MainMember).filter(MainMember.state != MainMember.STATE_DELETED, MainMember.personal_docs.ilike('{}%'.format(search))).all()
+    return main_members
 
 
-def update_applicant(session, applicant):
-    old_string = applicant.personal_docs
-    new_string = applicant.personal_docs.replace('https://osource.co.za/assets/uploads/', '/home/nocorpgr/open-source/assets/uploads/personal_docs/')
+def update_main_member(session, main_member):
+    # old_string = main_member.personal_docs
+    # main_member.personal_docs = main_member.personal_docs.replace('https://osource.co.za/assets/uploads/', '/home/nocorpgr/open-source/assets/uploads/personal_docs/')
     result = session.execute("""
-        Update applicants set personal_docs=:docs where id=:applicant_id
-    """, {'docs': applicant.document, 'applicant_id': applicant.id})
+        Update main_members set personal_docs=:docs where id=:main_member_id
+    """, {'docs': main_member.document, 'main_member_id': main_member.id})
     return result.rowcount
 
 
 def create_certificate():
     with db.transaction() as session:
-        applicants = get_all_applicants(session)
-        for applicant in applicants:
-            update_applicant(session, applicant)
+        main_members = get_all_main_members(session)
+        for main_member in main_members:
+            update_main_member(session, main_member)
 
 
 def cli():
