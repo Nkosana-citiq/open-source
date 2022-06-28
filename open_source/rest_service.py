@@ -82,7 +82,7 @@ api.add_route('/open-source/parlours/{id}/consultants/', users.ConsultantGetAllE
 # api.add_route('/open-source/actions/forgot_password', consultants.ForgotPasswordEndpoint())
 
 
-# api.add_route('/open-source/actions/{id}/export_to_excel/', main_members.ApplicantExportToExcelEndpoint())
+api.add_route('/open-source/actions/{id}/export_to_excel/', main_members.MainMembersExportToExcelEndpoint())
 api.add_route('/open-source/members/actions/export_to_excel', main_members.FailedMembersExcel())
 api.add_route('/open-source/{id}/invoices/actions/export_to_excel', payments.InvoiceExportToExcelEndpoint())
 api.add_route('/open-source/actions/download_failed_members/', main_members.DownloadFailedMembers())
@@ -126,11 +126,11 @@ api.add_route('/open-source/extended-members/{id}/restore', extended_members.Ext
 api.add_route('/open-source/extended-members/{id}/promote', extended_members.MainMemberPromoteEndpoint())
 api.add_route('/open-source/main-members/{id}/extended-members/age-limit', extended_members.ExtendedMemberCheckAgeLimitEndpoint())
 
-api.add_route('/open-source/main_members/{id}/payments/all', payments.PaymentsGetAllEndpoint())
-api.add_route('/open-source/main_members/{id}/payments/last', payments.PaymentGetLastEndpoint())
+api.add_route('/open-source/main-members/{id}/payments/all', payments.PaymentsGetAllEndpoint())
+api.add_route('/open-source/main-members/{id}/payments/last', payments.PaymentGetLastEndpoint())
 api.add_route('/open-source/parlours/{id}/payments', payments.PaymentPostEndpoint())
 
-api.add_route('/open-source/main_members/{id}/invoices/all', payments.InvoicesGetAllEndpoint())
+api.add_route('/open-source/main-members/{id}/invoices/all', payments.InvoicesGetAllEndpoint())
 api.add_route('/open-source/invoices/{id}', payments.RecieptGetEndpoint())
 api.add_route('/open-source/invoice/{id}/delete', payments.InvoiceDeleteEndpoint())
 

@@ -190,7 +190,7 @@ class MainMember(db.Base):
             result_query = result_query.offset(offset)
             result_query = result_query.limit(limit)
 
-            result = [entity[0].to_dict() for entity in result_query if entity]
+            result = [entity.to_dict() for entity in result_query if entity]
 
         else:
             result = []
@@ -223,7 +223,6 @@ class MainMember(db.Base):
 
     def make_archived(self):
         self.state = self.STATE_ARCHIVED
-        self.on_delete_clean_up()
 
     def archive(self, session):
         self.make_archived()
