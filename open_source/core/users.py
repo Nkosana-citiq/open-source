@@ -22,6 +22,7 @@ class User(db.Base):
     first_name = Column(String(length=30))
     last_name = Column(String(length=30))
     number = Column(String(length=200))
+    branch = Column(String(length=200))
     state = Column(Integer, default=1)
     email = Column(String(length=255))
     username = Column(String(length=255))
@@ -57,6 +58,7 @@ class User(db.Base):
             'first_name': self.first_name,
             'last_name': self.last_name,
             'state': self.state,
+            "branch": self.branch,
             'username': self.username,
             "modified": self.modified_at,
             'created': self.created_at,
