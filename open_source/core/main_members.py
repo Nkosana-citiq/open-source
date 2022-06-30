@@ -38,7 +38,6 @@ class MainMember(db.Base):
     is_deceased = Column(Boolean, default=False)
     waiting_period = Column(Integer, default=0)
     policy_num = Column(String(length=15))
-    certificate = Column(String(length=250))
     document = Column(Text)
     old_url = Column(Boolean)
     personal_docs = Column(Text)
@@ -102,7 +101,6 @@ class MainMember(db.Base):
             'old_url': self.old_url,
             'personal_docs':self.personal_docs,
             'address': self.address,
-            'certificate': self.certificate,
             'date': self.date,
             'status': self.status.capitalize(),
             'canceled': self.canceled,
@@ -134,7 +132,6 @@ class MainMember(db.Base):
             'old_url': self.old_url,
             'personal_docs':self.personal_docs,
             'address': self.address,
-            'certificate': self.certificate,
             'date': self.date,
             'status': self.status.capitalize(),
             'created_at': self.created_at,

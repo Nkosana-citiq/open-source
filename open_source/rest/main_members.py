@@ -103,17 +103,16 @@ class MainGetAllUsersEndpoint:
                         parlour_branch = req.params.pop("branch")
                         users = session.query(User).filter(User.branch == parlour_branch.strip(), User.role_id == Role.IS_CONSULTANT).all()
 
-                    print("===================================  USER   ======================================")
                     user = session.query(User).filter(
                         User.state == User.STATE_ACTIVE,
                         User.id == id
                     ).one_or_none()
-                    print(user.to_dict())
+
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
                         Parlour.id == user.parlour.id
                     ).one_or_none()
-                    print(parlour.to_dict())
+
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting main_members")
 
@@ -149,10 +148,10 @@ class MainGetAllUsersEndpoint:
                         MainMember.parlour_id == parlour.id
                     ).order_by(MainMember.id.desc())
 
-                    if user.role.IS_CONSULTANT:
+                    if user.role_id == Role.IS_CONSULTANT:
                         main_members = main_members.filter(MainMember.user_id == user.id)
 
-                    elif users:
+                    if users:
                         user_ids = [user.id for user in users]
                         main_members = main_members.filter(MainMember.user_id.in_(user_ids))
 
@@ -161,13 +160,13 @@ class MainGetAllUsersEndpoint:
 
                     main_member_res = [(main_member, main_member.plan) for main_member in main_members.all()]
                     if main_member_res:
-                        for main_member in main_member_res:
-                            if main_member[0].plan.id == main_member[1].id:
-                                max_age_limit = main_member[1].member_maximum_age
-                                min_age_limit = main_member[1].member_minimum_age
+                        for main_member_plan in main_member_res:
+                            if main_member_plan[0].plan.id == main_member_plan[1].id:
+                                max_age_limit = main_member_plan[1].member_maximum_age
+                                min_age_limit = main_member_plan[1].member_minimum_age
                                 main_member = session.query(MainMember).filter(
                                     MainMember.state == MainMember.STATE_ACTIVE,
-                                    MainMember.id == main_member[0].id
+                                    MainMember.id == main_member_plan[0].id
                                 ).first()
 
                                 if main_member:
