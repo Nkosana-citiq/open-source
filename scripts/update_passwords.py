@@ -17,7 +17,6 @@ def update_consultants(session, parlour):
     users = get_all_users_with_role_consultants(session, parlour['id'])
     for user in users.values():
         update_consultant = session.query(User).get(user['id'])
-        print("set new password")
         update_consultant.set_password(user['temp_password'])
 
 

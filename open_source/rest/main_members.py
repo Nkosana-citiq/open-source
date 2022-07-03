@@ -577,9 +577,9 @@ class MainMemberPostEndpoint:
         return None
 
     def on_post(self, req, resp, id):
-        
+
         req_dict = json.load(req.bounded_stream)
-        print(req)
+
         with db.transaction() as session:
             if not req_dict.get("id_number"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing id_number field.")
@@ -859,7 +859,7 @@ class MainMemberBulkPostEndpoint:
                 if id_number:
                     prev_main_member = None if is_main_member else prev_main_member
                     if isinstance(id_number,MainMember):
-                        prev_main_member = id_number.main_member_id
+                        prev_main_member = id_number.id
                     error_data.append({'data': data, 'error': 'ID number already exists'})
                     continue
 

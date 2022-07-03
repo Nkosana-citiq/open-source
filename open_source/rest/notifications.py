@@ -7,6 +7,8 @@ from open_source import db
 from open_source.core.notifications import Notification
 from open_source.core.parlours import Parlour
 from falcon_cors import CORS
+from open_source.core.roles import Role
+from open_source.core.users import User
 
 
 public_cors = CORS(allow_all_origins=True)
@@ -66,8 +68,13 @@ class ParlourNotificationsPostEndpoint:
             if not rest_dict.get('consultants'):
                 raise falcon.HTTPBadRequest(title="Error", description="Select at least one conusltant or select the parlour.")
 
+            user = session.query(User).filter(
+                User.id == id,
+                User.role_id == Role.IS_PARLOUR,
+                User.state == User.STATE_ACTIVE).first()
+
             parlour = session.query(Parlour).filter(
-                Parlour.id == id,
+                Parlour.id == user.parlour_id,
                 Parlour.state == Parlour.STATE_ACTIVE).first()
 
             if not parlour:
@@ -78,7 +85,7 @@ class ParlourNotificationsPostEndpoint:
             consultants = ', '.join(set(rest_dict.get('consultants')))
 
             if "all" in consultants:
-                cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                cons = [con.id for con in session.query(User).filter(User.parlour_id == parlour.id, User.state == User.STATE_ACTIVE).all()]
                 consultants = ', '.join(str(v) for v in set(cons))
 
             notify_times = rest_dict.get('time').split(":")
@@ -152,7 +159,7 @@ class ParlourNotificationsPutEndpoint:
 
                 if "all" in consultants:
                     parlour = notification.parlour
-                    cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                    cons = [con.id for con in session.query(User).filter(User.parlour_id == parlour.id, User.state == User.STATE_ACTIVE, User.role_id == Role.IS_CONSULTANT).all()]
                     consultants = ', '.join(str(v) for v in set(cons))
 
                 notification.recipients = recipients,

@@ -1,22 +1,14 @@
 
-from re import A
-from time import perf_counter
 from open_source import db
-from open_source.core import main_members
-from open_source.core import applicants
 
 from open_source.core.parlours import Parlour
 from open_source.core.consultants import Consultant
-from open_source.core.main_members import MainMember
 from open_source.core.consultants import Consultant
-from open_source.core.roles import Role
-from open_source.core.users import User
-from scripts import personal_docs
 
 
 def add_parlours(session):
     parlours = session.query(Parlour).all()
-    print("INSERT Parlours")
+
     for parlour in parlours:
         try:
             names = parlour.personname.split(" ")
@@ -33,7 +25,7 @@ def add_parlours(session):
 
 def add_consultants(session):
     consultants = session.query(Consultant).all()
-    print("INSERT Consultants")
+
     for consultant in consultants:
         try:
             session.execute(f"""
