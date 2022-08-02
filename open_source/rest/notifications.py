@@ -61,9 +61,6 @@ class ParlourNotificationsPostEndpoint:
             if not rest_dict.get('days'):
                 raise falcon.HTTPBadRequest(title="Error", description="Days of the week are required.")
 
-            if not rest_dict.get('time'):
-                raise falcon.HTTPBadRequest(title="Error", description="Time to send notification not set.")
-
             if not rest_dict.get('consultants'):
                 raise falcon.HTTPBadRequest(title="Error", description="Select at least one conusltant or select the parlour.")
 
@@ -78,26 +75,21 @@ class ParlourNotificationsPostEndpoint:
             recipients = ', '.join(set(rest_dict.get('recipients')))
             consultants = ', '.join(set(rest_dict.get('consultants')))
 
-            if "all" in consultants:
-                cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
-                consultants = ', '.join(str(v) for v in set(cons))
-
-            notify_times = rest_dict.get('time').split(":")
-            notify_time = time(int(notify_times[0]), int(notify_times[1]))
+            # if "all" in consultants:
+            #     cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+            #     consultants = ', '.join(str(v) for v in set(cons))
 
             try:
                 notification = session.query(Notification).filter(Notification.parlour_id == parlour.id, Notification.state == Notification.STATE_ACTIVE).order_by(Notification.id.desc()).first()
                 if notification:
                     notification.recipients = recipients,
                     notification.week_days = days,
-                    notification.scheduled_time = notify_time,
                     notification.consultants = consultants,
                     notification.modified_at = datetime.now()
                 else:
                     notification = Notification(
                         recipients = recipients,
                         week_days = days,
-                        scheduled_time = notify_time,
                         parlour_id = parlour.id,
                         consultants = consultants,
                         state = Notification.STATE_ACTIVE,
@@ -135,30 +127,23 @@ class ParlourNotificationsPutEndpoint:
             if not rest_dict.get('days'):
                 raise falcon.HTTPBadRequest(title="Error", description="Days of the week are required.")
 
-            if not rest_dict.get('time'):
-                raise falcon.HTTPBadRequest(title="Error", description="Time to send notification not set.")
-
             if not rest_dict.get('consultants'):
                 raise falcon.HTTPBadRequest(title="Error", description="Select at least one conusltant or select the parlour.")
 
             days = ', '.join(set(rest_dict.get('days')))
             recipients = ', '.join(set(rest_dict.get('recipients')))
 
-            notify_times = rest_dict.get('time').split(":")
-            notify_time = time(int(notify_times[0]), int(notify_times[1]))
-
             try:
                 notification = session.query(Notification).get(id)
                 consultants = ', '.join(set(rest_dict.get('consultants')))
 
-                if "all" in consultants:
-                    parlour = notification.parlour
-                    cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
-                    consultants = ', '.join(str(v) for v in set(cons))
+                # if "all" in consultants:
+                #     parlour = notification.parlour
+                #     cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+                #     consultants = ', '.join(str(v) for v in set(cons))
 
                 notification.recipients = recipients,
                 notification.week_days = days,
-                notification.scheduled_time = notify_time,
                 notification.consultants = consultants,
                 notification.modified_at = datetime.now()
                 notification.save(session)
@@ -229,9 +214,9 @@ class ParlourNotificationsSendEmailEndpoint:
             recipients = ', '.join(set(rest_dict.get('recipients')))
             consultants = ', '.join(set(rest_dict.get('consultants')))
 
-            if "all" in consultants:
-                cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
-                consultants = ', '.join(str(v) for v in set(cons))
+            # if "all" in consultants:
+            #     cons = [con.id for con in session.query(Consultant).filter(Consultant.parlour_id == parlour.id, Consultant.state == Consultant.STATE_ACTIVE).all()]
+            #     consultants = ', '.join(str(v) for v in set(cons))
 
             notification = Notification(
                 recipients = recipients,

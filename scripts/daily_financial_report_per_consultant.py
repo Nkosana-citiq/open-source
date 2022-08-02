@@ -24,7 +24,7 @@ def cli():
                         notification.send_email(session, parlour)
                         notification.modified_at = datetime.now()
                         notification.last_run_date = datetime.now()
-                    elif datetime.now().time() > notification.scheduled_time and datetime.now().date() > notification.last_run_date.date():
+                    elif datetime.now().date() > notification.last_run_date.date():
                         notification.send_email(session, parlour)
                         notification.modified_at = datetime.now()
                         notification.last_run_date = datetime.now()

@@ -68,7 +68,7 @@ class ConsultantGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultant = session.query(Consultant).filter(
                     Consultant.id == id,
                     Consultant.state == Consultant.STATE_ACTIVE
@@ -97,7 +97,7 @@ class ConsultantGetAllEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
                     Parlour.id == id).one_or_none()
@@ -134,7 +134,7 @@ class ConsultantGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultant = session.query(Consultant).filter(
                     Consultant.id == id,
                     Consultant.state == Consultant.STATE_ACTIVE
@@ -358,7 +358,7 @@ class ConsultantGetAllPendingEndpoint:
     # cors = public_cors
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultants = session.query(Consultant).filter(Consultant.state == Consultant.STATE_PENDING).all()
 
                 if consultants:
@@ -375,7 +375,7 @@ class ConsultantGetAllArchivedEndpoint:
     # cors = public_cors
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultants = session.query(Consultant).filter(Consultant.state == Consultant.STATE_ARCHIVED).all()
 
                 if consultants:

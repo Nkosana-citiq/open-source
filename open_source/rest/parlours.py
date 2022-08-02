@@ -67,7 +67,7 @@ class ParlourGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlour = session.query(Parlour).filter(
                     Parlour.id == id,
                     Parlour.state == Parlour.STATE_ACTIVE
@@ -95,7 +95,7 @@ class ParlourGetAllEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
 
                 search_field = None
 
@@ -360,7 +360,7 @@ class ParlourGetAllPendingEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_PENDING).all()
 
                 if parlours:
@@ -387,7 +387,7 @@ class ParlourGetAllArchivedEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ARCHIVED).all()
 
                 if parlours:
@@ -671,4 +671,3 @@ class ParlourAddSMSEndpoint:
                 "Error, experienced error while creating Parlour.")
             raise falcon.HTTPBadRequest(title="Error",
             description="Processing Failed. experienced error while creating Parlour.")
-

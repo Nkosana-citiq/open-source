@@ -157,12 +157,12 @@ class MainMember(db.Base):
     def is_deleted(self) -> bool:
         return self.state == self.STATE_DELETED
 
-    def make_deleted(self):
+    def make_deleted(self, session):
         self.state = self.STATE_DELETED
-        self.on_delete_clean_up()
+        self.on_delete_clean_up(session)
 
     def delete(self, session):
-        self.make_deleted()
+        self.make_deleted(session)
         session.commit()
 
     def is_archived(self) -> bool:
@@ -170,7 +170,7 @@ class MainMember(db.Base):
 
     def make_archived(self):
         self.state = self.STATE_ARCHIVED
-        self.on_delete_clean_up()
+        self.on_archive_clean_up()
 
     def archive(self, session):
         self.make_archived()
@@ -182,6 +182,8 @@ class MainMember(db.Base):
             result = session.execute(sql)
             return result.rowcount
 
+    def on_delete_clean_up(self, session):
+        self.applicant.delete(session)
 
-    def on_delete_clean_up(self):
-        self.applicant.state = self.applicant.STATE_ARCHIVED
+    def on_archive_clean_up(self):
+        self.applicant.make_archived()

@@ -28,7 +28,7 @@ class ApplicantGetEndpoint:
         return not self.secure
 
     def on_get(self, req, resp, id):
-        with db.transaction() as session:
+        with db.no_transaction() as session:
             applicant = session.query(Applicant).filter(
                 Applicant.id == id,
                 Applicant.state == Applicant.STATE_ACTIVE
@@ -53,7 +53,7 @@ class ApplicantGetAllEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 applicants = session.query(Applicant).filter(
                     Applicant.state == Applicant.STATE_ACTIVE,
                     Applicant.consultant_id != 0

@@ -29,7 +29,7 @@ class PlanGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 plan = session.query(Plan).filter(
                     Plan.id == id,
                     Plan.state == Plan.STATE_ACTIVE
@@ -60,7 +60,7 @@ class PlanGetParlourAllEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 search_string = None
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,

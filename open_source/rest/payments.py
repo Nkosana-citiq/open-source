@@ -65,7 +65,7 @@ class PaymentGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 payment = session.query(Payment).filter(
                     Payment.payment_id == id,
                     Payment.state == Payment.STATE_ACTIVE
@@ -93,7 +93,7 @@ class PaymentGetLastEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
 
                 applicant = session.query(Applicant).filter(Applicant.id == id).first()
 
@@ -125,7 +125,7 @@ class PaymentsGetAllEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 applicant = session.query(Applicant).filter(
                     Applicant.state == Applicant.STATE_ACTIVE,
                     Applicant.id == id
@@ -246,7 +246,7 @@ class RecieptGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
 
                 invoice = session.query(Invoice).filter(
                     Invoice.id == id,
@@ -547,7 +547,7 @@ class InvoicesGetAllEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 try:
                     applicant = session.query(Applicant).filter(
                         Applicant.id == id
@@ -593,7 +593,7 @@ class InvoicesGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 try:
                     invoices = session.query(Invoice).filter(
                         Invoice.state == Invoice.STATE_ACTIVE,
@@ -657,7 +657,7 @@ class InvoiceExportToExcelEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 try:
                     consultant_id = None
                     parlour = None
@@ -685,7 +685,8 @@ class InvoiceExportToExcelEndpoint:
                 if not parlour:
                     parlour = consultant.parlour
 
-                month_start = datetime.now().replace(day=1)
+                month = datetime.now().month - 1
+                month_start = datetime.now().replace(month=month).replace(day=1) if parlour.id == 68 else datetime.now().replace(day=1)
 
                 applicants_query = session.query(Applicant).filter(
                     Applicant.state == Applicant.STATE_ACTIVE,

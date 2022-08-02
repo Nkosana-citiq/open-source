@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 
 from open_source import config, db, utils
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Time
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 
@@ -41,7 +41,6 @@ class Notification(db.Base):
     consultants = Column(Text)
     week_days = Column(String(length=200))
     state = Column(Integer, default=1)
-    scheduled_time = Column(Time)
     modified_at = Column(DateTime)
     last_run_date = Column(DateTime)
     created_at = Column(DateTime)
@@ -64,7 +63,6 @@ class Notification(db.Base):
         return {
             "id": self.id,
             "week_days": self.week_days,
-            "scheduled_time": self.scheduled_time,
             "consultants": self.consultants,
             "recipients": self.recipients,
             "parlour": self.parlour.to_dict()
@@ -98,7 +96,8 @@ class Notification(db.Base):
         sum = 0
 
         for id in self.consultants.split(", "):
-            consultant = session.query(Consultant).filter(Consultant.id == int(id), Consultant.state == Consultant.STATE_ACTIVE).first()
+            if id  != "all":
+                consultant = session.query(Consultant).filter(Consultant.id == int(id), Consultant.state == Consultant.STATE_ACTIVE).first()
             amount = self.get_money_collected(session, consultant)
 
             entry = """
