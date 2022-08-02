@@ -303,3 +303,10 @@ def authenticate(session, username, password):
 
 def render_template(template: str, args: dict):
     return Template(template).render(args)
+
+def localize_contact(contact=""):
+        if len(contact) == 10:
+            return ''.join(['+27', contact[1:]])
+        elif len(contact) < 10:
+            return ''.join(['+27', contact])
+        return contact

@@ -6,11 +6,11 @@ from open_source import config
 
 logging.basicConfig(level=logging.INFO)
 
-from open_source.rest import middleware, users
+from open_source.rest import middleware
 from open_source.rest import (
     applicants, consultants, parlours, plans,
     main_members, extended_members, payments,
-    additional_extended_members, dependants, notifications
+    additional_extended_members, dependants, admins, notifications
 )
 
 from falcon_multipart.middleware import MultipartMiddleware
@@ -22,10 +22,10 @@ ALLOWED_ORIGINS = [
     "https://staging.osource.co.za",
     "https://nkosana-citiq.github.io",
     'http://localhost:8009',
+    'http://localhost:5100',
     'http://127.0.0.1:8009',
     "http://osource.co.za",
     "https://osource.co.za"]
-
 
 whitelisted_methods = [
     "GET",
@@ -34,16 +34,17 @@ whitelisted_methods = [
     "PATCH",
     "OPTIONS" # this is required for preflight request
 ]
+
+
 cors = CORS(
     allow_all_origins=True,
     allow_all_methods=True,
     allow_all_headers=True)
 
-api = falcon.API(
+api = application = falcon.API(
     middleware=[cors.middleware,
-    middleware.AuthMiddleware(),
-    MultipartMiddleware()
-    ]
+    MultipartMiddleware(),
+    middleware.AuthMiddleware()]
 )
 
 api.add_route('/open-source/parlours/active', parlours.ParlourGetAllEndpoint())

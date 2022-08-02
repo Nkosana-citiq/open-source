@@ -68,7 +68,7 @@ class ConsultantGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultant = session.query(Consultant).filter(
                     Consultant.id == id,
                     Consultant.state == Consultant.STATE_ACTIVE
@@ -97,11 +97,11 @@ class ConsultantGetAllEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
                     Parlour.id == id).one_or_none()
-                
+
                 if not parlour:
                     raise falcon.HTTPBadRequest(title="Error", description="Failed to get parlour with give ID")
 
@@ -134,7 +134,7 @@ class ConsultantGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultant = session.query(Consultant).filter(
                     Consultant.id == id,
                     Consultant.state == Consultant.STATE_ACTIVE
@@ -162,7 +162,7 @@ class ConsultantPostEndpoint:
         return not self.secure
 
     def on_post(self, req, resp):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -226,7 +226,7 @@ class ConsultantPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 if 'email' not in req:
@@ -265,7 +265,7 @@ class ConsultantChangePasswordEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 if 'password' not in req or req.get("password").strip() == '':
@@ -358,7 +358,7 @@ class ConsultantGetAllPendingEndpoint:
     # cors = public_cors
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultants = session.query(Consultant).filter(Consultant.state == Consultant.STATE_PENDING).all()
 
                 if consultants:
@@ -375,7 +375,7 @@ class ConsultantGetAllArchivedEndpoint:
     # cors = public_cors
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 consultants = session.query(Consultant).filter(Consultant.state == Consultant.STATE_ARCHIVED).all()
 
                 if consultants:
@@ -403,7 +403,7 @@ class ConsultantAuthEndpoint:
     def on_post(self, req, resp):
         try:
             with db.transaction() as session:
-                rest_dict = get_json_body(req)
+                rest_dict = json.load(req.bounded_stream)
 
                 if 'username' not in rest_dict:
                     raise falcon.HTTPBadRequest(
@@ -463,7 +463,7 @@ class ConsultantSignupEndpoint:
 
         with db.transaction() as session:
             errors = {}
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
             parlour = session.query(Parlour).filter(
                 Parlour.id == rest_dict.get("parlour_id"),
                 Parlour.state == Parlour.STATE_ACTIVE
@@ -538,8 +538,8 @@ class ForgotPasswordEndpoint:
     def on_post(self, req, resp):
 
         with db.transaction() as session:
-            
-            rest_dict = get_json_body(req)
+
+            rest_dict = json.load(req.bounded_stream)
 
             email = None
 
@@ -555,47 +555,25 @@ class ForgotPasswordEndpoint:
             user = self.get_user_by_email(session, email)
             if not user:
                 raise falcon.HTTPBadRequest(title='Error', description='Email address does not exist')
-            #  DoNotReply@osource.co.za 
-            # 7BHC9ko7T
-
-            # session.add(user)
-            # session.commit()
 
             import smtplib, ssl
             from email.mime.text import MIMEText
             from email.mime.multipart import MIMEMultipart
 
             port = 465  # For SSL
-            smtp_server = "smtp.gmail.com"
-            sender_email = "nkosananikani@gmail.com"  # Enter your address
+            smtp_server = "mail.osource.co.za"
+            sender_email = conf.SENDER_EMAIL
             receiver_email = email  # Enter receiver address
-            password = '3McsgoId1grf'
+            password = conf.SENDER_PASSWORD
 
             message = MIMEMultipart("alternative")
-            message["Subject"] = "multipart test"
+            message["Subject"] = "Forgot Password"
             message["From"] = sender_email
             message["To"] = receiver_email
 
-            # Create the plain-text and HTML version of your message
-            # text = """\
-            # Hi,
-            # How are you?
-            # Real Python has many great tutorials:
-            # www.realpython.com"""
-            # html = """\
-            # <html>
-            # <body>
-            #     <p>Hi,<br>
-            #     <a href="http://localhost:4200/reset-password?email={email}">Reset password</a> 
-                
-            #     </p>
-            # </body>
-            # </html>
-            # """.format(email=email)
-
             args = {
                 "user": user.pretty_name,
-                "domain": conf.url,
+                "domain": conf.RESET_PASSWORD_URL,
                 "email": email,
                 "year": datetime.now().year
             }
@@ -605,7 +583,127 @@ class ForgotPasswordEndpoint:
                 args
             )
 
-            subject = "Change of banking details"
+            # Turn these into plain/html MIMEText objects
+            # part1 = MIMEText(text, "plain")
+            part2 = MIMEText(email_body, "html")
+
+            # Add HTML/plain-text parts to MIMEMultipart message
+            # The email client will try to render the last part first
+            # message.attach(part1)
+            message.attach(part2)
+            context = ssl.create_default_context()
+
+            with smtplib.SMTP_SSL(smtp_server, port, context=context) as server:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, receiver_email, message.as_string())
+
+            resp.body = json.dumps({'status': 'success'})
+
+    def get_user_by_email(self, session, email):
+        try:
+            user =  session.query(Consultant)\
+                .filter(Consultant.email == email, Consultant.state == Consultant.STATE_ACTIVE).one_or_none()
+            if not user:
+                user =  session.query(Parlour)\
+                .filter(Parlour.email == email, Parlour.state == Parlour.STATE_ACTIVE).one_or_none()
+
+        except MultipleResultsFound:
+            return None
+
+        return user
+
+
+class ContactUsEndpoint:
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_post(self, req, resp):
+
+        with db.transaction() as session:
+            
+            rest_dict = json.load(req.bounded_stream)
+
+            email = None
+            full_name = None
+            message = None
+
+            user = None
+
+            if 'email' in rest_dict:
+                email = rest_dict.get('email')
+
+            if not email:
+                raise falcon.HTTPBadRequest(title='Error', description='An email address is required')
+
+            if 'full_name' in rest_dict:
+                full_name = rest_dict.get('full_name')
+
+            if not full_name:
+                raise falcon.HTTPBadRequest(title='Error', description='An full name is required')
+
+            if 'message' in rest_dict:
+                message = rest_dict.get('message')
+            if not message:
+                raise falcon.HTTPBadRequest(title='Error', description='An message is required')
+
+            import smtplib, ssl
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+
+            port = 465  # For SSL
+            smtp_server = "mail.osource.co.za"
+            sender_email = conf.SENDER_EMAIL  # Enter your address
+            receiver_email = email  # Enter receiver address
+            password = conf.SENDER_PASSWORD
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "multipart test"
+            message["From"] = sender_email
+            message["To"] = receiver_email
+
+            args = {
+                "user": user.pretty_name,
+                "domain": conf.url,
+                "email": email,
+                "year": datetime.now().year
+            }
+
+            email_body = utils.render_template(
+            """
+            <html>
+            <body>
+                <p>Hi,<br>               
+                </p>
+                <table>
+                    <thead class="">
+                        <tr>
+                            <th class="text-muted">Name</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{permission.name}}</td>
+                            <td class="td-actions">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </body>
+            </html>
+            """.format(email=email),
+                args
+            )
+
+            subject = "Contact Us"
 
 
             # Turn these into plain/html MIMEText objects

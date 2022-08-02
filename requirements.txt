@@ -31,4 +31,5 @@ typing-extensions==3.10.0.2
 urllib3==1.26.7
 xlrd==2.0.1
 XlsxWriter==3.0.2
+za-id-number==0.0.7
 zipp==3.5.0

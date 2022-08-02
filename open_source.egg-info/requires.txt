@@ -6,6 +6,8 @@ raven
 deepdiff
 mysqlclient
 reportlab
+borb
+Jinja2
 
 [dev]
 flake8

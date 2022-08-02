@@ -4,3 +4,15 @@ open_source.egg-info/SOURCES.txt
 open_source.egg-info/dependency_links.txt
 open_source.egg-info/requires.txt
 open_source.egg-info/top_level.txt
+scripts/__init__.py
+scripts/daily_financial_report_per_consultant.py
+scripts/dependants_to_extended.py
+scripts/generate_cerificates.py
+scripts/main_members_to_extended.py
+scripts/personal_docs.py
+scripts/update_age_limit.py
+scripts/update_extended_members_id.py
+scripts/update_membership_certificate.py
+scripts/update_passwords.py
+scripts/update_payment_status.py
+scripts/update_personal_docs.py

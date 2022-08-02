@@ -1,4 +1,4 @@
-from typing import Text
+from typing import Dict, Any, Text
 from sqlalchemy.sql.sqltypes import Boolean, DECIMAL
 from open_source import db
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text, func
@@ -22,6 +22,8 @@ class MainMember(db.Base):
     first_name = Column(String(length=50))
     last_name = Column(String(length=50))
     contact = Column(String(length=12))
+    is_deceased = Column(Boolean, default=False)
+    waiting_period = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     modified_at = Column(DateTime, server_default=func.now())
     date_joined = Column(DateTime, server_default=func.now())
@@ -43,7 +45,11 @@ class MainMember(db.Base):
         return relationship('Applicant')
     
     def localize_contact(self):
-        return ''.join(['+27', self.contact[1:]]) if len(self.contact) == 10 else self.contact
+        if len(self.contact) == 10:
+            return ''.join(['+27', self.contact[1:]])
+        elif len(self.contact) < 10:
+            return ''.join(['+27', self.contact])
+        return self.contact
 
     def to_dict(self):
         return {
@@ -57,8 +63,11 @@ class MainMember(db.Base):
             'created_at': self.created_at,
             'modified_at': self.modified_at,
             'date_joined': self.date_joined,
+            'is_deceased': self.is_deceased,
+            'waiting_period': self.waiting_period,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
+            'extended_member_limit': self.extended_member_limit(),
             'parlour': self.parlour.to_dict()  if self.parlour else {} ,
             'applicant': self.applicant.to_short_dict() if self.applicant else {} 
         }
@@ -71,26 +80,110 @@ class MainMember(db.Base):
             'first_name': self.first_name,
             'last_name': self.last_name,
             'contact': self.contact,
+            'waiting_period': self.waiting_period,
             'age_limit_exceeded': self.age_limit_exceeded,
             'age_limit_exception': self.age_limit_exception,
+            'extended_member_limit': self.extended_member_limit(),
             'date_joined': self.date_joined,
+            'is_deceased': self.is_deceased,
+            'created_at': self.created_at,
             'applicant': self.applicant.to_short_dict() if self.applicant else {}
         }
     
+    @classmethod
+    def rest_get_many(cls, session, params: Dict[str, Any], user, **kwargs) -> Dict[str, Any]:
+        return cls._paginated_result(params, user, cls.get_many_query)
+
+    @classmethod
+    def _paginated_results(cls, params: Dict[str, Any],result_query) -> Dict[str, Any]:
+
+        offset = params.pop('offset', 0)
+        limit = params.pop('limit', 20)
+        total = 0
+
+        is_lookup = params.pop('is_lookup', 'no')
+        is_lookup = is_lookup in ('yes', 'y', 't', 'true', '1')
+
+        if result_query:
+            total = len([entity for entity in result_query])
+            result_query = result_query.offset(offset)
+            result_query = result_query.limit(limit)
+
+            result = [entity.to_dict() for entity in result_query]
+
+        else:
+            result = []
+
+        return {
+            "offset": offset,
+            "limit": limit,
+            "count": len(result),
+            "total": total,
+            "result": result
+        }
+
+    @classmethod
+    def _paginated_search_results(cls, params: Dict[str, Any],result_query) -> Dict[str, Any]:
+
+        offset = params.pop('offset', 0)
+        limit = params.pop('limit', 20)
+        total = 0
+
+        is_lookup = params.pop('is_lookup', 'no')
+        is_lookup = is_lookup in ('yes', 'y', 't', 'true', '1')
+
+        if result_query:
+            total = len([entity for entity in result_query])
+            result_query = result_query.offset(offset)
+            result_query = result_query.limit(limit)
+
+            result = [entity[0].to_dict() for entity in result_query if entity]
+
+        else:
+            result = []
+
+        return {
+            "offset": offset,
+            "limit": limit,
+            "count": len(result),
+            "total": total,
+            "result": result
+        }
+
     def save(self, session):
         session.add(self)
         session.commit()
 
     def is_deleted(self) -> bool:
-        return self.state == self.STATE_ARCHIVED
+        return self.state == self.STATE_DELETED
 
-    def make_deleted(self):
-        self.state = self.STATE_ARCHIVED
-        self.on_delete_clean_up()
+    def make_deleted(self, session):
+        self.state = self.STATE_DELETED
+        self.on_delete_clean_up(session)
 
     def delete(self, session):
-        self.make_deleted()
+        self.make_deleted(session)
         session.commit()
-    
-    def on_delete_clean_up(self):
-        self.applicant.state = self.applicant.STATE_ARCHIVED
+
+    def is_archived(self) -> bool:
+        return self.state == self.STATE_ARCHIVED
+
+    def make_archived(self):
+        self.state = self.STATE_ARCHIVED
+        self.on_archive_clean_up()
+
+    def archive(self, session):
+        self.make_archived()
+        session.commit()
+
+    def extended_member_limit(self):
+        with db.no_transaction() as session:
+            sql = "select * from extended_members where applicant_id={} and age_limit_exceeded=1 AND age_limit_exception=0 AND state=1".format(self.applicant_id)
+            result = session.execute(sql)
+            return result.rowcount
+
+    def on_delete_clean_up(self, session):
+        self.applicant.delete(session)
+
+    def on_archive_clean_up(self):
+        self.applicant.make_archived()

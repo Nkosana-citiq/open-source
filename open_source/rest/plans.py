@@ -29,7 +29,7 @@ class PlanGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 plan = session.query(Plan).filter(
                     Plan.id == id,
                     Plan.state == Plan.STATE_ACTIVE
@@ -60,17 +60,28 @@ class PlanGetParlourAllEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
+                search_string = None
                 parlour = session.query(Parlour).filter(
                     Parlour.state == Parlour.STATE_ACTIVE,
                     Parlour.id == id).one_or_none()
                 if not parlour:
                     raise falcon.HTTPBadRequest()
 
-                plans = session.query(Plan).filter(
+                if "search_string" in req.params:
+                        search_string = req.params.pop("search_string")
+
+                if search_string:
+                    plans = session.query(Plan).filter(
+                    Plan.plan.ilike('%{}%'.format(search_string)),
                     Plan.state == Plan.STATE_ACTIVE,
                     Plan.parlour_id == parlour.id
                 ).all()
+                else:
+                    plans = session.query(Plan).filter(
+                        Plan.state == Plan.STATE_ACTIVE,
+                        Plan.parlour_id == parlour.id
+                    ).all()
 
                 if not plans:
                     resp.body = json.dumps([])
@@ -94,7 +105,7 @@ class PlanPostEndpoint:
         return not self.secure
 
     def on_post(self, req, resp):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 parlour = session.query(Parlour).filter(
@@ -105,7 +116,7 @@ class PlanPostEndpoint:
                     raise falcon.HTTPBadRequest(title="Parlour not found", description="Parlour does not exist.")
 
                 plan_exists = session.query(Plan).filter(
-                    Plan.plan == req["plan"],
+                    Plan.plan == req["name"],
                     Plan.parlour_id == parlour.id,
                     Plan.state == Plan.STATE_ACTIVE
                 ).first()
@@ -114,7 +125,7 @@ class PlanPostEndpoint:
                     raise falcon.HTTPBadRequest(title="Name exists", description="You already have a plan with this name.")
 
                 plan = Plan(
-                    plan=req.get("plan"),
+                    plan=req.get("name"),
                     cover = req.get("cover"),
                     premium = req.get("premium"),
                     underwriter_premium = req.get("underwriter_premium"),
@@ -122,6 +133,10 @@ class PlanPostEndpoint:
                     member_age_restriction = req.get("member_age_restriction"),
                     member_minimum_age = req.get("member_minimum_age"),
                     member_maximum_age = req.get("member_maximum_age"),
+                    spouse = req.get("spouse"),
+                    spouse_age_restriction = req.get("spouse_age_restriction"),
+                    spouse_minimum_age = req.get('spouse_minimum_age'),
+                    spouse_maximum_age = req.get("spouse_maximum_age"),
                     beneficiaries = req.get("dependants"),
                     consider_age = req.get("consider_age"),
                     dependant_minimum_age = req.get("dependant_minimum_age"),
@@ -161,7 +176,7 @@ class PlanPutEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -171,7 +186,7 @@ class PlanPutEndpoint:
                 if not plan:
                     raise falcon.HTTPNotFound(title="Plan not found", description="Could not find plan with given ID.")
 
-                plan.plan=req["plan"]
+                plan.plan=req["name"]
                 plan.cover = req["cover"]
                 plan.premium = req["premium"]
                 plan.underwriter_premium = req["underwriter_premium"]
@@ -179,6 +194,10 @@ class PlanPutEndpoint:
                 plan.member_age_restriction = req["member_age_restriction"]
                 plan.member_minimum_age = req["member_minimum_age"]
                 plan.member_maximum_age = req["member_maximum_age"]
+                plan.spouse = req.get("spouse"),
+                plan.spouse_age_restriction = req.get("spouse_age_restriction"),
+                plan.spouse_minimum_age = req.get('spouse_minimum_age'),
+                plan.spouse_maximum_age = req.get("spouse_maximum_age"),
                 plan.additional_extended_maximum_age = req['additional_extended_maximum_age']
                 plan.additional_extended_minimum_age = req["additional_extended_minimum_age"] 
                 plan.additional_extended_consider_age = req["additional_extended_consider_age"]

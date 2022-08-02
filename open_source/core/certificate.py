@@ -13,7 +13,7 @@ class Certificate:
         os.chdir('./assets/uploads/certificates')
 
         self.y_position = 0
-        self.file_path = "{}/{}.pdf".format(os.getcwd(), file_name.lower().replace(" ", "-"))
+        self.file_path = "{}/{}.pdf".format(os.getcwd(), file_name)
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
 
@@ -61,30 +61,70 @@ class Certificate:
     def set_date_joined(self, date_joined):
         self.can.drawString(30, 240, "Date Joined: {}".format(date_joined))
 
+    def set_date_created(self, date_created):
+        self.can.drawString(30, 255, "Date Created: {}".format(date_created))
+
+    def set_waiting_period(self, waiting_period):
+        self.can.drawString(30, 270, "Waiting Period: {}".format(waiting_period))
+
     def set_current_plan(self, plan: str):
-        self.can.drawString(30, 255, "Current Plan: {}".format(plan.title()))
+        self.can.drawString(30, 285, "Current Plan: {}".format(plan.title()))
 
     def set_current_premium(self, premium):
-        self.can.drawString(30, 270, "Premium: R{}".format(premium))
+        self.can.drawString(30, 300, "Premium: R{}".format(premium))
 
     def set_physical_address(self, address):
-        self.y_position = 285
-        self.can.drawString(30, 285, "Physical Address: {}".format(address))
+        self.y_position = 300
+        self.can.drawString(30, 315, "Physical Address: {}".format(address))
 
     def add_other_members(self, member):
         self.can.setFont('Helvetica-Bold', 10)
         self.y_position = sum([self.y_position, 50])
 
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "{}".format(member.type_text.title()))
         self.can.setFont('Helvetica', 10)
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Name: {} {}".format(member.first_name.title(), member.last_name.title()))
         self.y_position = sum([self.y_position, 15])
-        self.can.drawString(30, self.y_position, "DOB: {}".format(member.date_of_birth))
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
+        if member.id_number:
+            self.can.drawString(30, self.y_position, "ID Number: {}".format(member.id_number))
+        else:
+            self.can.drawString(30, self.y_position, "DOB: {}".format(member.date_of_birth))
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Date joined: {}".format(member.date_joined))
         self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
+        self.can.drawString(30, self.y_position, "Waiting Period: {}".format(member.waiting_period))
+        self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
         self.can.drawString(30, self.y_position, "Relationship: {}".format(member.relation_text.title()))
+        self.y_position = sum([self.y_position, 15])
+
+        if self.y_position > 820:
+            self.showPage()
+            self.y_position = 60
+        self.can.drawString(30, self.y_position, "Contact: {}".format(member.number))
 
     def set_relation(self, relation: str):
         self.can.drawString(30, 750, "Relationship: {}".format(relation.title()))
@@ -94,10 +134,13 @@ class Certificate:
         self.y_position = sum([self.y_position, 50])
         self.can.drawString(30, self.y_position, "Benefits:")
         self.can.setFont('Helvetica', 10)
-        # self.y_position = sum([self.y_position, 15])
-        for s in benefits.split(" "):
-            if len(s) > 1 and s.lower() != "and":
-                self.y_position = sum([self.y_position, 15])
+
+        for s in benefits.split("\n"):
+            self.y_position = sum([self.y_position, 15])
+            if len(s.split()) > 0:
+                if self.y_position > 820:
+                    self.showPage()
+                    self.y_position = 60
                 self.can.drawString(30, self.y_position, "- {}".format(s.replace("-", "").strip()))
 
     def showPage(self):

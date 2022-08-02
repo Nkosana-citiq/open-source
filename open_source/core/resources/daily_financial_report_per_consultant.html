@@ -292,19 +292,15 @@
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <h1>Reset your password</h1>
-                        <p>Hi {{user}},</p>
-                        <p>We received a request to reset your password for your account. Please click on the link below to change your password.</p>
-                        <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
+                        <p>Dear Manager/Owner,</p>
+                        <p>Please see below payments made today.</p>
+                        <table border="0" cellpadding="0" cellspacing="0">
                           <tbody>
                             <tr>
-                              <td align="center">
+                              <td>
                                 <table border="0" cellpadding="0" cellspacing="0">
                                   <tbody>
-                                    <tr>
-                                      <button style="width:220px;height: 50px;background-color:#85BC4A;  border: solid 1px #85BC4A; border-radius: 5px; text-decoration: none;
-          text-align: center;">  <a href="{{domain}}/#/reset-password?email={{email}}" target="_blank" style="text-decoration: none;font-size: 14px; font-weight: bold;color: #ffffff !important;">Reset your password</a> </button>
-                                    </tr>
+                                    {{ html }}
                                   </tbody>
                                 </table>
                               </td>
@@ -312,10 +308,6 @@
                           </tbody>
                         </table>
 
-                        <br>
-                            <p> Having trouble clicking on the reset password button, you can click on this link:&nbsp; <a href="{{domain}}/reset-password?email={{email}}" target="_blank" style="color: #00adef !important;">Reset your password</a></p>
-
-                        <p>Please note that this link will expire in 24 hours.</p>
                          <br>
                         <p>Regards,
                           <br>Open Source Funeral Software</p>

@@ -1,18 +1,18 @@
-from datetime import datetime
+from datetime import datetime, time
 import falcon
 import json
 import logging
-import smtplib
 
-from dateutil import parser
-from dateutil.relativedelta import relativedelta
+
+
 
 from open_source import db, utils
-from open_source.core import parlours
+
 from open_source.core.consultants import Consultant
 from open_source.core.parlours import Parlour
+
 from open_source import webtokens
-from sqlalchemy import Date, cast, func
+
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from falcon_cors import CORS
 
@@ -67,7 +67,7 @@ class ParlourGetEndpoint:
 
     def on_get(self, req, resp, id):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlour = session.query(Parlour).filter(
                     Parlour.id == id,
                     Parlour.state == Parlour.STATE_ACTIVE
@@ -95,7 +95,7 @@ class ParlourGetAllEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
 
                 search_field = None
 
@@ -136,7 +136,7 @@ class ParlourPostEndpoint:
 
         with db.transaction() as session:
             errors = {}
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
 
             if not rest_dict.get('email'):
                 raise falcon.HTTPBadRequest(title="Email", description="Email is a required field.")
@@ -199,7 +199,7 @@ class ParlourPutEndpoint:
 
     def on_put(self, req, resp, id):
         import datetime
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
                 if 'email' not in req:
@@ -262,7 +262,6 @@ class ChangeParlourPasswordEndpoint:
                 Parlour.state == Parlour.STATE_ACTIVE
             ).first()
 
-
             if parlour.id != id:
                 # Currently logged in user should not be able to
                 # change other user's passwords unless Super Admin
@@ -298,7 +297,7 @@ class ParlourSignupEndpoint:
 
         with db.transaction() as session:
             errors = {}
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
 
             if not rest_dict.get('email'):
                 raise falcon.HTTPBadRequest(title="Email", description="Email is a required field.")
@@ -361,7 +360,7 @@ class ParlourGetAllPendingEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_PENDING).all()
 
                 if parlours:
@@ -388,7 +387,7 @@ class ParlourGetAllArchivedEndpoint:
 
     def on_get(self, req, resp):
         try:
-            with db.transaction() as session:
+            with db.no_transaction() as session:
                 parlours = session.query(Parlour).filter(Parlour.state == Parlour.STATE_ARCHIVED).all()
 
                 if parlours:
@@ -416,7 +415,7 @@ class ParlourAuthEndpoint:
     def on_post(self, req, resp):
         try:
             with db.transaction() as session:
-                rest_dict = get_json_body(req)
+                rest_dict = json.load(req.bounded_stream)
 
                 if 'username' not in rest_dict:
                     raise falcon.HTTPBadRequest(
@@ -531,7 +530,7 @@ class ResetPasswordPostEndpoint:
     def on_post(self, req, resp):
         with db.transaction() as session:
 
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
             password = rest_dict.get('password')
             email =  rest_dict.get('email')
 
@@ -585,7 +584,7 @@ class ParlourSuspendEndpoint:
 
     def on_put(self, req, resp, id):
         import datetime
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -619,7 +618,7 @@ class ParlourActivateEndpoint:
 
     def on_put(self, req, resp, id):
         import datetime
-        req = json.loads(req.stream.read().decode('utf-8'))
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
 
@@ -652,11 +651,10 @@ class ParlourAddSMSEndpoint:
         return not self.secure
 
     def on_put(self, req, resp, id):
-        import datetime
-        req = json.loads(req.stream.read().decode('utf-8'))
+
+        req = json.load(req.bounded_stream)
         try:
             with db.transaction() as session:
-                print(req)
                 parlour = session.query(Parlour).filter(
                     Parlour.id == id).first()
 
@@ -665,7 +663,7 @@ class ParlourAddSMSEndpoint:
                 if not parlour.number_of_sms:
                     parlour.number_of_sms = 0
                 if req.get("number_of_sms"):
-                    parlour.number_of_sms = sum([parlour.number_of_sms, req.get("number_of_sms", 0)])
+                    parlour.number_of_sms = sum([int(parlour.number_of_sms), int(req.get("number_of_sms"))])
 
                 resp.body = json.dumps(parlour.to_dict(), default=str)
         except:

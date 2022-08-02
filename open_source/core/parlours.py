@@ -1,17 +1,18 @@
 from random import choice, randint
 
 import hashlib
-import datetime
-
 from sqlalchemy.sql.sqltypes import Boolean
 
-from open_source import config
-from open_source import db
-from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey
+
+from open_source import config, db
+
+from sqlalchemy import Column, Integer, String, DateTime, func, ForeignKey, Text
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
+
+conf = config.get_config()
 
 
 class PasswordReset(db.Base):
@@ -63,7 +64,7 @@ class Parlour(db.Base):
     personname = Column(String(length=200))
     number = Column(String(length=200))
     state = Column(Integer, default=1)
-    email = Column(String(length=255))
+    email = Column(Text)
     username = Column(String(length=255))
     address = Column(String(length=255))
     password = Column(String(length=255))

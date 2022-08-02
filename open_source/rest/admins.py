@@ -10,6 +10,10 @@ from open_source import webtokens
 from sqlalchemy import or_
 from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 from falcon_cors import CORS
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_json_body(req):
@@ -49,7 +53,7 @@ class AdminSignupEndpoint:
 
         with db.transaction() as session:
             errors = {}
-            rest_dict = get_json_body(req)
+            rest_dict = json.load(req.bounded_stream)
 
             if not rest_dict.get('email'):
                 raise falcon.HTTPBadRequest(title="Email", description="Email is a required field.")
@@ -130,65 +134,3 @@ class ParlourDeleteEndpoint:
         except:
             logger.exception("Error, Failed to delete Admin with ID {}.".format(id))
             raise falcon.HTTPBadRequest(title="Error", description="Failed to delete Admin with ID {}.".format(id))
-
-
-# class ParlourAuthEndpoint:
-#     # cors = public_cors
-#     def __init__(self, secure=False, basic_secure=False):
-#         self.secure = secure
-#         self.basic_secure = basic_secure
-
-#     def is_basic_secure(self):
-#         return self.basic_secure
-
-#     def is_not_secure(self):
-#         return not self.secure
-
-#     def on_post(self, req, resp):
-#         try:
-#             with db.transaction() as session:
-#                 rest_dict = get_json_body(req)
-
-#                 if 'username' not in rest_dict:
-#                     # Citiq Prepaid password reset
-#                     raise falcon.HTTPBadRequest(
-#                         title='400 Malformed Auth request',
-#                         description='Missing credential[username]')
-
-#                 username = rest_dict.get('username')
-
-#                 if 'password' not in rest_dict:
-#                     raise falcon.HTTPBadRequest(
-#                         title='400 Malformed Auth request',
-#                         description='Missing credential[password]'
-#                     )
-#                 password = rest_dict.get('password')
-
-#                 user, success = utils.authenticate(session, username, password)
-
-#                 if success:
-#                     text = webtokens.create_token_from_parlour(user)
-
-#                     permission = "Parlour" if isinstance(user, Parlour) else "Consultant"
-
-#                     resp.body = json.dumps(
-#                         {
-#                             "user": user.to_dict(),
-#                             "token": text,
-#                             "permission": permission
-#                         }, default=str)
-#                 else:
-#                     raise falcon.HTTPUnauthorized(
-#                         title='401 Authentication Failed',
-#                         description='The credentials provided are not valid',
-#                         headers={}
-#                         )
-
-#         except (falcon.HTTPBadRequest, falcon.HTTPUnauthorized):
-#             raise
-#         except json.decoder.JSONDecodeError as e:
-#             raise falcon.HTTPBadRequest('400 Malformed Json', str(e))
-#         except Exception as e:
-#             print(e)
-#             raise falcon.HTTPInternalServerError('500 Internal Server Error', 'General Error')
-
