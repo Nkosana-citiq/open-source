@@ -200,7 +200,7 @@ class MainGetAllParlourEndpoint:
                     if status:
                         applicants = applicants.filter(Applicant.status == status.lower())
 
-                    applicant_res = [(applicant, applicant.plan) for applicant in applicants.all()]
+                    applicant_res = [(applicant, applicant.plan) for applicant in applicants.limit(100).all()]
                     if applicant_res:
                         for applicant in applicant_res:
                             if applicant[0].plan.id == applicant[1].id:
@@ -332,7 +332,7 @@ class MainGetAllConsultantEndpoint:
                     )
 
                     if status :
-                        applicants = [] if status.lower() == 'lapsed' else applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).all()
+                        applicants = [] if status.lower() == 'lapsed' else applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).limit(100).all()
 
                     applicant_res = [(applicant, applicant.plan) for applicant in applicants]
                     if applicant_res:
