@@ -6,11 +6,11 @@ from open_source import config
 
 logging.basicConfig(level=logging.INFO)
 
-from open_source.rest import middleware, users
+from open_source.rest import middleware
 from open_source.rest import (
     applicants, consultants, parlours, plans,
     main_members, extended_members, payments,
-    additional_extended_members, dependants, notifications
+    additional_extended_members, dependants, notifications, admins
 )
 
 from falcon_multipart.middleware import MultipartMiddleware
@@ -99,6 +99,7 @@ api.add_route('/open-source/applicants/{id}/delete', applicants.ApplicantDeleteE
 
 
 api.add_route('/open-source/consultants/{id}/main-members/all', main_members.MainGetAllConsultantEndpoint())
+api.add_route('/open-source/parlours/{id}/main-members/actions/count', main_members.MainMemberCountEndpoint())
 api.add_route('/open-source/consultants/{id}/main-members/archived', main_members.MainGetAllArchivedConsultantEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/all', main_members.MainGetAllParlourEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/archived', main_members.MainGetAllArchivedParlourEndpoint())

@@ -56,6 +56,49 @@ class MainMemberGetEndpoint:
             resp.body = json.dumps(main_member.to_dict(), default=str)
 
 
+class MainMemberCountEndpoint:
+    cors = public_cors
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.no_transaction() as session:
+                try:
+                    parlour = session.query(Parlour).filter(
+                        Parlour.state == Parlour.STATE_ACTIVE,
+                        Parlour.id == id
+                    ).one_or_none()
+
+                except MultipleResultsFound as e:
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+
+                applicants = session.query(Applicant).filter(
+                    Applicant.state == Applicant.STATE_ACTIVE,
+                    Applicant.parlour_id == parlour.id
+                ).order_by(Applicant.id.desc())
+
+                applicant_ids = [applicant.id for applicant in applicants.all()]
+                main_member_count = session.query(MainMember).filter(
+                    MainMember.state == MainMember.STATE_ACTIVE,
+                    MainMember.applicant_id.in_(applicant_ids)
+                ).count()
+
+                resp.body = json.dumps({"count": main_member_count}, default=str)
+
+        except:
+            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
+
+
 class MainGetAllParlourEndpoint:
     cors = public_cors
 
