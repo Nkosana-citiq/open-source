@@ -247,7 +247,7 @@ class MainGetAllParlourEndpoint:
                         resp.body = json.dumps({})
                     else:
                         result = MainMember._paginated_results(req.params, main_members)
-                        resp.body = json.dumps(main_members.all(), default=str)
+                        resp.body = json.dumps([m.to_dict() for m in main_members.all()], default=str)
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
@@ -386,7 +386,7 @@ class MainGetAllConsultantEndpoint:
                         resp.body = json.dumps({})
                     else:
                         result = MainMember._paginated_results(req.params, main_members)
-                        resp.body = json.dumps(main_members.all(), default=str)
+                        resp.body = json.dumps([m.to_dict() for m in main_members.all()], default=str)
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
