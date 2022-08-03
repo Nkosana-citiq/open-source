@@ -110,9 +110,21 @@ class Applicant(db.Base):
     def is_deleted(self) -> bool:
         return self.state == self.STATE_DELETED
 
-    def make_deleted(self):
+    def make_deleted(self, session):
         self.state = self.STATE_DELETED
+        self.on_delete_clean_up(session)
 
     def delete(self, session):
-        self.make_deleted()
+        self.make_deleted(session)
         session.commit()
+
+    def on_delete_clean_up(self, session):
+        for extended_member in self.extended_members:
+            extended_member.delete(session)
+    
+    def is_archived(self) -> bool:
+        return self.state == self.STATE_ARCHIVED
+
+    def make_archived(self):
+        self.state = self.STATE_ARCHIVED
+

@@ -609,7 +609,7 @@ class ExtendedMemberPutEndpoint:
             date_of_birth = None
             try:
                 if req.get("date_of_birth"):
-                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%d") + timedelta(days=1)
+                    date_of_birth = datetime.strptime(self.get_date_of_birth(req.get("date_of_birth")), "%Y-%m-%d") + timedelta(days=1)
                     extended_member.date_of_birth = date_of_birth
                 date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
