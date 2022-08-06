@@ -370,7 +370,6 @@ class ExtendedMembersPostEndpoint:
                     dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
                 else:
                     dob = date_of_birth
-
                 extended_member.date_of_birth = dob
                 now = datetime.now().date()
 
@@ -678,6 +677,7 @@ class ExtendedMemberPutEndpoint:
                         number = '20{}'.format(extended_member.id_number[0:2])
                     birth = '{}-{}-{}'.format(number, extended_member.id_number[2:4], extended_member.id_number[4:6])
                     date_of_birth = datetime.strptime(birth, "%Y-%m-%d")
+
                 dob = date_of_birth
                 now = datetime.now().date()
 

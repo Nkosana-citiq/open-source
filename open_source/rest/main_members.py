@@ -232,7 +232,7 @@ class MainGetAllParlourEndpoint:
                     main_members = session.query(MainMember).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.applicant_id.in_(applicant_ids)
-                    ).order_by(MainMember.id.desc()).limit(100)
+                    )
 
                     if start_date:
                         main_members = main_members.filter(
@@ -247,7 +247,7 @@ class MainGetAllParlourEndpoint:
                         resp.body = json.dumps({})
                     else:
                         # result = MainMember._paginated_results(req.params, main_members)
-                        resp.body = json.dumps([m.to_dict() for m in main_members.all()], default=str)
+                        resp.body = json.dumps([m.to_dict() for m in main_members.order_by(MainMember.id.desc()).limit(100).all()], default=str)
 
         except:
             logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
@@ -329,11 +329,11 @@ class MainGetAllConsultantEndpoint:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id == consultant.id
-                    ).order_by(Applicant.id.desc()).limit(100)
+                    )
 
                     if status :
-                        applicants = [] if status.lower() == 'lapsed' else applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower()).order_by(Applicant.id.desc()).limit(100).all()
-
+                        applicants = applicants.filter(Applicant.consultant_id == consultant.id, Applicant.status == status.lower())
+                    applicants  = applicants.order_by(Applicant.id.desc()).limit(100).all()
                     applicant_res = [(applicant, applicant.plan) for applicant in applicants]
                     if applicant_res:
                         for applicant in applicant_res:
@@ -1208,7 +1208,6 @@ class MainMemberPutEndpoint:
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
-
             try:
                 parlour_id = req.get("parlour_id")
 
@@ -1280,6 +1279,7 @@ class MainMemberPutEndpoint:
                 main_member.id_number = req.get("id_number")
                 main_member.contact = req.get("contact")
                 main_member.date_of_birth = req.get("date_of_birth")
+                main_member.date_joined = self.get_date(req.get("date_joined"))
                 main_member.waiting_period = req.get("waiting_period", 0)
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
