@@ -612,7 +612,7 @@ class ExtendedMemberPutEndpoint:
                     dt = pendulum.parse(req.get("date_of_birth"))
                     date_of_birth = dt.date()
                     extended_member.date_of_birth = date_of_birth
-                date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
+                date_joined = pendulum.parse(req.get("date_joined"))
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")

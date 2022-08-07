@@ -171,10 +171,7 @@ class MainGetAllParlourEndpoint:
 
                     resp.body = json.dumps({"original": main_count, "month": month_count, "period": '-'.join([str(search.date().year), str(search.date().month)])}, default=str)
                 elif search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_members = session.query(MainMember).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.parlour_id == parlour.id,
                         or_(
@@ -188,7 +185,7 @@ class MainGetAllParlourEndpoint:
                     if not main_members:
                         resp.body = json.dumps({})
                     else:
-                        resp.body = json.dumps(main_members, default=str)
+                        resp.body = json.dumps([m.to_dict() for m in main_members.order_by(MainMember.id.desc()).all()], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -427,10 +424,7 @@ class MainGetAllArchivedParlourEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
                 if search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_members = session.query(MainMember).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ARCHIVED,
                         MainMember.parlour_id == parlour.id,
                         or_(
@@ -439,17 +433,17 @@ class MainGetAllArchivedParlourEndpoint:
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field))
                         )
-                    ).all()
+                    ).order_by(MainMember.id.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
 
-                    resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
+                    resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ARCHIVED,
                         Applicant.parlour_id == parlour.id
-                    ).order_by(Applicant.id.desc())
+                    )
 
                     if status:
                         applicants = applicants.filter(Applicant.status == status.lower()).all()
@@ -459,7 +453,7 @@ class MainGetAllArchivedParlourEndpoint:
                         or_(MainMember.state == Applicant.STATE_ARCHIVED,
                             MainMember.applicant_id.in_(applicant_ids)),
                             MainMember.parlour_id == parlour.id
-                    ).all()
+                    ).order_by(MainMember.id.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -520,12 +514,12 @@ class MainGetAllArchivedConsultantEndpoint:
                             Applicant.policy_num.ilike('{}%'.format(search_field))
                         ),
                         Applicant.consultant_id == consultant.id
-                    ).all()
+                    ).order_by(MainMember.id.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
-
-                    resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
+                    else:
+                        resp.body = json.dumps([main_member[0].to_dict() for main_member in main_members], default=str)
                 else:
                     extended_members = session.query(ExtendedMember).filter(
                         or_(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
@@ -536,7 +530,7 @@ class MainGetAllArchivedConsultantEndpoint:
                         or_(Applicant.state == Applicant.STATE_ARCHIVED,
                         Applicant.id.in_(applicant_ids)),
                         Applicant.consultant_id == consultant.id
-                    ).order_by(Applicant.id.desc())
+                    )
 
                     if status:
                         applicants = applicants.filter(Applicant.status == status.lower()).all()
@@ -544,7 +538,7 @@ class MainGetAllArchivedConsultantEndpoint:
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
                         MainMember.applicant_id.in_(applicant_ids)
-                    ).all()
+                    ).order_by(MainMember.id.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -1205,6 +1199,7 @@ class MainMemberPutEndpoint:
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
+            import pendulum
             try:
                 parlour_id = req.get("parlour_id")
 
@@ -1275,8 +1270,7 @@ class MainMemberPutEndpoint:
                 main_member.last_name = req.get("last_name")
                 main_member.id_number = req.get("id_number")
                 main_member.contact = req.get("contact")
-                main_member.date_of_birth = req.get("date_of_birth")
-                main_member.date_joined = self.get_date(req.get("date_joined"))
+                main_member.date_joined = pendulum.parse(req.get("date_joined")).date()
                 main_member.waiting_period = req.get("waiting_period", 0)
                 main_member.parlour_id = parlour.id
                 main_member.applicant_id = applicant.id
