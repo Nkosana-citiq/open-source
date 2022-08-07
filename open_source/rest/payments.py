@@ -691,18 +691,18 @@ class InvoiceExportToExcelEndpoint:
                     applicants = session.query(Applicant).filter(
                         Applicant.consultant_id == consultant.id
                     ).all()
-                else:
-                    applicants = session.query(Applicant).filter(
-                        Applicant.parlour_id == parlour.id
-                    ).all()
 
-                applicant_ids = [applicant.id for applicant in applicants]
-
-                payments = session.query(Payment).filter(
+                    applicant_ids = [applicant.id for applicant in applicants]
+                    payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
                     Payment.created >= month_start,
                     Payment.applicant_id.in_(applicant_ids)
                 ).all()
+                else:
+                    payments = session.query(Payment).filter(
+                        Payment.state == Payment.STATE_ACTIVE,
+                        Payment.created >= month_start
+                    ).all()
 
                 payment_ids = [payment.id for payment in payments]
 
