@@ -72,6 +72,7 @@ class MainMemberCountEndpoint:
     def on_get(self, req, resp, id):
         try:
             with db.no_transaction() as session:
+                consultant = None
                 try:
                     parlour = session.query(Parlour).filter(
                         Parlour.state == Parlour.STATE_ACTIVE,
@@ -81,10 +82,15 @@ class MainMemberCountEndpoint:
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
+                if "permission" in req.params and req.params["permission"] == "Consultant":
+                    consultant = session.query(Consultant).filter(Consultant.id == req.params["user_id"]).one_or_none()
                 applicants = session.query(Applicant).filter(
                     Applicant.state == Applicant.STATE_ACTIVE,
                     Applicant.parlour_id == parlour.id
                 ).order_by(Applicant.id.desc())
+
+                if consultant:
+                    applicants = applicants.filter(Applicant.consultant_id == consultant.id)
 
                 applicant_ids = [applicant.id for applicant in applicants.all()]
                 main_member_count = session.query(MainMember).filter(
