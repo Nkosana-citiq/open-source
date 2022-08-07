@@ -671,7 +671,6 @@ class InvoiceExportToExcelEndpoint:
 
                     if consultant_id:
                         consultant = session.query(Consultant).filter(
-                            Consultant.state == Consultant.STATE_ACTIVE,
                             Consultant.id == consultant_id
                         ).one()
 
@@ -718,7 +717,6 @@ class InvoiceExportToExcelEndpoint:
 
                     try:
                         main_member = session.query(MainMember).filter(
-                            MainMember.state == MainMember.STATE_ACTIVE,
                             MainMember.applicant_id == applicant.id
                         ).one()
 
