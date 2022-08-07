@@ -685,8 +685,7 @@ class InvoiceExportToExcelEndpoint:
                 if not parlour:
                     parlour = consultant.parlour
 
-                month = datetime.now().month - 1
-                month_start = datetime.now().replace(month=month).replace(day=1) if parlour.id == 68 else datetime.now().replace(day=1)
+                month_start = datetime.now().replace(day=1)
 
                 applicants_query = session.query(Applicant).filter(
                     Applicant.state == Applicant.STATE_ACTIVE,
