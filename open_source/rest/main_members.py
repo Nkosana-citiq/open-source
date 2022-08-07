@@ -180,10 +180,9 @@ class MainGetAllParlourEndpoint:
                     )
 
                     if not main_members:
-                        resp.body = json.dumps({"total": 0, "count": 0, "offset": 0, "limit":0, "result": []})
+                        resp.body = json.dumps({})
                     else:
-                        result = MainMember._paginated_search_results(req.params, main_members)
-                        resp.body = json.dumps(result, default=str)
+                        resp.body = json.dumps(main_members, default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -246,7 +245,6 @@ class MainGetAllParlourEndpoint:
                     if not main_members.all():
                         resp.body = json.dumps({})
                     else:
-                        # result = MainMember._paginated_results(req.params, main_members)
                         resp.body = json.dumps([m.to_dict() for m in main_members.order_by(MainMember.id.desc()).limit(100).all()], default=str)
 
         except:
@@ -306,10 +304,7 @@ class MainGetAllConsultantEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="No results found.")
 
                 if search_field:
-                    main_members = session.query(
-                        MainMember,
-                        Applicant
-                    ).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
+                    main_members = session.query(MainMember).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
                         MainMember.state == MainMember.STATE_ACTIVE,
                         MainMember.parlour_id == parlour.id,
                         or_(
@@ -321,10 +316,9 @@ class MainGetAllConsultantEndpoint:
                     )
 
                     if not main_members:
-                        resp.body = json.dumps({"total": 0, "count": 0, "offset": 0, "limit":0, "result": []})
+                        resp.body = json.dumps({})
                     else:
-                        result = MainMember._paginated_search_results(req.params, main_members)
-                        resp.body = json.dumps(result, default=str)
+                        resp.body = json.dumps([m.to_dict() for m in main_members.order_by(MainMember.id.desc()).limit(100).all()], default=str)
                 else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
@@ -385,7 +379,6 @@ class MainGetAllConsultantEndpoint:
                     if not main_members:
                         resp.body = json.dumps({})
                     else:
-                        result = MainMember._paginated_results(req.params, main_members)
                         resp.body = json.dumps([m.to_dict() for m in main_members.all()], default=str)
 
         except:
