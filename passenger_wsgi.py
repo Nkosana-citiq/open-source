@@ -39,7 +39,7 @@ cors = CORS(
     allow_all_methods=True,
     allow_all_headers=True)
 
-api = falcon.API(
+api = application = falcon.API(
     middleware=[cors.middleware,
     middleware.AuthMiddleware(),
     MultipartMiddleware()
