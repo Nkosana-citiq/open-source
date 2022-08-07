@@ -687,12 +687,8 @@ class InvoiceExportToExcelEndpoint:
 
                 month_start = datetime.now().replace(day=1)
 
-                applicants_query = session.query(Applicant).filter(
-                    Applicant.state == Applicant.STATE_ACTIVE,
-                )
-
                 if consultant:
-                    applicants = applicants_query.filter(
+                    applicants = session.query(Applicant).filter(
                         Applicant.consultant_id == consultant.id
                     ).all()
                 else:
@@ -704,7 +700,7 @@ class InvoiceExportToExcelEndpoint:
 
                 payments = session.query(Payment).filter(
                     Payment.state == Payment.STATE_ACTIVE,
-                    Payment.created > month_start,
+                    Payment.created >= month_start,
                     Payment.applicant_id.in_(applicant_ids)
                 ).all()
 
