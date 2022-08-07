@@ -754,9 +754,7 @@ class MainMemberPostEndpoint:
             if not plan:
                 raise falcon.HTTPBadRequest(title="Error", description="Plan does not exist.")
 
-            applicant_req = req.get("applicant")
-
-            if not applicant_req.get("policy_num"):
+            if not req.get("policy_num"):
                 raise falcon.HTTPBadRequest(title="Error", description="Missing policy number field.")
 
             applicants = session.query(Applicant).filter(Applicant.plan_id == plan.id).all()
@@ -780,8 +778,8 @@ class MainMemberPostEndpoint:
 
             try:
                 applicant = Applicant(
-                    policy_num=applicant_req.get("policy_num"),
-                    address=applicant_req.get("address"),
+                    policy_num=req.get("policy_num"),
+                    address=req.get("address"),
                     status='unpaid',
                     plan_id=plan.id,
                     consultant_id=consultant.id,

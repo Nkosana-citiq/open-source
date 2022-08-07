@@ -544,6 +544,7 @@ class ExtendedMemberPutEndpoint:
         return date_joined.replace('T', " ")[:10]
 
     def on_put(self, req, resp, id):
+        import pendulum
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
@@ -608,14 +609,15 @@ class ExtendedMemberPutEndpoint:
             date_of_birth = None
             try:
                 if req.get("date_of_birth"):
-                    date_of_birth = datetime.strptime(self.get_date_of_birth(req.get("date_of_birth")), "%Y-%m-%d") + timedelta(days=1)
+                    dt = pendulum.parse(req.get("date_of_birth"))
+                    date_of_birth = dt.date()
                     extended_member.date_of_birth = date_of_birth
                 date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%d") + timedelta(days=1)
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
                 extended_member.number = req.get("number")
-                
+
                 extended_member.type = req.get("type")
                 extended_member.id_number = req.get("id_number")
                 extended_member.waiting_period = req.get("waiting_period", 0)
