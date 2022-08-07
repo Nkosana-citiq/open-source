@@ -16,7 +16,7 @@ ordered-set==4.0.2
 openpyxl==3.0.9
 pandas==1.1.5
 pendulum==2.1.2
-Pillow>=9.2.0
+Pillow==8.3.2 # TODO Upgrade pillow to latest version for security reasons
 PyPDF2>=1.27.5
 pyjwt>=2.4.0
 python-barcode==0.13.1
