@@ -17,6 +17,7 @@ import os
 import json
 import logging
 import uuid
+import pendulum
 
 from open_source import db
 
@@ -296,8 +297,8 @@ class ExtendedMembersPostEndpoint:
 
                 date_of_birth = None
                 if req.get("date_of_birth"):
-                    date_of_birth = datetime.strptime(req.get("date_of_birth"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
-                date_joined = datetime.strptime(req.get("date_joined"), "%Y-%m-%dT%H:%M:%S.%fZ") + timedelta(days=1)
+                    date_of_birth = pendulum.parse(req.get("date_of_birth")).date()
+                date_joined = pendulum.parse(req.get("date_joined")).date()
 
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
@@ -544,7 +545,6 @@ class ExtendedMemberPutEndpoint:
         return date_joined.replace('T', " ")[:10]
 
     def on_put(self, req, resp, id):
-        import pendulum
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
@@ -612,7 +612,7 @@ class ExtendedMemberPutEndpoint:
                     dt = pendulum.parse(req.get("date_of_birth"))
                     date_of_birth = dt.date()
                     extended_member.date_of_birth = date_of_birth
-                date_joined = pendulum.parse(req.get("date_joined"))
+                date_joined = pendulum.parse(req.get("date_joined"), tz='Africa/Johannesburg')
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")

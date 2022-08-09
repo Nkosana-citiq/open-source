@@ -100,6 +100,7 @@ api.add_route('/open-source/applicants/{id}/delete', applicants.ApplicantDeleteE
 
 api.add_route('/open-source/consultants/{id}/main-members/all', main_members.MainGetAllConsultantEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/actions/count', main_members.MainMemberCountEndpoint())
+api.add_route('/open-source/parlours/{id}/main-members/actions/count_archived', main_members.MainMemberArchivedCountEndpoint())
 api.add_route('/open-source/consultants/{id}/main-members/archived', main_members.MainGetAllArchivedConsultantEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/all', main_members.MainGetAllParlourEndpoint())
 api.add_route('/open-source/parlours/{id}/main-members/archived', main_members.MainGetAllArchivedParlourEndpoint())

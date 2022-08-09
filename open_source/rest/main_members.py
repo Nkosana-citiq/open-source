@@ -6,6 +6,7 @@ import falcon
 import json
 import logging
 import pandas as pd
+import pendulum
 
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
@@ -95,6 +96,54 @@ class MainMemberCountEndpoint:
                 applicant_ids = [applicant.id for applicant in applicants.all()]
                 main_member_count = session.query(MainMember).filter(
                     MainMember.state == MainMember.STATE_ACTIVE,
+                    MainMember.applicant_id.in_(applicant_ids)
+                ).count()
+
+                resp.body = json.dumps({"count": main_member_count}, default=str)
+
+        except:
+            logger.exception("Error, Failed to get Applicants for user with ID {}.".format(id))
+            raise falcon.HTTPUnprocessableEntity(title="Uprocessable entity", description="Failed to get Applicants for user with ID {}.".format(id))
+
+
+class MainMemberArchivedCountEndpoint:
+    cors = public_cors
+
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def on_get(self, req, resp, id):
+        try:
+            with db.no_transaction() as session:
+                consultant = None
+                try:
+                    parlour = session.query(Parlour).filter(
+                        Parlour.state == Parlour.STATE_ACTIVE,
+                        Parlour.id == id
+                    ).one_or_none()
+
+                except MultipleResultsFound as e:
+                    raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
+
+                if "permission" in req.params and req.params["permission"] == "Consultant":
+                    consultant = session.query(Consultant).filter(Consultant.id == req.params["user_id"]).one_or_none()
+                applicants = session.query(Applicant).filter(
+                    or_(Applicant.state == Applicant.STATE_ARCHIVED, Applicant.status == "lapsed"),
+                    Applicant.parlour_id == parlour.id
+                ).order_by(Applicant.id.desc())
+
+                if consultant:
+                    applicants = applicants.filter(Applicant.consultant_id == consultant.id)
+
+                applicant_ids = [applicant.id for applicant in applicants.all()]
+                main_member_count = session.query(MainMember).filter(
                     MainMember.applicant_id.in_(applicant_ids)
                 ).count()
 
@@ -433,7 +482,7 @@ class MainGetAllArchivedParlourEndpoint:
                             MainMember.id_number.ilike('{}%'.format(search_field)),
                             Applicant.policy_num.ilike('{}%'.format(search_field))
                         )
-                    ).order_by(MainMember.id.desc()).limit(100).all()
+                    ).order_by(MainMember.modified_at.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -453,7 +502,7 @@ class MainGetAllArchivedParlourEndpoint:
                         or_(MainMember.state == Applicant.STATE_ARCHIVED,
                             MainMember.applicant_id.in_(applicant_ids)),
                             MainMember.parlour_id == parlour.id
-                    ).order_by(MainMember.id.desc()).limit(100).all()
+                    ).order_by(MainMember.modified_at.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -514,7 +563,7 @@ class MainGetAllArchivedConsultantEndpoint:
                             Applicant.policy_num.ilike('{}%'.format(search_field))
                         ),
                         Applicant.consultant_id == consultant.id
-                    ).order_by(MainMember.id.desc()).limit(100).all()
+                    ).order_by(MainMember.modified_at.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -538,7 +587,7 @@ class MainGetAllArchivedConsultantEndpoint:
                     applicant_ids = [applicant.id for applicant in applicants]
                     main_members = session.query(MainMember).filter(
                         MainMember.applicant_id.in_(applicant_ids)
-                    ).order_by(MainMember.id.desc()).limit(100).all()
+                    ).order_by(MainMember.modified_at.desc()).limit(100).all()
 
                     if not main_members:
                         resp.body = json.dumps([])
@@ -786,17 +835,16 @@ class MainMemberPostEndpoint:
                 )
 
                 applicant.save(session)
-                date_joined = self.get_date(req.get("date_joined"))
                 date_of_birth = self.get_date(req.get("date_of_birth"))
                 main_member = MainMember(
                     first_name = req.get("first_name"),
                     last_name = req.get("last_name"),
                     id_number = req.get("id_number"),
                     contact = req.get("contact"),
-                    date_of_birth = date_of_birth,
+                    date_of_birth = pendulum.parse(req.get("date_of_birth")).date() if req.get("date_of_birth") else None,
                     parlour_id = parlour.id,
                     waiting_period = req.get("waiting_period", 0),
-                    date_joined = date_joined,
+                    date_joined = pendulum.parse(req.get("date_joined")).date(),
                     state=MainMember.STATE_ACTIVE,
                     applicant_id = applicant.id,
                     modified_at = datetime.now(),
@@ -1199,7 +1247,6 @@ class MainMemberPutEndpoint:
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
-            import pendulum
             try:
                 parlour_id = req.get("parlour_id")
 
