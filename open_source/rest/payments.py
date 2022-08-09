@@ -697,6 +697,8 @@ class InvoiceExportToExcelEndpoint:
                     Payment.created >= month_start,
                     Payment.applicant_id.in_(applicant_ids)
                 ).all()
+
+
                 else:
                     payments = session.query(Payment).filter(
                         Payment.state == Payment.STATE_ACTIVE,
@@ -723,7 +725,7 @@ class InvoiceExportToExcelEndpoint:
                     except NoResultFound:
                         continue
                     d = main_member.to_dict()
-                    d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.created, 'number_of_months': invoice.number_of_months})
+                    d.update({'assisted_by': invoice.assisted_by, 'payment_date': invoice.payment_date, 'number_of_months': invoice.number_of_months})
                     results.append(d)
 
                 data = []

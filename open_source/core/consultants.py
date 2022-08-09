@@ -93,12 +93,12 @@ class Consultant(db.Base):
 
     def delete(self, session):
         self.make_deleted()
-        self.on_delete_clean_up()
+        self.on_delete_clean_up(session)
         session.commit()
 
-    def on_delete_clean_up(self):
+    def on_delete_clean_up(self, session):
         for a in self.applicants:
-            a.make_deleted()
+            a.make_deleted(session)
 
     @property
     def pretty_name(self) -> str:
