@@ -69,14 +69,11 @@ class Notification(db.Base):
         }
 
     @staticmethod
-    def get_money_collected(session, consultant=None, parlour=None):
-        if consultant:
-            applicants = session.query(Applicant).filter(Applicant.consultant_id == consultant.id, Applicant.state == Applicant.STATE_ACTIVE).all()
-            applicant_ids = [applicant.id for applicant in applicants]
+    def get_money_collected(session, consultant=None):
+        applicants = session.query(Applicant).filter(Applicant.consultant_id == consultant.id, Applicant.state == Applicant.STATE_ACTIVE).all()
+        applicant_ids = [applicant.id for applicant in applicants]
 
-            payments =  session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.created >= datetime.datetime.today().date()).all()
-        else:
-            payments =  session.query(Payment).filter(Payment.parlour_id == parlour.id, Payment.created >= datetime.datetime.today().date()).all()
+        payments = session.query(Payment).filter(Payment.applicant_id.in_(applicant_ids), Payment.created >= datetime.datetime.today().date()).all()
 
         if len(payments) > 0:
             payment_ids = [payment.id for payment in payments]
@@ -110,17 +107,8 @@ class Notification(db.Base):
                         <td>R{}</td>
                     </try>""".format(consultant.first_name, consultant.last_name, amount)
 
-            else:
-                amount = self.get_money_collected(session, parlour=parlour)
-
-                entry = """
-                <tr>
-                    <td>{}</td>
-                    <td>R{}</td>
-                </tr>""".format(parlour.personname, amount)
-
-            consultants.append(entry)
-            sum += amount
+                consultants.append(entry)
+                sum += amount
 
         html = {"html": """
             {}

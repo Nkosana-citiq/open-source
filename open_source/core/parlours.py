@@ -112,16 +112,16 @@ class Parlour(db.Base):
 
     def delete(self, session):
         self.make_deleted()
-        self.on_delete_clean_up()
+        self.on_delete_clean_up(session)
         session.commit()
 
-    def on_delete_clean_up(self):
+    def on_delete_clean_up(self, session):
         for c in self.consultants:
             c.make_deleted()
         for p in self.plans:
             p.make_deleted()
         for m in self.main_members:
-            m.make_deleted()
+            m.make_deleted(session)
 
     @property
     def pretty_name(self) -> str:
