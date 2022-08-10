@@ -1836,6 +1836,7 @@ class SMSService:
                     Applicant.state == Applicant.STATE_ACTIVE,
                     Applicant.parlour_id== parlour.id
                 )
+
                 if consultant:
                     applicants = applicants.filter(Applicant.consultant_id == consultant.id)
                 applicant_ids = [applicant.id for applicant in applicants.all()]
