@@ -473,8 +473,11 @@ class MainGetAllArchivedParlourEndpoint:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
                 if search_field:
+                    extended_members = session.query(ExtendedMember).filter(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED).all()
+                    applicant_ids = [ext.applicant_id for ext in extended_members]
                     main_members = session.query(MainMember).join(Applicant, (MainMember.applicant_id==Applicant.id)).filter(
-                        MainMember.state == MainMember.STATE_ARCHIVED,
+                        or_(MainMember.state == MainMember.STATE_ARCHIVED,
+                        MainMember.applicant_id.in_(applicant_ids)),
                         MainMember.parlour_id == parlour.id,
                         or_(
                             MainMember.first_name.ilike('{}%'.format(search_field)),
@@ -489,8 +492,14 @@ class MainGetAllArchivedParlourEndpoint:
 
                     resp.body = json.dumps([main_member.to_dict() for main_member in main_members], default=str)
                 else:
+                    extended_members = session.query(ExtendedMember).filter(
+                        or_(ExtendedMember.state == ExtendedMember.STATE_ARCHIVED,
+                        ExtendedMember.is_deceased == True)
+                    ).all()
+                    applicant_ids = [ext.applicant_id for ext in extended_members]
                     applicants = session.query(Applicant).filter(
-                        Applicant.state == Applicant.STATE_ARCHIVED,
+                        or_(Applicant.state == Applicant.STATE_ARCHIVED,
+                        Applicant.id.in_(applicant_ids)),
                         Applicant.parlour_id == parlour.id
                     )
 
