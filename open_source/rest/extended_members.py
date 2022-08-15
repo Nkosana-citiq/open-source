@@ -773,10 +773,7 @@ class ExtededMemberDeleteEndpoint:
                 if extended_member.is_deleted:
                     falcon.HTTPNotFound(title="404 Not Found", description="Extended member does not exist.")
 
-                if extended_member is None:
-                    raise falcon.HTTPNotFound(title="404 Not Found", description="Extended member Not Found")
-                if extended_member.is_deleted:
-                    falcon.HTTPNotFound(title="404 Not Found", description="Extended member does not exist.")
+                extended_member.delete(session)
 
                 resp.body = json.dumps(extended_member.to_dict(), default=str)
         except:
@@ -806,8 +803,7 @@ class ExtededMemberArchiveEndpoint:
                 if extended_member.is_deleted:
                     falcon.HTTPNotFound(title="404 Not Found", description="Applicant does not exist.")
 
-                extended_member.make_archived()
-                extended_member.save(session)
+                extended_member.archive(session)
 
                 applicant_id = extended_member.applicant_id
                 applicant = session.query(Applicant).get(applicant_id)
