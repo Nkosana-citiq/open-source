@@ -368,7 +368,7 @@ class ExtendedMembersPostEndpoint:
                         number = '20{}'.format(id_number[0:2])
                     date_of_birth = '{}-{}-{}'.format(number, id_number[2:4], id_number[4:6])
                 if req.get('id_number'):
-                    dob = datetime.strptime(self.get_date_of_birth(date_of_birth), "%Y-%m-%d").date()
+                    dob = pendulum.parse(date_of_birth).date()
                 else:
                     dob = date_of_birth
                 extended_member.date_of_birth = dob
