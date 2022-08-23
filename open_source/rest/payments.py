@@ -684,7 +684,7 @@ class InvoiceExportToExcelEndpoint:
                 if not parlour:
                     parlour = consultant.parlour
 
-                month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                month_start = datetime.today().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
                 if consultant:
                     applicants = session.query(Applicant).filter(

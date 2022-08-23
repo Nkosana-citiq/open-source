@@ -194,8 +194,8 @@ class MainGetAllParlourEndpoint:
                     if "end_date" in req.params:
                         end_date = req.params.pop("end_date")
 
-                    if "consultant" in req.params:
-                        consultant_id = req.params.pop("consultant")
+                    if "consultant_id" in req.params:
+                        consultant_id = req.params.pop("consultant_id")
                         consultant = session.query(Consultant).get(consultant_id)
 
                     if "branch" in req.params:
@@ -1596,20 +1596,26 @@ class ApplicantExportToExcelEndpoint:
                     permission = None
                     parlour = None
                     consultant = None
-
+                    print(req.params)
                     if "status" in req.params:
                         status = req.params.pop("status")
 
                     if "permission" in req.params:
                         permission = req.params.pop("permission")
 
-                    if permission.lower() == 'consultant':
+                    if 'consultant_id' in req.params:
+                        consultant_id = req.params.pop("consultant_id")
                         consultant = session.query(Consultant).filter(
                             Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.id == id
+                            Consultant.id == consultant_id
                         ).one_or_none()
-
-                    if permission.lower() == 'parlour':
+                    elif 'branch' in req.params:
+                        branch = req.params.pop("branch")
+                        parlour = session.query(Parlour).filter(
+                            Parlour.state == Parlour.STATE_ACTIVE,
+                            Parlour.branch == branch
+                        ).one_or_none()
+                    else:
                         parlour = session.query(Parlour).filter(
                             Parlour.state == Parlour.STATE_ACTIVE,
                             Parlour.id == id
@@ -1622,8 +1628,7 @@ class ApplicantExportToExcelEndpoint:
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id == consultant.id
                     ).order_by(Applicant.id.desc())
-
-                if parlour:
+                else:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.parlour_id == parlour.id
