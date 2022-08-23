@@ -1596,6 +1596,7 @@ class ApplicantExportToExcelEndpoint:
                     permission = None
                     parlour = None
                     consultant = None
+                    consultants = None
                     print(req.params)
                     if "status" in req.params:
                         status = req.params.pop("status")
@@ -1611,10 +1612,10 @@ class ApplicantExportToExcelEndpoint:
                         ).one_or_none()
                     elif 'branch' in req.params:
                         branch = req.params.pop("branch")
-                        consultant = session.query(Consultant).filter(
+                        consultants = session.query(Consultant).filter(
                             Consultant.state == Consultant.STATE_ACTIVE,
                             Consultant.branch == branch
-                        ).one_or_none()
+                        ).all()
                     else:
                         parlour = session.query(Parlour).filter(
                             Parlour.state == Parlour.STATE_ACTIVE,
@@ -1627,6 +1628,12 @@ class ApplicantExportToExcelEndpoint:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id == consultant.id
+                    ).order_by(Applicant.id.desc())
+                if consultants:
+                    consultant_ids = [con.id for con in consultants]
+                    applicants = session.query(Applicant).filter(
+                        Applicant.state == Applicant.STATE_ACTIVE,
+                        Applicant.consultant_id.in_(consultant_ids)
                     ).order_by(Applicant.id.desc())
                 else:
                     applicants = session.query(Applicant).filter(
