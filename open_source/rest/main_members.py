@@ -1616,11 +1616,11 @@ class ApplicantExportToExcelEndpoint:
                             Consultant.state == Consultant.STATE_ACTIVE,
                             Consultant.branch == branch
                         ).all()
-                    else:
-                        parlour = session.query(Parlour).filter(
-                            Parlour.state == Parlour.STATE_ACTIVE,
-                            Parlour.id == id
-                        ).one_or_none()
+
+                    parlour = session.query(Parlour).filter(
+                        Parlour.state == Parlour.STATE_ACTIVE,
+                        Parlour.id == id
+                    ).one_or_none()
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
