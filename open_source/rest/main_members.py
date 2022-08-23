@@ -1611,9 +1611,9 @@ class ApplicantExportToExcelEndpoint:
                         ).one_or_none()
                     elif 'branch' in req.params:
                         branch = req.params.pop("branch")
-                        parlour = session.query(Parlour).filter(
-                            Parlour.state == Parlour.STATE_ACTIVE,
-                            Parlour.branch == branch
+                        consultant = session.query(Consultant).filter(
+                            Consultant.state == Consultant.STATE_ACTIVE,
+                            Consultant.branch == branch
                         ).one_or_none()
                     else:
                         parlour = session.query(Parlour).filter(
