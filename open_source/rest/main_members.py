@@ -1604,23 +1604,29 @@ class ApplicantExportToExcelEndpoint:
                     if "permission" in req.params:
                         permission = req.params.pop("permission")
 
-                    if 'consultant_id' in req.params:
-                        consultant_id = req.params.pop("consultant_id")
-                        consultant = session.query(Consultant).filter(
-                            Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.id == consultant_id
+                    if permission.lower() == "parlour": 
+                        if 'consultant_id' in req.params:
+                            consultant_id = req.params.pop("consultant_id")
+                            consultant = session.query(Consultant).filter(
+                                Consultant.state == Consultant.STATE_ACTIVE,
+                                Consultant.id == consultant_id
+                            ).one_or_none()
+                        elif 'branch' in req.params:
+                            branch = req.params.pop("branch")
+                            consultants = session.query(Consultant).filter(
+                                Consultant.state == Consultant.STATE_ACTIVE,
+                                Consultant.branch == branch
+                            ).all()
+    
+                        parlour = session.query(Parlour).filter(
+                            Parlour.state == Parlour.STATE_ACTIVE,
+                            Parlour.id == id
                         ).one_or_none()
-                    elif 'branch' in req.params:
-                        branch = req.params.pop("branch")
-                        consultants = session.query(Consultant).filter(
-                            Consultant.state == Consultant.STATE_ACTIVE,
-                            Consultant.branch == branch
-                        ).all()
-
-                    parlour = session.query(Parlour).filter(
-                        Parlour.state == Parlour.STATE_ACTIVE,
-                        Parlour.id == id
-                    ).one_or_none()
+                    elif permission.lower() == "consultant":
+                        consultant = session.query(Consultant).filter(
+                                Consultant.state == Consultant.STATE_ACTIVE,
+                                Consultant.id == id
+                            ).one_or_none()
                 except MultipleResultsFound as e:
                     raise falcon.HTTPBadRequest(title="Error", description="Error getting applicants")
 
@@ -1635,7 +1641,7 @@ class ApplicantExportToExcelEndpoint:
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.consultant_id.in_(consultant_ids)
                     ).order_by(Applicant.id.desc())
-                else:
+                elif parlour:
                     applicants = session.query(Applicant).filter(
                         Applicant.state == Applicant.STATE_ACTIVE,
                         Applicant.parlour_id == parlour.id

@@ -275,7 +275,7 @@ class ExtendedMembersPostEndpoint:
                     raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
 
                 if req.get("id_number"):
-                    applicants = session.query(Applicant).filter(Applicant.plan_id == applicant.plan_id).all()
+                    applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
                     applicant_ids = [applicant.id for applicant in applicants]
                     id_number = session.query(MainMember).filter(
                         MainMember.id_number == req.get("id_number"),
