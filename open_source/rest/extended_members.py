@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from dateutil.parser import parse
-from dateutil import tz
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from open_source.core.main_members import MainMember
@@ -246,6 +245,7 @@ class ExtendedMembersPostEndpoint:
         return date_joined.replace('T', " ")[:10]
 
     def on_post(self, req, resp):
+        import pytz
         req = json.load(req.bounded_stream)
 
         try:
@@ -297,8 +297,10 @@ class ExtendedMembersPostEndpoint:
 
                 date_of_birth = None
                 if req.get("date_of_birth"):
-                    date_of_birth = pendulum.parse(req.get("date_of_birth")).date()
-                date_joined = pendulum.parse(req.get("date_joined")).date()
+                    d_tz = pendulum.parse(req.get("date_of_birth")).astimezone(pytz.timezone('Africa/Johannesburg'))
+                    date_of_birth = d_tz.date()
+                d_tz = pendulum.parse(req.get("date_joined")).astimezone(pytz.timezone('Africa/Johannesburg'))
+                date_joined = d_tz.date()
 
                 extended_member = ExtendedMember(
                     first_name = req.get("first_name"),
@@ -545,6 +547,7 @@ class ExtendedMemberPutEndpoint:
         return date_joined.replace('T', " ")[:10]
 
     def on_put(self, req, resp, id):
+        import pytz
         req = json.load(req.bounded_stream)
 
         with db.transaction() as session:
@@ -609,10 +612,10 @@ class ExtendedMemberPutEndpoint:
             date_of_birth = None
             try:
                 if req.get("date_of_birth"):
-                    dt = pendulum.parse(req.get("date_of_birth"))
-                    date_of_birth = dt.date()
+                    d_tz = pendulum.parse(req.get("date_of_birth")).astimezone(pytz.timezone('Africa/Johannesburg'))
+                    date_of_birth = d_tz.date()
                     extended_member.date_of_birth = date_of_birth
-                date_joined = pendulum.parse(req.get("date_joined"), tz='Africa/Johannesburg')
+                date_joined = pendulum.parse(req.get("date_joined")).astimezone(pytz.timezone('Africa/Johannesburg'))
                 old_type = extended_member.type
                 extended_member.first_name = req.get("first_name")
                 extended_member.last_name = req.get("last_name")
