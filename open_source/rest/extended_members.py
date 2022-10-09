@@ -181,7 +181,6 @@ class ExtendedMembersGetAllArchivedEndpoint:
             raise falcon.HTTPUnprocessableEntity(title="Uprocessable entlity", description="Failed to get Extended Members for user with ID {}.".format(id))
 
 
-
 class ExtendedMemberPutAgeLimitExceptionEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
@@ -275,7 +274,7 @@ class ExtendedMembersPostEndpoint:
                     raise falcon.HTTPNotFound(title="Error", description="Date joined is a required field.")
 
                 if req.get("id_number"):
-                    applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour_id).all()
+                    applicants = session.query(Applicant).filter(Applicant.plan_id == applicant.plan_id).all()
                     applicant_ids = [applicant.id for applicant in applicants]
                     id_number = session.query(MainMember).filter(
                         MainMember.id_number == req.get("id_number"),
@@ -458,6 +457,22 @@ class ExtendedMemberCheckAgeLimitEndpoint:
             if not applicant:
                 raise falcon.HTTPBadRequest(title="Applicant not found", description="Applicant does not exist.")
 
+            if id_number:
+                is_ID_number = session.query(MainMember).filter(
+                    MainMember.id_number == id_number,
+                    MainMember.state.in_((MainMember.STATE_ACTIVE, MainMember.STATE_ARCHIVED)),
+                    MainMember.parlour_id == applicant.parlour.id
+                ).first()
+
+                if not is_ID_number:
+                    applicants = session.query(Applicant).filter(Applicant.parlour_id == applicant.parlour.id).all()
+                    applicant_ids = [applicant.id for applicant in applicants]
+                    is_ID_number = session.query(ExtendedMember).filter(
+                        ExtendedMember.id_number == id_number,
+                        ExtendedMember.state.in_((ExtendedMember.STATE_ACTIVE, ExtendedMember.STATE_ARCHIVED)),
+                        ExtendedMember.applicant_id.in_(applicant_ids)
+                    ).first()
+
             plan = applicant.plan
 
             if not id_number and not date_of_birth:
@@ -514,8 +529,9 @@ class ExtendedMemberCheckAgeLimitEndpoint:
                 elif int(years) < int(min_age_limit):
                     age_limit_exceeded = True
 
-            if age_limit_exceeded:
-                resp.body = json.dumps({'result': 'Age limit exceeded!'})
+            if age_limit_exceeded or is_ID_number:
+                id_exists = True if is_ID_number else False
+                resp.body = json.dumps({'result': 'Age limit exceeded!', 'id_number_exists': id_exists})
             else:
                 resp.body = json.dumps({'result': 'OK!'})
 
@@ -751,7 +767,6 @@ class ExtendedMemberRestorePutEndpoint:
                 "Error, experienced error while creating Applicant.")
             raise falcon.HTTPBadRequest(
                 "Processing Failed. experienced error while creating Applicant.")
-
 
 
 class ExtededMemberDeleteEndpoint:
