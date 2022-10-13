@@ -136,6 +136,7 @@ api.add_route('/open-source/extended-members/{id}/archive', extended_members.Ext
 api.add_route('/open-source/extended-members/{id}/restore', extended_members.ExtendedMemberRestorePutEndpoint())
 api.add_route('/open-source/extended-members/{id}/promote', extended_members.MainMemberPromoteEndpoint())
 api.add_route('/open-source/applicants/{id}/extended-members/age-limit', extended_members.ExtendedMemberCheckAgeLimitEndpoint())
+api.add_route('/open-source/applicants/{id}/extended-members/check-age-limit', extended_members.ExtendedMemberCheckAgeLimitUpdateEndpoint())
 
 api.add_route('/open-source/applicants/{id}/additional_extended_members/all', additional_extended_members.AdditionalExtendedMembersGetAllEndpoint())
 api.add_route('/open-source/additional_extended_members', additional_extended_members.AdditionalExtendedMembersPostEndpoint())

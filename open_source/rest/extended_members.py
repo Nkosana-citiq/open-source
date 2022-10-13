@@ -536,6 +536,65 @@ class ExtendedMemberCheckAgeLimitEndpoint:
                 resp.body = json.dumps({'result': 'OK!'})
 
 
+class ExtendedMemberCheckAgeLimitUpdateEndpoint:
+    cors = public_cors
+    def __init__(self, secure=False, basic_secure=False):
+        self.secure = secure
+        self.basic_secure = basic_secure
+
+    def is_basic_secure(self):
+        return self.basic_secure
+
+    def is_not_secure(self):
+        return not self.secure
+
+    def get_date_of_birth(self, date_of_birth=None, id_number=None):
+        current_year = datetime.now().year
+        year_string = str(current_year)[2:]
+        century = 19
+        if date_of_birth:
+            return date_of_birth.replace('T', " ")[:10]
+        if id_number:
+            if 0 <= int(id_number[:2]) <= int(year_string):
+                century = 20
+            return '{}{}-{}-{}'.format(century,id_number[:2], id_number[2:4], id_number[4:-6])[:10]
+
+    def on_get(self, req, resp, id):
+
+        with db.no_transaction() as session:
+            plan = None
+            max_age_limit = None
+
+            applicant = session.query(Applicant).get(id)
+
+            if not applicant:
+                raise falcon.HTTPBadRequest(title="Applicant not found", description="Applicant does not exist.")
+
+            plan = applicant.plan
+
+            extended_members = session.query(ExtendedMember).filter(ExtendedMember.applicant_id == applicant.id, ExtendedMember.state == ExtendedMember.STATE_ACTIVE).all()
+            for extended_member in extended_members:
+                if extended_member.type == ExtendedMember.TYPE_SPOUSE:
+                    max_age_limit = plan.spouse_maximum_age
+                elif extended_member.type == ExtendedMember.TYPE_DEPENDANT:
+                    max_age_limit = plan.dependant_maximum_age
+                elif extended_member.type == ExtendedMember.TYPE_EXTENDED_MEMBER:
+                    max_age_limit = plan.extended_maximum_age
+                elif extended_member.type == ExtendedMember.TYPE_ADDITIONAL_EXTENDED_MEMBER:
+                    max_age_limit = plan.additional_extended_maximum_age
+
+                now = datetime.now().date()
+
+                age = relativedelta(now, datetime.strptime(extended_member.date_of_birth, "%Y-%m-%d"))
+
+                years = "{}".format(age.years)
+
+                if int(years) > int(max_age_limit):
+                    extended_member.age_limit_exceeded = True
+                session.commit()
+            resp.body = json.dumps({'result': 'OK!'})
+
+
 class ExtendedMemberPutEndpoint:
 
     def __init__(self, secure=False, basic_secure=False):
